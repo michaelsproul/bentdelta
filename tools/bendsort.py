@@ -63,9 +63,10 @@ def main():
             body = '\n'.join(l for l in it if not l.startswith('#'))
             body = re.sub(r'"(?:[^"\\]|\\.)*"', '""', body)
             refs = set()
+            k, n = names[i]
             for tok in IDENT.findall(body):
                 j = defs.get(tok)
-                if j is not None and j != i:
+                if j is not None and j != i and not (k == 'law' and tok == n):
                     refs.add(j)
             # a law's proof (a def of the same name) comes after the law
             k, n = names[i]
