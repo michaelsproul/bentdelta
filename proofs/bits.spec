@@ -254,3 +254,8 @@ id BB.sh24 w
   # The top byte of a word, shifted down, is already a byte.
   lhs U32.shrn(w, 24n)
   rhs Y.BP.ext(w, 24n)
+
+id BB.xxy x y
+  # y, from x and their difference.
+  lhs y
+  rhs U32.xor(x, U32.xor(x, y))
