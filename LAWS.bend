@@ -10,6 +10,6 @@ import ./check.bend as C
 law roundtrip:
   for src: B.Bytes
   for tgt: B.Bytes
-  for -small: {U32.is_lt(B.B.len(tgt), 134217728) == True{} : Bool}
+  for small: {U32.is_lt(B.B.len(tgt), 134217728) == True{} : Bool}
   {C.restore(src, C.encode(src, tgt)) == Done{B.B.list(tgt)}
     : Result<&1, &1, U32, List<&2, U32>>}
