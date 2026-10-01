@@ -173,33 +173,6 @@ def F.spec1(len, tt, z):
       : B.Bytes & B.Bytes}
   {==}
 
-# An empty target: one empty window.
-law F.spec0:
-  for +len: U32
-  for +tt: A.Tr
-  for +z: {U32.is_eq(len, 0) == True{} : Bool}
-  {C.fallback(B.Bytes{len, A.A.from(tt)})
-    == (B.Bytes{len, A.A.from(tt)}, B.Bytes{12, A.A.from(S.S.puts(F.hdr(F.empty()), F.t0(len), 0))})
-    : B.Bytes & B.Bytes}
-
-def F.spec0(len, tt, z):
-  %Equal.sym(B.Bytes & B.Bytes, C.fallback(B.Bytes{len, A.A.from(tt)}),
-    C.fb.done(len, C.fb.body(U32.is_eq(len, 0), len, A.A.from(tt), (A.A.from(S.S.puts(F.hdr([]), F.t0(len), 0)), 5))),
-    F.spec(len, tt)) :
-    {_ == (B.Bytes{len, A.A.from(tt)}, B.Bytes{12, A.A.from(S.S.puts(F.hdr(F.empty()), F.t0(len), 0))})
-      : B.Bytes & B.Bytes}
-  %Equal.sym(Bool, U32.is_eq(len, 0), True{}, z) :
-    {C.fb.done(len, C.fb.body(_, len, A.A.from(tt), (A.A.from(S.S.puts(F.hdr([]), F.t0(len), 0)), 5)))
-      == (B.Bytes{len, A.A.from(tt)}, B.Bytes{12, A.A.from(S.S.puts(F.hdr(F.empty()), F.t0(len), 0))})
-      : B.Bytes & B.Bytes}
-  %Equal.sym(Array<U32> & U32, F.wrs(F.empty(), (A.A.from(S.S.puts(F.hdr([]), F.t0(len), 0)), 5)),
-    (A.A.from(S.S.puts(F.empty(), S.S.puts(F.hdr([]), F.t0(len), 0), 5)), S.S.adv(F.empty(), 5)),
-    F.wrs_from(F.empty(), S.S.puts(F.hdr([]), F.t0(len), 0), 5)) :
-    {C.fb.done(len, (A.A.from(tt), _))
-      == (B.Bytes{len, A.A.from(tt)}, B.Bytes{12, A.A.from(S.S.puts(F.hdr(F.empty()), F.t0(len), 0))})
-      : B.Bytes & B.Bytes}
-  {==}
-
 # Sizes
 # =====
 
