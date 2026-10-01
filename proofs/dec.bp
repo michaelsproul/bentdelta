@@ -1545,3 +1545,293 @@ def DX.op(ts, td, to, tb, s, dpos, ipos, apos, seg, cpl, wst, oend, dend, iend, 
   @simp
   @rw DX.and_true(U32.is_lt(Q.SP.ipos(Q.SP.e2(c), f2, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1))), iend))
   {==}
+
+# Positions as values
+# ===================
+
+law DX.ipos_N.go:
+  for +h: U32
+  for +f: Q.HF
+  for +rest: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +hat: {Q.SP.at(K.WD.app(Q.SP.sz(h, f), rest), t, q, e) == True{} : Bool}
+  for +c: Bool
+  for +ec: {Q.SP.z(h) == c : Bool}
+  {V.U.N(Q.SP.ipos(h, f, q)) == Nat.add(S.S.len(Q.SP.sz(h, f)), V.U.N(q)) : Nat}
+
+def DX.ipos_N.go(h, f, rest, t, q, e, hat, c, ec):
+  match c:
+    case True{}:
+      @unfold Q.SP.ipos
+      @rw DX.sz_true(h, f, ec)
+      @rwx ec : {Q.SP.z(h) == True{} : Bool}
+      @simp
+      @rw V.U.add_N(q, B.B.var.len(Q.SP.size(f)), e, DX.ipos_N.b(h, f, rest, t, q, e, hat, ec))
+      @rw R.VI.len_var(Q.SP.size(f))
+      @rw P.Nat.add_comm(V.U.N(q), V.U.N(B.B.var.len(Q.SP.size(f))))
+      {==}
+    case False{}:
+      @unfold Q.SP.ipos
+      @rw DX.sz_false(h, f, ec)
+      @rwx ec : {Q.SP.z(h) == False{} : Bool}
+      @simp
+      {==}
+
+law DX.ipos_N.b:
+  for +h: U32
+  for +f: Q.HF
+  for +rest: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +hat: {Q.SP.at(K.WD.app(Q.SP.sz(h, f), rest), t, q, e) == True{} : Bool}
+  for +ec: {Q.SP.z(h) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(q), V.U.N(B.B.var.len(Q.SP.size(f)))), V.U.N(e))) == True{} : Bool}
+
+def DX.ipos_N.b(h, f, rest, t, q, e, hat, ec):
+  @rw P.Nat.add_comm(V.U.N(q), V.U.N(B.B.var.len(Q.SP.size(f))))
+  @rw- R.VI.len_var(Q.SP.size(f))
+  @rw- DX.sz_true(h, f, ec)
+  DX.at_pre(Q.SP.sz(h, f), rest, t, q, e, hat)
+
+# The position after a half's size, as a value.
+law DX.ipos_N:
+  for +h: U32
+  for +f: Q.HF
+  for +rest: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +hat: {Q.SP.at(K.WD.app(Q.SP.sz(h, f), rest), t, q, e) == True{} : Bool}
+  {V.U.N(Q.SP.ipos(h, f, q)) == Nat.add(S.S.len(Q.SP.sz(h, f)), V.U.N(q)) : Nat}
+
+def DX.ipos_N(h, f, rest, t, q, e, hat):
+  DX.ipos_N.go(h, f, rest, t, q, e, hat, Q.SP.z(h), {==})
+
+# The loop
+# ========
+
+# Past an opcode's bytes, the instruction section holds the rest.
+law DX.ins_next:
+  for +c: U32
+  for +f1: Q.HF
+  for +f2: Q.HF
+  for +rest: List<&2, Q.OP>
+  for +restI: List<&2, U32>
+  for +td: A.Tr
+  for +ipos: U32
+  for +iend: U32
+  for +hi: {Q.SP.at(K.WD.app(Q.SP.insl(Q.OP{c, f1, f2} <> rest), restI), td, ipos, iend) == True{} : Bool}
+  {Q.SP.at(K.WD.app(Q.SP.insl(rest), restI), td, Q.SP.ipos(Q.SP.e2(c), f2, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1))), iend) == True{} : Bool}
+
+def DX.ins_next(c, f1, f2, rest, restI, td, ipos, iend, hi):
+  DX.sz_next(Q.SP.e2(c), f2, K.WD.app(Q.SP.insl(rest), restI), td, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1)), iend, DX.sz_next(Q.SP.e1(c), f1, K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), K.WD.app(Q.SP.insl(rest), restI)), td, U32.add(ipos, 1), iend, (%K.WD.app_assoc(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2), K.WD.app(Q.SP.insl(rest), restI)) : {Q.SP.at(_, td, U32.add(ipos, 1), iend) == True{} : Bool}; DX.at_next(c <> [], K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), K.WD.app(Q.SP.insl(rest), restI)), td, ipos, iend, 1, {==}, (%K.WD.app_assoc(Q.SP.ins(Q.OP{c, f1, f2}), Q.SP.insl(rest), restI) : {Q.SP.at(_, td, ipos, iend) == True{} : Bool}; hi)))))
+
+# b + (a + (1 + q)) = 1 + ((a + b) + q).
+law DX.ring_ins:
+  for +a: Nat
+  for +b: Nat
+  for +q: Nat
+  {Nat.add(b, Nat.add(a, 1n+q)) == 1n+Nat.add(Nat.add(a, b), q) : Nat}
+
+def DX.ring_ins(a, b, q):
+  @rw P.Nat.add_succ_r(a, q)
+  @rw P.Nat.add_succ_r(b, Nat.add(a, q))
+  @rw- P.Nat.add_assoc(b, a, q)
+  @rw P.Nat.add_comm(b, a)
+  {==}
+
+# The position after an opcode's bytes, as a value.
+law DX.ins_N:
+  for +c: U32
+  for +f1: Q.HF
+  for +f2: Q.HF
+  for +rest: List<&2, Q.OP>
+  for +restI: List<&2, U32>
+  for +td: A.Tr
+  for +ipos: U32
+  for +iend: U32
+  for +hi: {Q.SP.at(K.WD.app(Q.SP.insl(Q.OP{c, f1, f2} <> rest), restI), td, ipos, iend) == True{} : Bool}
+  {V.U.N(Q.SP.ipos(Q.SP.e2(c), f2, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1)))) == Nat.add(S.S.len(Q.SP.ins(Q.OP{c, f1, f2})), V.U.N(ipos)) : Nat}
+
+def DX.ins_N(c, f1, f2, rest, restI, td, ipos, iend, hi):
+  @rw DX.ipos_N(Q.SP.e2(c), f2, K.WD.app(Q.SP.insl(rest), restI), td, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1)), iend, DX.sz_next(Q.SP.e1(c), f1, K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), K.WD.app(Q.SP.insl(rest), restI)), td, U32.add(ipos, 1), iend, (%K.WD.app_assoc(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2), K.WD.app(Q.SP.insl(rest), restI)) : {Q.SP.at(_, td, U32.add(ipos, 1), iend) == True{} : Bool}; DX.at_next(c <> [], K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), K.WD.app(Q.SP.insl(rest), restI)), td, ipos, iend, 1, {==}, (%K.WD.app_assoc(Q.SP.ins(Q.OP{c, f1, f2}), Q.SP.insl(rest), restI) : {Q.SP.at(_, td, ipos, iend) == True{} : Bool}; hi)))))
+  @rw DX.ipos_N(Q.SP.e1(c), f1, K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), K.WD.app(Q.SP.insl(rest), restI)), td, U32.add(ipos, 1), iend, (%K.WD.app_assoc(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2), K.WD.app(Q.SP.insl(rest), restI)) : {Q.SP.at(_, td, U32.add(ipos, 1), iend) == True{} : Bool}; DX.at_next(c <> [], K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), K.WD.app(Q.SP.insl(rest), restI)), td, ipos, iend, 1, {==}, (%K.WD.app_assoc(Q.SP.ins(Q.OP{c, f1, f2}), Q.SP.insl(rest), restI) : {Q.SP.at(_, td, ipos, iend) == True{} : Bool}; hi))))
+  @rw V.U.succ_N(ipos, iend, K.WD.lt_of_succ_le(V.U.N(ipos), V.U.N(iend), DX.at_pre(c <> [], K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), K.WD.app(Q.SP.insl(rest), restI)), td, ipos, iend, (%K.WD.app_assoc(Q.SP.ins(Q.OP{c, f1, f2}), Q.SP.insl(rest), restI) : {Q.SP.at(_, td, ipos, iend) == True{} : Bool}; hi))))
+  @simp
+  @rw K.WD.len_app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2))
+  DX.ring_ins(S.S.len(Q.SP.sz(Q.SP.e1(c), f1)), S.S.len(Q.SP.sz(Q.SP.e2(c), f2)), V.U.N(ipos))
+
+# Past an opcode's halves, the data and address sections hold the rest.
+law DX.dat_next2:
+  for +f1: Q.HF
+  for +f2: Q.HF
+  for +hs: List<&2, Q.HF>
+  for +restD: List<&2, U32>
+  for +td: A.Tr
+  for +dpos: U32
+  for +dend: U32
+  for +h1: {Q.SP.dok(f1) == True{} : Bool}
+  for +h2: {Q.SP.dok(f2) == True{} : Bool}
+  for +hd: {Q.SP.at(K.WD.app(Q.SP.datl(f1 <> f2 <> hs), restD), td, dpos, dend) == True{} : Bool}
+  {Q.SP.at(K.WD.app(Q.SP.datl(hs), restD), td, Q.SP.dnext(f2, Q.SP.dnext(f1, dpos)), dend) == True{} : Bool}
+
+def DX.dat_next2(f1, f2, hs, restD, td, dpos, dend, h1, h2, hd):
+  DX.dat_next(f2, K.WD.app(Q.SP.datl(hs), restD), td, Q.SP.dnext(f1, dpos), dend, h2,
+    DX.dat_next(f1, K.WD.app(Q.SP.dat(f2), K.WD.app(Q.SP.datl(hs), restD)), td, dpos, dend, h1, DX.dat_at2(f1, f2, hs, restD, td, dpos, dend, hd)))
+
+law DX.dat_at2:
+  for +f1: Q.HF
+  for +f2: Q.HF
+  for +hs: List<&2, Q.HF>
+  for +restD: List<&2, U32>
+  for +td: A.Tr
+  for +dpos: U32
+  for +dend: U32
+  for +hd: {Q.SP.at(K.WD.app(Q.SP.datl(f1 <> f2 <> hs), restD), td, dpos, dend) == True{} : Bool}
+  {Q.SP.at(K.WD.app(Q.SP.dat(f1), K.WD.app(Q.SP.dat(f2), K.WD.app(Q.SP.datl(hs), restD))), td, dpos, dend) == True{} : Bool}
+
+def DX.dat_at2(f1, f2, hs, restD, td, dpos, dend, hd):
+  @rw- K.WD.app_assoc(Q.SP.dat(f2), Q.SP.datl(hs), restD)
+  @rw- K.WD.app_assoc(Q.SP.dat(f1), K.WD.app(Q.SP.dat(f2), Q.SP.datl(hs)), restD)
+  hd
+
+law DX.adr_at2:
+  for +f1: Q.HF
+  for +f2: Q.HF
+  for +hs: List<&2, Q.HF>
+  for +restA: List<&2, U32>
+  for +td: A.Tr
+  for +apos: U32
+  for +aend: U32
+  for +ha: {Q.SP.at(K.WD.app(Q.SP.adrl(f1 <> f2 <> hs), restA), td, apos, aend) == True{} : Bool}
+  {Q.SP.at(K.WD.app(Q.SP.adr(f1), K.WD.app(Q.SP.adr(f2), K.WD.app(Q.SP.adrl(hs), restA))), td, apos, aend) == True{} : Bool}
+
+def DX.adr_at2(f1, f2, hs, restA, td, apos, aend, ha):
+  @rw- K.WD.app_assoc(Q.SP.adr(f2), Q.SP.adrl(hs), restA)
+  @rw- K.WD.app_assoc(Q.SP.adr(f1), K.WD.app(Q.SP.adr(f2), Q.SP.adrl(hs)), restA)
+  ha
+
+law DX.adr_next2:
+  for +f1: Q.HF
+  for +f2: Q.HF
+  for +hs: List<&2, Q.HF>
+  for +restA: List<&2, U32>
+  for +td: A.Tr
+  for +apos: U32
+  for +aend: U32
+  for +ha: {Q.SP.at(K.WD.app(Q.SP.adrl(f1 <> f2 <> hs), restA), td, apos, aend) == True{} : Bool}
+  {Q.SP.at(K.WD.app(Q.SP.adrl(hs), restA), td, Q.SP.anext(f2, Q.SP.anext(f1, apos)), aend) == True{} : Bool}
+
+def DX.adr_next2(f1, f2, hs, restA, td, apos, aend, ha):
+  DX.adr_next(f2, K.WD.app(Q.SP.adrl(hs), restA), td, Q.SP.anext(f1, apos), aend,
+    DX.adr_next(f1, K.WD.app(Q.SP.adr(f2), K.WD.app(Q.SP.adrl(hs), restA)), td, apos, aend, DX.adr_at2(f1, f2, hs, restA, td, apos, aend, ha)))
+
+# len ys <= p when 1 + len(xs ++ ys) <= 1 + p.
+law DX.le_tail:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  for +p: Nat
+  for +h: {Cmp.is_le(Nat.cmp(S.S.len(K.WD.app(xs, ys)), p)) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(S.S.len(ys), p)) == True{} : Bool}
+
+def DX.le_tail(xs, ys, p, h):
+  P.Nat.le_trans(S.S.len(ys), S.S.len(K.WD.app(xs, ys)), p,
+    (%Equal.sym(Nat, S.S.len(K.WD.app(xs, ys)), Nat.add(S.S.len(xs), S.S.len(ys)), K.WD.len_app(xs, ys)) :
+        {Cmp.is_le(Nat.cmp(S.S.len(ys), _)) == True{} : Bool};
+      P.Nat.le_add_l(S.S.len(xs), S.S.len(ys))),
+    h)
+
+# A nonempty list from ipos ending at iend: ipos < iend.
+law DX.more_t:
+  for +x: U32
+  for +r: List<&2, U32>
+  for +ipos: U32
+  for +iend: U32
+  for +heq: {Nat.add(S.S.len(x <> r), V.U.N(ipos)) == V.U.N(iend) : Nat}
+  {U32.is_lt(ipos, iend) == True{} : Bool}
+
+def DX.more_t(x, r, ipos, iend, heq):
+  V.U.N_lt(ipos, iend, (%heq : {Nat.cmp(V.U.N(ipos), _) == LT{} : Cmp}; P.Nat.le_lt_succ(V.U.N(ipos), Nat.add(S.S.len(r), V.U.N(ipos)), P.Nat.le_add_l(S.S.len(r), V.U.N(ipos)))))
+
+law DX.heq_next:
+  for +c: U32
+  for +f1: Q.HF
+  for +f2: Q.HF
+  for +rest: List<&2, Q.OP>
+  for +restI: List<&2, U32>
+  for +td: A.Tr
+  for +ipos: U32
+  for +iend: U32
+  for +hi: {Q.SP.at(K.WD.app(Q.SP.insl(Q.OP{c, f1, f2} <> rest), restI), td, ipos, iend) == True{} : Bool}
+  for +heq: {Nat.add(S.S.len(Q.SP.insl(Q.OP{c, f1, f2} <> rest)), V.U.N(ipos)) == V.U.N(iend) : Nat}
+  {Nat.add(S.S.len(Q.SP.insl(rest)), V.U.N(Q.SP.ipos(Q.SP.e2(c), f2, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1))))) == V.U.N(iend) : Nat}
+
+def DX.heq_next(c, f1, f2, rest, restI, td, ipos, iend, hi, heq):
+  @rw DX.ins_N(c, f1, f2, rest, restI, td, ipos, iend, hi)
+  @rw P.Nat.add_comm(S.S.len(Q.SP.ins(Q.OP{c, f1, f2})), V.U.N(ipos))
+  @rw DX.nat3(S.S.len(Q.SP.ins(Q.OP{c, f1, f2})), S.S.len(Q.SP.insl(rest)), V.U.N(ipos))
+  @rw- K.WD.len_app(Q.SP.ins(Q.OP{c, f1, f2}), Q.SP.insl(rest))
+  heq
+
+# The instruction loop: every opcode in turn, then the end of the section.
+law DX.loop:
+  for +k: Nat
+  for +os: List<&2, Q.OP>
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +s: Q.ST
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +tt: A.Tr
+  for +restI: List<&2, U32>
+  for +restD: List<&2, U32>
+  for +restA: List<&2, U32>
+  for +hk: {Cmp.is_le(Nat.cmp(S.S.len(Q.SP.insl(os)), k)) == True{} : Bool}
+  for +hc: {Q.SP.coks(os, tb) == True{} : Bool}
+  for +hi: {Q.SP.at(K.WD.app(Q.SP.insl(os), restI), td, ipos, iend) == True{} : Bool}
+  for +heq: {Nat.add(S.S.len(Q.SP.insl(os)), V.U.N(ipos)) == V.U.N(iend) : Nat}
+  for +hd: {Q.SP.at(K.WD.app(Q.SP.datl(Q.SP.halves(os)), restD), td, dpos, dend) == True{} : Bool}
+  for +ha: {Q.SP.at(K.WD.app(Q.SP.adrl(Q.SP.halves(os)), restA), td, apos, aend) == True{} : Bool}
+  for +hv: {Q.SP.vhs(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, s) == True{} : Bool}
+  for +hdk: {Q.SP.doks(Q.SP.halves(os)) == True{} : Bool}
+  for +dp: Nat
+  for +E: U32
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  for +hdp: {Nat.cmp(dp, 32n) == LT{} : Cmp}
+  for +he: {Cmp.is_le(Nat.cmp(V.U.N(E), Nat.double(Nat.double(P.Nat.pow2(dp))))) == True{} : Bool}
+  for +hb: {Q.SP.bnds(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, s, E) == True{} : Bool}
+  {D.dec.loop(k, D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, (U32.is_lt(ipos, iend), DX.st(ts, td, to, tb, Q.SP.sc(s), Q.SP.so(s), dpos, ipos, apos, Q.SP.ss(s)))) == DX.st(ts, td, Q.SP.outs(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, to, s), tb, Q.SP.sc(Q.SP.run(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, s)), Q.SP.so(Q.SP.run(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, s)), Q.SP.dnexts(Q.SP.halves(os), dpos), iend, Q.SP.anexts(Q.SP.halves(os), apos), Q.SP.ss(Q.SP.run(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, s))) : D.Dec}
+
+def DX.loop(k, os, ts, td, to, tb, s, dpos, ipos, apos, seg, cpl, wst, oend, dend, iend, aend, tt, restI, restD, restA, hk, hc, hi, heq, hd, ha, hv, hdk, dp, E, hp, hdp, he, hb):
+  match k os:
+    case 0n Nil{}:
+      @rwx V.U.eq_N(ipos, iend, heq) : {ipos == iend : U32}
+      @simp
+      {==}
+    case 1n+p Nil{}:
+      @rwx V.U.eq_N(ipos, iend, heq) : {ipos == iend : U32}
+      @unfold U32.is_lt
+      @rw V.U.cmp_refl(iend)
+      @simp
+      {==}
+    case 0n Con{Q.OP{c, f1, f2}, rest}:
+      P.Bool.false_true({D.dec.loop(k, D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, (U32.is_lt(ipos, iend), DX.st(ts, td, to, tb, Q.SP.sc(s), Q.SP.so(s), dpos, ipos, apos, Q.SP.ss(s)))) == DX.st(ts, td, Q.SP.outs(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, to, s), tb, Q.SP.sc(Q.SP.run(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, s)), Q.SP.so(Q.SP.run(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, s)), Q.SP.dnexts(Q.SP.halves(os), dpos), iend, Q.SP.anexts(Q.SP.halves(os), apos), Q.SP.ss(Q.SP.run(Q.SP.halves(os), Q.XC{ts, tt, seg, cpl, wst, oend}, s))) : D.Dec}, hk)
+    case 1n+p Con{Q.OP{c, f1, f2}, rest}:
+      @rwx DX.more_t(c, K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), Q.SP.insl(rest)), ipos, iend, heq) : {U32.is_lt(ipos, iend) == True{} : Bool}
+      @simp -D.dec.step
+      @rw DX.op(ts, td, to, tb, s, dpos, ipos, apos, seg, cpl, wst, oend, dend, iend, aend, tt, c, f1, f2, K.WD.app(Q.SP.insl(rest), restI), K.WD.app(Q.SP.datl(Q.SP.halves(rest)), restD), K.WD.app(Q.SP.adrl(Q.SP.halves(rest)), restA), P.Bool.and_l(Q.SP.cok(tb, Q.OP{c, f1, f2}), Q.SP.coks(rest, tb), hc), (%K.WD.app_assoc(Q.SP.ins(Q.OP{c, f1, f2}), Q.SP.insl(rest), restI) : {Q.SP.at(_, td, ipos, iend) == True{} : Bool}; hi), DX.dat_at2(f1, f2, Q.SP.halves(rest), restD, td, dpos, dend, hd), DX.adr_at2(f1, f2, Q.SP.halves(rest), restA, td, apos, aend, ha), P.Bool.and_l(Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), Bool.and(Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), Q.SP.vhs(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2))), hv), P.Bool.and_l(Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), Q.SP.vhs(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2)), P.Bool.and_r(Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), Bool.and(Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), Q.SP.vhs(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2))), hv)), P.Bool.and_l(Q.SP.dok(f1), Bool.and(Q.SP.dok(f2), Q.SP.doks(Q.SP.halves(rest))), hdk), dp, E, hp, hdp, he, P.Bool.and_l(Cmp.is_le(Nat.cmp(Nat.add(U32.to_nat(Q.SP.size(f1)), U32.to_nat(Q.SP.so(s))), U32.to_nat(E))), Q.SP.hbnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1, E), P.Bool.and_l(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1, E), Bool.and(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), Q.SP.bnds(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), E)), hb)), P.Bool.and_l(Cmp.is_le(Nat.cmp(Nat.add(U32.to_nat(Q.SP.size(f2)), U32.to_nat(Q.SP.so(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1)))), U32.to_nat(E))), Q.SP.hbnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), P.Bool.and_l(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), Q.SP.bnds(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), E), P.Bool.and_r(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1, E), Bool.and(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), Q.SP.bnds(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), E)), hb))), P.Bool.and_r(Cmp.is_le(Nat.cmp(Nat.add(U32.to_nat(Q.SP.size(f1)), U32.to_nat(Q.SP.so(s))), U32.to_nat(E))), Q.SP.hbnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1, E), P.Bool.and_l(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1, E), Bool.and(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), Q.SP.bnds(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), E)), hb)), P.Bool.and_r(Cmp.is_le(Nat.cmp(Nat.add(U32.to_nat(Q.SP.size(f2)), U32.to_nat(Q.SP.so(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1)))), U32.to_nat(E))), Q.SP.hbnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), P.Bool.and_l(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), Q.SP.bnds(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), E), P.Bool.and_r(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1, E), Bool.and(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), Q.SP.bnds(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), E)), hb))))
+      @rw DX.loop(p, rest, ts, td, Q.SP.out(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.out(Q.XC{ts, tt, seg, cpl, wst, oend}, to, s, f1), Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), tb, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), Q.SP.dnext(f2, Q.SP.dnext(f1, dpos)), Q.SP.ipos(Q.SP.e2(c), f2, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1))), Q.SP.anext(f2, Q.SP.anext(f1, apos)), seg, cpl, wst, oend, dend, iend, aend, tt, restI, restD, restA, DX.le_tail(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), Q.SP.insl(rest), p, hk), P.Bool.and_r(Q.SP.cok(tb, Q.OP{c, f1, f2}), Q.SP.coks(rest, tb), hc), DX.ins_next(c, f1, f2, rest, restI, td, ipos, iend, hi), DX.heq_next(c, f1, f2, rest, restI, td, ipos, iend, hi, heq), DX.dat_next2(f1, f2, Q.SP.halves(rest), restD, td, dpos, dend, P.Bool.and_l(Q.SP.dok(f1), Bool.and(Q.SP.dok(f2), Q.SP.doks(Q.SP.halves(rest))), hdk), P.Bool.and_l(Q.SP.dok(f2), Q.SP.doks(Q.SP.halves(rest)), P.Bool.and_r(Q.SP.dok(f1), Bool.and(Q.SP.dok(f2), Q.SP.doks(Q.SP.halves(rest))), hdk)), hd), DX.adr_next2(f1, f2, Q.SP.halves(rest), restA, td, apos, aend, ha), P.Bool.and_r(Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), Q.SP.vhs(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2)), P.Bool.and_r(Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), Bool.and(Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), Q.SP.vhs(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2))), hv)), P.Bool.and_r(Q.SP.dok(f2), Q.SP.doks(Q.SP.halves(rest)), P.Bool.and_r(Q.SP.dok(f1), Bool.and(Q.SP.dok(f2), Q.SP.doks(Q.SP.halves(rest))), hdk)), dp, E, DX.pf_out(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.out(Q.XC{ts, tt, seg, cpl, wst, oend}, to, s, f1), Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, dp, DX.pf_out(Q.XC{ts, tt, seg, cpl, wst, oend}, to, s, f1, dp, hp)), hdp, he, P.Bool.and_r(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), Q.SP.bnds(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), E), P.Bool.and_r(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1, E), Bool.and(Q.SP.bnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E), Q.SP.bnds(Q.SP.halves(rest), Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), E)), hb)))
+      {==}

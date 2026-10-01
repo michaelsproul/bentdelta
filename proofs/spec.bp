@@ -374,3 +374,53 @@ def SP.dok(+f: HF) -> Bool:
       True{}
     case HC{n, m, v}:
       True{}
+
+# A window's halves in turn
+# =========================
+
+def SP.outs(+hs: List<&2, HF>, +x: XC, +to: A.Tr, +s: ST) -> A.Tr:
+  match hs:
+    case []:
+      to
+    case h <> r:
+      SP.outs(r, x, SP.out(x, to, s, h), SP.next(x, s, h))
+
+def SP.dnexts(+hs: List<&2, HF>, +dpos: U32) -> U32:
+  match hs:
+    case []:
+      dpos
+    case h <> r:
+      SP.dnexts(r, SP.dnext(h, dpos))
+
+def SP.anexts(+hs: List<&2, HF>, +apos: U32) -> U32:
+  match hs:
+    case []:
+      apos
+    case h <> r:
+      SP.anexts(r, SP.anext(h, apos))
+
+def SP.doks(+hs: List<&2, HF>) -> Bool:
+  match hs:
+    case []:
+      True{}
+    case h <> r:
+      SP.dok(h) && SP.doks(r)
+
+def SP.coks(+os: List<&2, OP>, +tb: A.Tr) -> Bool:
+  match os:
+    case []:
+      True{}
+    case o <> r:
+      SP.cok(tb, o) && SP.coks(r, tb)
+
+# The bounds each half's copy needs, below E.
+def SP.bnd(+x: XC, +s: ST, +f: HF, +E: U32) -> Bool:
+  Cmp.is_le(Nat.cmp(Nat.add(U32.to_nat(SP.size(f)), U32.to_nat(SP.so(s))), U32.to_nat(E)))
+    && SP.hbnd(x, s, f, E)
+
+def SP.bnds(+hs: List<&2, HF>, +x: XC, +s: ST, +E: U32) -> Bool:
+  match hs:
+    case []:
+      True{}
+    case h <> r:
+      SP.bnd(x, s, h, E) && SP.bnds(r, x, SP.next(x, s, h), E)
