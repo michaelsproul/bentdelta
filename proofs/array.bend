@@ -1,5 +1,6 @@
 import Base
 import ./nat.bend as P
+import ./u32.bend as V
 
 # Lemmas about Base's Array<U32>.
 #
@@ -250,3 +251,227 @@ def T.word_set(t, i, v):
     T.size_swap(t, T.size(t), T.mask(T.size(t), i), v, T.half(T.size(t), i))) :
     {T.get.go(T.set(t, i, v), _, T.mask(_, i), T.half(_, i)) == v : U32}
   T.get_swap(t, T.size(t), T.mask(T.size(t), i), v, T.half(T.size(t), i))
+
+# The tree is perfect of depth d: every leaf d levels down.
+def T.pf(+d: Nat, +t: Tr) -> Bool:
+  match d t:
+    case 0n TL{v}:
+      True{}
+    case 0n TN{l, r}:
+      False{}
+    case 1n+p TL{v}:
+      False{}
+    case 1n+p TN{l, r}:
+      Bool.and(T.pf(p, l), T.pf(p, r))
+
+law T.size_pf:
+  for +d: Nat
+  for +t: Tr
+  for +hp: {T.pf(d, t) == True{} : Bool}
+  {T.size(t) == U32.shln(1, d) : U32}
+
+def T.size_pf(d, t, hp):
+  match d t:
+    case 0n TL{v}:
+      {==}
+    case 0n TN{l, r}:
+      P.Bool.false_true({T.size(TN{l, r}) == U32.shln(1, 0n) : U32}, hp)
+    case 1n+p TL{v}:
+      P.Bool.false_true({T.size(TL{v}) == U32.shln(1, 1n+p) : U32}, hp)
+    case 1n+p TN{l, r}:
+      %T.size_pf(p, l, P.Bool.and_l(T.pf(p, l), T.pf(p, r), hp)) :
+        {U32.shl(T.size(l)) == U32.shl(_) : U32}
+      {==}
+
+# In a perfect tree, writing slot j1 leaves slot j2 as it was.
+law T.go_other:
+  for +p: Nat
+  for +t: Tr
+  for +n: U32
+  for +j1: U32
+  for +j2: U32
+  for +v: U32
+  for +hp: {T.pf(p, t) == True{} : Bool}
+  for +hd: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  for +hn: {n == U32.shln(1, p) : U32}
+  for +h1: {U32.is_lt(j1, n) == True{} : Bool}
+  for +h2: {U32.is_lt(j2, n) == True{} : Bool}
+  for +ne: {U32.is_eq(j1, j2) == False{} : Bool}
+  for +z1: Bool
+  for +e1: {U32.is_lt(j1, U32.shr(n)) == z1 : Bool}
+  for +z2: Bool
+  for +e2: {U32.is_lt(j2, U32.shr(n)) == z2 : Bool}
+  {T.get.go(T.swap.go(t, n, j1, v, z1), n, j2, z2) == T.get.go(t, n, j2, z2) : U32}
+
+# j - n/2 is below n/2 in the upper half.
+law T.go_other.half:
+  for +q: Nat
+  for +n: U32
+  for +j: U32
+  for +hd: {Nat.cmp(1n+q, 32n) == LT{} : Cmp}
+  for +hn: {n == U32.shln(1, 1n+q) : U32}
+  for +hj: {U32.is_lt(j, n) == True{} : Bool}
+  for +hz: {U32.is_lt(j, U32.shr(n)) == False{} : Bool}
+  {U32.is_lt(U32.sub(j, U32.shr(n)), U32.shr(n)) == True{} : Bool}
+
+def T.go_other.half(q, n, j, hd, hn, hj, hz):
+  %Equal.sym(U32, n, U32.shln(1, 1n+q), hn) :
+    {U32.is_lt(U32.sub(j, U32.shr(_)), U32.shr(_)) == True{} : Bool}
+  %Equal.sym(U32, U32.shr(U32.shln(1, 1n+q)), U32.shln(1, q), V.U.shr_pow(q, hd)) :
+    {U32.is_lt(U32.sub(j, _), _) == True{} : Bool}
+  V.U.sub_half(j, q, hd,
+    (%hn : {U32.is_lt(j, _) == True{} : Bool}
+      hj),
+    (%V.U.shr_pow(q, hd) : {U32.is_lt(j, _) == False{} : Bool}
+      (%hn : {U32.is_lt(j, U32.shr(_)) == False{} : Bool}
+        hz)))
+
+def T.go_other(p, t, n, j1, j2, v, hp, hd, hn, h1, h2, ne, z1, e1, z2, e2):
+  match p t z1 z2:
+    case 0n TL{w} _ _:
+      P.Bool.true_false({T.get.go(T.swap.go(TL{w}, n, j1, v, z1), n, j2, z2)
+        == T.get.go(TL{w}, n, j2, z2) : U32},
+        (%V.U.lt_one(j2, (%hn : {U32.is_lt(j2, _) == True{} : Bool}
+            h2)) : {U32.is_eq(0, _) == False{} : Bool}
+          (%V.U.lt_one(j1, (%hn : {U32.is_lt(j1, _) == True{} : Bool}
+              h1)) : {U32.is_eq(_, j2) == False{} : Bool}
+            ne)))
+    case 0n TN{l, r} _ _:
+      P.Bool.false_true({T.get.go(T.swap.go(TN{l, r}, n, j1, v, z1), n, j2, z2)
+        == T.get.go(TN{l, r}, n, j2, z2) : U32}, hp)
+    case 1n+q TL{w} _ _:
+      P.Bool.false_true({T.get.go(T.swap.go(TL{w}, n, j1, v, z1), n, j2, z2)
+        == T.get.go(TL{w}, n, j2, z2) : U32}, hp)
+    case 1n+q TN{l, r} True{} True{}:
+      T.go_other(q, l, U32.shr(n), j1, j2, v, P.Bool.and_l(T.pf(q, l), T.pf(q, r), hp),
+        P.Nat.lt_succ_l(q, 32n, hd),
+        (%Equal.sym(U32, n, U32.shln(1, 1n+q), hn) : {U32.shr(_) == U32.shln(1, q) : U32}
+            V.U.shr_pow(q, hd)),
+        e1, e2, ne, U32.is_lt(j1, U32.shr(U32.shr(n))), {==}, U32.is_lt(j2, U32.shr(U32.shr(n))), {==})
+    case 1n+q TN{l, r} False{} False{}:
+      T.go_other(q, r, U32.shr(n), U32.sub(j1, U32.shr(n)), U32.sub(j2, U32.shr(n)), v, P.Bool.and_r(T.pf(q, l), T.pf(q, r), hp),
+        P.Nat.lt_succ_l(q, 32n, hd),
+        (%Equal.sym(U32, n, U32.shln(1, 1n+q), hn) : {U32.shr(_) == U32.shln(1, q) : U32}
+            V.U.shr_pow(q, hd)),
+        T.go_other.half(q, n, j1, hd, hn, h1, e1),
+        T.go_other.half(q, n, j2, hd, hn, h2, e2),
+        V.U.sub_ne(j1, j2, U32.shr(n), ne), U32.is_lt(U32.sub(j1, U32.shr(n)), U32.shr(U32.shr(n))), {==}, U32.is_lt(U32.sub(j2, U32.shr(n)), U32.shr(U32.shr(n))), {==})
+    case 1n+q TN{l, r} True{} False{}:
+      {==}
+    case 1n+q TN{l, r} False{} True{}:
+      {==}
+
+# In a perfect tree, a write at i1 leaves the word at i2 (both in range).
+law T.word_other:
+  for +p: Nat
+  for +t: Tr
+  for +i1: U32
+  for +i2: U32
+  for +v: U32
+  for +hp: {T.pf(p, t) == True{} : Bool}
+  for +hd: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  for +h1: {U32.is_lt(i1, U32.shln(1, p)) == True{} : Bool}
+  for +h2: {U32.is_lt(i2, U32.shln(1, p)) == True{} : Bool}
+  for +ne: {U32.is_eq(i1, i2) == False{} : Bool}
+  {T.word(T.set(t, i1, v), i2) == T.word(t, i2) : U32}
+
+def T.word_other(p, t, i1, i2, v, hp, hd, h1, h2, ne):
+  %Equal.sym(U32, T.size(T.swap.go(t, T.size(t), T.mask(T.size(t), i1), v, T.half(T.size(t), i1))), T.size(t), T.size_swap(t, T.size(t), T.mask(T.size(t), i1), v, T.half(T.size(t), i1))) :
+    {T.get.go(T.swap.go(t, T.size(t), T.mask(T.size(t), i1), v, T.half(T.size(t), i1)), _, T.mask(_, i2), T.half(_, i2))
+      == T.get.go(t, T.size(t), T.mask(T.size(t), i2), T.half(T.size(t), i2)) : U32}
+  %Equal.sym(U32, T.size(t), U32.shln(1, p), T.size_pf(p, t, hp)) :
+    {T.get.go(T.swap.go(t, _, T.mask(_, i1), v, T.half(_, i1)), _, T.mask(_, i2), T.half(_, i2))
+      == T.get.go(t, _, T.mask(_, i2), T.half(_, i2)) : U32}
+  %Equal.sym(U32, U32.and(i1, U32.sub(U32.shln(1, p), 1)), i1, V.U.mask_id(i1, p, hd, h1)) :
+    {T.get.go(T.swap.go(t, U32.shln(1, p), _, v, U32.is_lt(_, U32.shr(U32.shln(1, p)))), U32.shln(1, p), T.mask(U32.shln(1, p), i2),
+      T.half(U32.shln(1, p), i2)) == T.get.go(t, U32.shln(1, p), T.mask(U32.shln(1, p), i2), T.half(U32.shln(1, p), i2)) : U32}
+  %Equal.sym(U32, U32.and(i2, U32.sub(U32.shln(1, p), 1)), i2, V.U.mask_id(i2, p, hd, h2)) :
+    {T.get.go(T.swap.go(t, U32.shln(1, p), i1, v, U32.is_lt(i1, U32.shr(U32.shln(1, p)))), U32.shln(1, p), _,
+      U32.is_lt(_, U32.shr(U32.shln(1, p)))) == T.get.go(t, U32.shln(1, p), _, U32.is_lt(_, U32.shr(U32.shln(1, p)))) : U32}
+  T.go_other(p, t, U32.shln(1, p), i1, i2, v, hp, hd, {==}, h1, h2, ne,
+    U32.is_lt(i1, U32.shr(U32.shln(1, p))), {==}, U32.is_lt(i2, U32.shr(U32.shln(1, p))), {==})
+
+# A new array, as a tree.
+def T.new(+d: Nat, +v: U32) -> Tr:
+  match d:
+    case 0n:
+      TL{v}
+    case 1n+p:
+      TN{T.new(p, v), T.new(p, v)}
+
+law A.new_from:
+  for +d: Nat
+  for +v: U32
+  {Array.new(U32, d, v) == A.from(T.new(d, v)) : Array<U32>}
+
+def A.new_from(d, v):
+  match d:
+    case 0n:
+      {==}
+    case 1n+p:
+      %Equal.sym(Array<U32>, Array.new(U32, p, v), A.from(T.new(p, v)), A.new_from(p, v)) :
+        {ANode{_, _} == A.from(T.new(1n+p, v)) : Array<U32>}
+      {==}
+
+law T.pf_new:
+  for +d: Nat
+  for +v: U32
+  {T.pf(d, T.new(d, v)) == True{} : Bool}
+
+def T.pf_new(d, v):
+  match d:
+    case 0n:
+      {==}
+    case 1n+p:
+      %Equal.sym(Bool, T.pf(p, T.new(p, v)), True{}, T.pf_new(p, v)) :
+        {Bool.and(_, _) == True{} : Bool}
+      {==}
+
+# Every word of a new tree is its fill value.
+law T.go_new:
+  for +d: Nat
+  for +v: U32
+  for +n: U32
+  for +i: U32
+  for +z: Bool
+  {T.get.go(T.new(d, v), n, i, z) == v : U32}
+
+def T.go_new(d, v, n, i, z):
+  match d z:
+    case 0n _:
+      {==}
+    case 1n+p True{}:
+      T.go_new(p, v, U32.shr(n), i, U32.is_lt(i, U32.shr(U32.shr(n))))
+    case 1n+p False{}:
+      T.go_new(p, v, U32.shr(n), U32.sub(i, U32.shr(n)),
+        U32.is_lt(U32.sub(i, U32.shr(n)), U32.shr(U32.shr(n))))
+
+law T.word_new:
+  for +d: Nat
+  for +v: U32
+  for +i: U32
+  {T.word(T.new(d, v), i) == v : U32}
+
+def T.word_new(d, v, i):
+  T.go_new(d, v, T.size(T.new(d, v)), T.mask(T.size(T.new(d, v)), i),
+    T.half(T.size(T.new(d, v)), i))
+
+# A clone of A.from(t) is two of it.
+law A.clone_from:
+  for +t: Tr
+  {Array.clone(U32, A.from(t)) == (A.from(t), A.from(t)) : Array<U32> & Array<U32>}
+
+def A.clone_from(t):
+  match t:
+    case TL{v}:
+      {==}
+    case TN{l, r}:
+      %Equal.sym(Array<U32> & Array<U32>, Array.clone(U32, A.from(l)), (A.from(l), A.from(l)),
+        A.clone_from(l)) :
+        {Array.clone.node(U32, _, Array.clone(U32, A.from(r))) == (A.from(TN{l, r}), A.from(TN{l, r}))
+          : Array<U32> & Array<U32>}
+      %Equal.sym(Array<U32> & Array<U32>, Array.clone(U32, A.from(r)), (A.from(r), A.from(r)),
+        A.clone_from(r)) :
+        {Array.clone.node(U32, (A.from(l), A.from(l)), _) == (A.from(TN{l, r}), A.from(TN{l, r}))
+          : Array<U32> & Array<U32>}
+      {==}

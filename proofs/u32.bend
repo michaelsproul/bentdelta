@@ -48,7 +48,7 @@ def U.bit_xor(x, y, i):
 law U.bit_not:
   for +x: U32
   for +i: Nat
-  for h: {Nat.cmp(i, 32n) == LT{} : Cmp}
+  for +h: {Nat.cmp(i, 32n) == LT{} : Cmp}
   {U.bit(U32.not(x), i) == Bool.not(U.bit(x, i)) : Bool}
 
 def U.bit_not(x, i, h):
@@ -78,7 +78,7 @@ def U.bit_shl0(x):
 law U.bit_shl:
   for +x: U32
   for +i: Nat
-  for h: {Nat.cmp(1n+i, 32n) == LT{} : Cmp}
+  for +h: {Nat.cmp(1n+i, 32n) == LT{} : Cmp}
   {U.bit(U32.shl(x), 1n+i) == U.bit(x, i) : Bool}
 
 def U.bit_shl(x, i, h):
@@ -109,3 +109,592 @@ def U.bit_shrn(x, k, i):
       %Equal.sym(Nat, Nat.add(i, 1n+p), 1n+Nat.add(i, p), P.Nat.add_succ_r(i, p)) :
         {U.bit(x, 1n+Nat.add(i, p)) == U.bit(x, _) : Bool}
       {==}
+
+# Values
+# ======
+
+def U.N(x: U32) -> Nat:
+  U32.to_nat(x)
+
+law U.cmp_nat:
+  for +x: U32
+  for +y: U32
+  {U32.cmp(x, y) == Nat.cmp(U.N(x), U.N(y)) : Cmp}
+
+def U.cmp_nat(x, y):
+  match x y:
+    case U32{a} U32{b}:
+      W.W.cmp_nat(32n, a, b)
+
+law U.cmp_refl:
+  for +x: U32
+  {U32.cmp(x, x) == EQ{} : Cmp}
+
+def U.cmp_refl(x):
+  match x:
+    case U32{a}:
+      W.W.cmp_refl(32n, a)
+
+law U.eq_N:
+  for +x: U32
+  for +y: U32
+  for +e: {U.N(x) == U.N(y) : Nat}
+  {x == y : U32}
+
+def U.eq_N(x, y, e):
+  match x y:
+    case U32{a} U32{b}:
+      %W.W.eq_N(32n, a, b, e) : {U32{a} == U32{_} : U32}
+      {==}
+
+# U32.is_eq answers True only for equal words.
+law U.is_eq:
+  for +x: U32
+  for +y: U32
+  for +e: {U32.is_eq(x, y) == True{} : Bool}
+  {x == y : U32}
+
+law U.is_eq.go:
+  for +x: U32
+  for +y: U32
+  for +c: Cmp
+  for +q: {U32.cmp(x, y) == c : Cmp}
+  for +e: {U32.is_eq(x, y) == True{} : Bool}
+  {x == y : U32}
+
+def U.is_eq.go(x, y, c, q, e):
+  match c:
+    case LT{}:
+      P.Bool.false_true({x == y : U32},
+        (%q : {Cmp.is_eq(_) == True{} : Bool}
+          e))
+    case EQ{}:
+      U.eq_N(x, y, P.Nat.cmp_eq(U.N(x), U.N(y),
+        (%U.cmp_nat(x, y) : {_ == EQ{} : Cmp}
+          q)))
+    case GT{}:
+      P.Bool.false_true({x == y : U32},
+        (%q : {Cmp.is_eq(_) == True{} : Bool}
+          e))
+
+def U.is_eq(x, y, e):
+  U.is_eq.go(x, y, U32.cmp(x, y), {==}, e)
+
+law U.add_nowrap:
+  for +x: U32
+  for +y: U32
+  for +h: {U32.is_le(x, U32.add(x, y)) == True{} : Bool}
+  {U.N(U32.add(x, y)) == Nat.add(U.N(x), U.N(y)) : Nat}
+
+def U.add_nowrap(x, y, h):
+  match x y:
+    case U32{a} U32{b}:
+      W.W.add_nowrap(32n, a, b, h)
+
+law U.sub_nat:
+  for +x: U32
+  for +y: U32
+  for +h: {U32.is_le(y, x) == True{} : Bool}
+  {Nat.add(U.N(U32.sub(x, y)), U.N(y)) == U.N(x) : Nat}
+
+def U.sub_nat(x, y, h):
+  match x y:
+    case U32{a} U32{b}:
+      W.W.sub_nat(32n, a, b, h)
+
+law U.add_sub:
+  for +x: U32
+  for +y: U32
+  {U32.add(U32.sub(x, y), y) == x : U32}
+
+def U.add_sub(x, y):
+  match x y:
+    case U32{a} U32{b}:
+      %W.W.add_sub(32n, a, b) : {U32{Word.add(32n, Word.sub(32n, a, b), b)} == U32{_} : U32}
+      {==}
+
+law U.sub_add:
+  for +x: U32
+  for +y: U32
+  {U32.sub(U32.add(x, y), y) == x : U32}
+
+def U.sub_add(x, y):
+  match x y:
+    case U32{a} U32{b}:
+      %W.W.sub_add(32n, a, b) : {U32{Word.sub(32n, Word.add(32n, a, b), b)} == U32{_} : U32}
+      {==}
+
+law U.add_assoc:
+  for +x: U32
+  for +y: U32
+  for +z: U32
+  {U32.add(U32.add(x, y), z) == U32.add(x, U32.add(y, z)) : U32}
+
+def U.add_assoc(x, y, z):
+  match x y z:
+    case U32{a} U32{b} U32{c}:
+      %W.W.add_assoc(32n, a, b, c) :
+        {U32{Word.add(32n, Word.add(32n, a, b), c)} == U32{_} : U32}
+      {==}
+
+law U.N_shr:
+  for +x: U32
+  {U.N(U32.shr(x)) == P.Nat.half(U.N(x)) : Nat}
+
+def U.N_shr(x):
+  match x:
+    case U32{a}:
+      W.W.N_shr(32n, a)
+
+law U.N_shl:
+  for +x: U32
+  for +h: {U.bit(x, 31n) == False{} : Bool}
+  {U.N(U32.shl(x)) == Nat.double(U.N(x)) : Nat}
+
+def U.N_shl(x, h):
+  match x:
+    case U32{a}:
+      W.W.N_shl(31n, a, h)
+
+law U.bit_high:
+  for +x: U32
+  for +p: Nat
+  for +k: Nat
+  for +h1: {Nat.cmp(U.N(x), P.Nat.pow2(p)) == LT{} : Cmp}
+  for +h2: {Cmp.is_le(Nat.cmp(p, k)) == True{} : Bool}
+  {U.bit(x, k) == False{} : Bool}
+
+def U.bit_high(x, p, k, h1, h2):
+  match x:
+    case U32{a}:
+      W.W.bit_high(32n, a, p, k, h1, h2)
+
+law U.bit_beyond:
+  for +x: U32
+  for +k: Nat
+  for +h: {Cmp.is_le(Nat.cmp(32n, k)) == True{} : Bool}
+  {U.bit(x, k) == False{} : Bool}
+
+def U.bit_beyond(x, k, h):
+  match x:
+    case U32{a}:
+      W.W.bit_beyond(32n, a, k, h)
+
+# Shifting up by k moves bit j to j + k.
+law U.bit_shln_hi:
+  for +x: U32
+  for +k: Nat
+  for +j: Nat
+  for +h: {Nat.cmp(Nat.add(j, k), 32n) == LT{} : Cmp}
+  {U.bit(U32.shln(x, k), Nat.add(j, k)) == U.bit(x, j) : Bool}
+
+def U.bit_shln_hi(x, k, j, h):
+  match k:
+    case 0n:
+      %Equal.sym(Nat, Nat.add(j, 0n), j, P.Nat.add_zero_r(j)) :
+        {U.bit(x, _) == U.bit(x, j) : Bool}
+      {==}
+    case 1n+p:
+      %Equal.sym(Nat, Nat.add(j, 1n+p), 1n+Nat.add(j, p), P.Nat.add_succ_r(j, p)) :
+        {U.bit(U32.shl(U32.shln(x, p)), _) == U.bit(x, j) : Bool}
+      %Equal.sym(Bool, U.bit(U32.shl(U32.shln(x, p)), 1n+Nat.add(j, p)),
+        U.bit(U32.shln(x, p), Nat.add(j, p)),
+        U.bit_shl(U32.shln(x, p), Nat.add(j, p),
+          (%P.Nat.add_succ_r(j, p) : {Nat.cmp(_, 32n) == LT{} : Cmp}
+            h))) :
+        {_ == U.bit(x, j) : Bool}
+      U.bit_shln_hi(x, p, j,
+        P.Nat.lt_succ_l(Nat.add(j, p), 32n,
+          (%P.Nat.add_succ_r(j, p) : {Nat.cmp(_, 32n) == LT{} : Cmp}
+            h)))
+
+# Shifting up by k (at most 32) clears the bits below k.
+law U.bit_shln_lo:
+  for +x: U32
+  for +k: Nat
+  for +j: Nat
+  for +h1: {Nat.cmp(j, k) == LT{} : Cmp}
+  for +h2: {Cmp.is_le(Nat.cmp(k, 32n)) == True{} : Bool}
+  {U.bit(U32.shln(x, k), j) == False{} : Bool}
+
+def U.bit_shln_lo(x, k, j, h1, h2):
+  match k j:
+    case 0n _:
+      P.Nat.lt_zero({U.bit(U32.shln(x, 0n), j) == False{} : Bool}, j, h1)
+    case 1n+p 0n:
+      U.bit_shl0(U32.shln(x, p))
+    case 1n+p 1n+i:
+      %Equal.sym(Bool, U.bit(U32.shl(U32.shln(x, p)), 1n+i), U.bit(U32.shln(x, p), i),
+        U.bit_shl(U32.shln(x, p), i, P.Nat.lt_le_trans(1n+i, 1n+p, 32n, h1, h2))) :
+        {_ == False{} : Bool}
+      U.bit_shln_lo(x, p, i, h1, P.Nat.le_succ_l(p, 32n, h2))
+
+law U.bit_one:
+  for +k: Nat
+  {U.bit(1, 1n+k) == False{} : Bool}
+
+def U.bit_one(k):
+  W.W.bit_zero(31n, k)
+
+# 2^q (for q < 31) has its top bit clear.
+law U.pow_top:
+  for +q: Nat
+  for +h: {Nat.cmp(1n+q, 32n) == LT{} : Cmp}
+  for +e: {U.N(U32.shln(1, q)) == P.Nat.pow2(q) : Nat}
+  {U.bit(U32.shln(1, q), 31n) == False{} : Bool}
+
+def U.pow_top(q, h, e):
+  U.bit_high(U32.shln(1, q), 1n+q, 31n,
+    (%Equal.sym(Nat, U.N(U32.shln(1, q)), P.Nat.pow2(q), e) :
+      {Nat.cmp(_, Nat.double(P.Nat.pow2(q))) == LT{} : Cmp}
+      P.Nat.lt_double(P.Nat.pow2(q), P.Nat.pow2_pos(q))),
+    P.Nat.lt_succ_le(1n+q, 31n, h))
+
+# The value of 2^p as a U32.
+law U.N_pow:
+  for +p: Nat
+  for +h: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  {U.N(U32.shln(1, p)) == P.Nat.pow2(p) : Nat}
+
+law U.N_pow.go:
+  for +q: Nat
+  for +h: {Nat.cmp(1n+q, 32n) == LT{} : Cmp}
+  for +e: {U.N(U32.shln(1, q)) == P.Nat.pow2(q) : Nat}
+  {U.N(U32.shl(U32.shln(1, q))) == Nat.double(P.Nat.pow2(q)) : Nat}
+
+def U.N_pow.go(q, h, e):
+  %Equal.sym(Nat, U.N(U32.shl(U32.shln(1, q))), Nat.double(U.N(U32.shln(1, q))),
+    U.N_shl(U32.shln(1, q), U.pow_top(q, h, e))) :
+    {_ == Nat.double(P.Nat.pow2(q)) : Nat}
+  %Equal.sym(Nat, U.N(U32.shln(1, q)), P.Nat.pow2(q), e) :
+    {Nat.double(_) == Nat.double(P.Nat.pow2(q)) : Nat}
+  {==}
+
+def U.N_pow(p, h):
+  match p:
+    case 0n:
+      {==}
+    case 1n+q:
+      U.N_pow.go(q, h, U.N_pow(q, P.Nat.lt_succ_l(q, 32n, h)))
+
+# Halving 2^(1+q) gives 2^q.
+law U.shr_pow:
+  for +q: Nat
+  for +h: {Nat.cmp(1n+q, 32n) == LT{} : Cmp}
+  {U32.shr(U32.shln(1, 1n+q)) == U32.shln(1, q) : U32}
+
+def U.shr_pow(q, h):
+  U.eq_N(U32.shr(U32.shln(1, 1n+q)), U32.shln(1, q),
+    (%Equal.sym(Nat, U.N(U32.shr(U32.shln(1, 1n+q))), P.Nat.half(U.N(U32.shln(1, 1n+q))),
+        U.N_shr(U32.shln(1, 1n+q))) :
+      {_ == U.N(U32.shln(1, q)) : Nat}
+      (%Equal.sym(Nat, U.N(U32.shln(1, 1n+q)), P.Nat.pow2(1n+q), U.N_pow(1n+q, h)) :
+        {P.Nat.half(_) == U.N(U32.shln(1, q)) : Nat}
+        (%Equal.sym(Nat, U.N(U32.shln(1, q)), P.Nat.pow2(q), U.N_pow(q, P.Nat.lt_succ_l(q, 32n, h))) :
+          {P.Nat.half(Nat.double(P.Nat.pow2(q))) == _ : Nat}
+          P.Nat.half_double(P.Nat.pow2(q))))))
+
+# Order facts
+# ===========
+
+# Not below means at or above.
+law U.not_lt:
+  for +x: U32
+  for +y: U32
+  for +h: {U32.is_lt(x, y) == False{} : Bool}
+  {U32.is_le(y, x) == True{} : Bool}
+
+law U.not_lt.go:
+  for +x: U32
+  for +y: U32
+  for +c: Cmp
+  for +e: {Nat.cmp(U.N(x), U.N(y)) == c : Cmp}
+  for +h: {U32.is_lt(x, y) == False{} : Bool}
+  {U32.is_le(y, x) == True{} : Bool}
+
+def U.not_lt.go(x, y, c, e, h):
+  match c:
+    case LT{}:
+      P.Bool.true_false({U32.is_le(y, x) == True{} : Bool},
+        (%e : {Cmp.is_lt(_) == False{} : Bool}
+          (%U.cmp_nat(x, y) : {Cmp.is_lt(_) == False{} : Bool}
+            h)))
+    case EQ{}:
+      %Equal.sym(Cmp, U32.cmp(y, x), Nat.cmp(U.N(y), U.N(x)), U.cmp_nat(y, x)) :
+        {Cmp.is_le(_) == True{} : Bool}
+      %Equal.sym(Cmp, Nat.cmp(U.N(y), U.N(x)), P.Cmp.flip(Nat.cmp(U.N(x), U.N(y))),
+        P.Nat.cmp_swap(U.N(x), U.N(y))) : {Cmp.is_le(_) == True{} : Bool}
+      %Equal.sym(Cmp, Nat.cmp(U.N(x), U.N(y)), EQ{}, e) : {Cmp.is_le(P.Cmp.flip(_)) == True{} : Bool}
+      {==}
+    case GT{}:
+      %Equal.sym(Cmp, U32.cmp(y, x), Nat.cmp(U.N(y), U.N(x)), U.cmp_nat(y, x)) :
+        {Cmp.is_le(_) == True{} : Bool}
+      %Equal.sym(Cmp, Nat.cmp(U.N(y), U.N(x)), P.Cmp.flip(Nat.cmp(U.N(x), U.N(y))),
+        P.Nat.cmp_swap(U.N(x), U.N(y))) : {Cmp.is_le(_) == True{} : Bool}
+      %Equal.sym(Cmp, Nat.cmp(U.N(x), U.N(y)), GT{}, e) : {Cmp.is_le(P.Cmp.flip(_)) == True{} : Bool}
+      {==}
+
+# Below 1 is 0.
+law U.lt_one:
+  for +j: U32
+  for +h: {U32.is_lt(j, 1) == True{} : Bool}
+  {j == 0 : U32}
+
+law U.lt_one.go:
+  for +m: Nat
+  for +h: {Cmp.is_lt(Nat.cmp(m, 1n)) == True{} : Bool}
+  {m == 0n : Nat}
+
+def U.lt_one.go(m, h):
+  match m:
+    case 0n:
+      {==}
+    case 1n+k:
+      match k:
+        case 0n:
+          P.Bool.false_true({1n == 0n : Nat}, h)
+        case 1n+r:
+          P.Bool.false_true({2n+r == 0n : Nat}, h)
+
+def U.lt_one(j, h):
+  U.eq_N(j, 0, U.lt_one.go(U.N(j),
+    (%U.cmp_nat(j, 1) : {Cmp.is_lt(_) == True{} : Bool}
+      h)))
+
+def U.not_lt(x, y, h):
+  U.not_lt.go(x, y, Nat.cmp(U.N(x), U.N(y)), {==}, h)
+
+law U.lt_N:
+  for +x: U32
+  for +y: U32
+  for +h: {U32.is_lt(x, y) == True{} : Bool}
+  {Nat.cmp(U.N(x), U.N(y)) == LT{} : Cmp}
+
+def U.lt_N(x, y, h):
+  P.Cmp.is_lt_lt(Nat.cmp(U.N(x), U.N(y)),
+    (%U.cmp_nat(x, y) : {Cmp.is_lt(_) == True{} : Bool}
+      h))
+
+law U.N_lt:
+  for +x: U32
+  for +y: U32
+  for +h: {Nat.cmp(U.N(x), U.N(y)) == LT{} : Cmp}
+  {U32.is_lt(x, y) == True{} : Bool}
+
+def U.N_lt(x, y, h):
+  %Equal.sym(Cmp, U32.cmp(x, y), Nat.cmp(U.N(x), U.N(y)), U.cmp_nat(x, y)) :
+    {Cmp.is_lt(_) == True{} : Bool}
+  %Equal.sym(Cmp, Nat.cmp(U.N(x), U.N(y)), LT{}, h) : {Cmp.is_lt(_) == True{} : Bool}
+  {==}
+
+# In the upper half of [0, 2^(1+q)), j - 2^q lies in [0, 2^q).
+law U.sub_half:
+  for +j: U32
+  for +q: Nat
+  for +hq: {Nat.cmp(1n+q, 32n) == LT{} : Cmp}
+  for +hj: {U32.is_lt(j, U32.shln(1, 1n+q)) == True{} : Bool}
+  for +hz: {U32.is_lt(j, U32.shln(1, q)) == False{} : Bool}
+  {U32.is_lt(U32.sub(j, U32.shln(1, q)), U32.shln(1, q)) == True{} : Bool}
+
+def U.sub_half(j, q, hq, hj, hz):
+  U.N_lt(U32.sub(j, U32.shln(1, q)), U32.shln(1, q),
+    (%Equal.sym(Nat, U.N(U32.shln(1, q)), P.Nat.pow2(q), U.N_pow(q, P.Nat.lt_succ_l(q, 32n, hq))) :
+      {Nat.cmp(U.N(U32.sub(j, U32.shln(1, q))), _) == LT{} : Cmp}
+      (%P.Nat.cmp_add_rr(U.N(U32.sub(j, U32.shln(1, q))), P.Nat.pow2(q), P.Nat.pow2(q)) :
+        {_ == LT{} : Cmp}
+        (%U.N_pow(q, P.Nat.lt_succ_l(q, 32n, hq)) :
+          {Nat.cmp(Nat.add(U.N(U32.sub(j, U32.shln(1, q))), _), Nat.add(P.Nat.pow2(q), P.Nat.pow2(q)))
+            == LT{} : Cmp}
+          (%Equal.sym(Nat, Nat.add(U.N(U32.sub(j, U32.shln(1, q))), U.N(U32.shln(1, q))), U.N(j),
+              U.sub_nat(j, U32.shln(1, q), U.not_lt(j, U32.shln(1, q), hz))) :
+            {Nat.cmp(_, Nat.add(P.Nat.pow2(q), P.Nat.pow2(q))) == LT{} : Cmp}
+            (%P.Nat.double_add(P.Nat.pow2(q)) : {Nat.cmp(U.N(j), _) == LT{} : Cmp}
+              (%U.N_pow(1n+q, hq) : {Nat.cmp(U.N(j), _) == LT{} : Cmp}
+                U.lt_N(j, U32.shln(1, 1n+q), hj))))))))
+
+# Taking the same away from different words leaves different words.
+law U.sub_ne:
+  for +a: U32
+  for +b: U32
+  for +h: U32
+  for +ne: {U32.is_eq(a, b) == False{} : Bool}
+  {U32.is_eq(U32.sub(a, h), U32.sub(b, h)) == False{} : Bool}
+
+law U.sub_ne.go:
+  for +a: U32
+  for +b: U32
+  for +h: U32
+  for +r: Bool
+  for +e: {U32.is_eq(U32.sub(a, h), U32.sub(b, h)) == r : Bool}
+  for +ne: {U32.is_eq(a, b) == False{} : Bool}
+  {r == False{} : Bool}
+
+# Equal differences from the same word come from equal words.
+law U.eq_back:
+  for +a: U32
+  for +b: U32
+  for +h: U32
+  for +e: {U32.sub(a, h) == U32.sub(b, h) : U32}
+  {b == a : U32}
+
+def U.eq_back(a, b, h, e):
+  %U.add_sub(a, h) : {b == _ : U32}
+  %U.add_sub(b, h) : {_ == U32.add(U32.sub(a, h), h) : U32}
+  %e : {U32.add(_, h) == U32.add(U32.sub(a, h), h) : U32}
+  {==}
+
+law U.is_eq_refl:
+  for +x: U32
+  {U32.is_eq(x, x) == True{} : Bool}
+
+def U.is_eq_refl(x):
+  %Equal.sym(Cmp, U32.cmp(x, x), EQ{}, U.cmp_refl(x)) : {Cmp.is_eq(_) == True{} : Bool}
+  {==}
+
+def U.sub_ne.go(a, b, h, r, e, ne):
+  match r:
+    case False{}:
+      {==}
+    case True{}:
+      P.Bool.true_false({True{} == False{} : Bool},
+        (%U.is_eq_refl(b) : {_ == False{} : Bool}
+          (%Equal.sym(U32, b, a, U.eq_back(a, b, h, U.is_eq(U32.sub(a, h), U32.sub(b, h), e))) :
+            {U32.is_eq(_, b) == False{} : Bool}
+            ne)))
+
+def U.sub_ne(a, b, h, ne):
+  U.sub_ne.go(a, b, h, U32.is_eq(U32.sub(a, h), U32.sub(b, h)), {==}, ne)
+
+# Extensionality
+# ==============
+
+def U.allb(-x: U32, -y: U32, k: Nat) -> Data:
+  match k:
+    case 0n:
+      Unit
+    case 1n+j:
+      Sigma<&2, &2, {U.bit(x, j) == U.bit(y, j) : Bool}, _ => U.allb(x, y, j)>
+
+law U.ext:
+  for +x: U32
+  for +y: U32
+  for +h: U.allb(x, y, 32n)
+  {x == y : U32}
+
+def U.ext(x, y, h):
+  match x y:
+    case U32{a} U32{b}:
+      %W.W.ext(32n, a, b, h) : {U32{a} == U32{_} : U32}
+      {==}
+
+law U.bit_ones:
+  for +x: U32
+  for +p: Nat
+  for +k: Nat
+  for +e: {Nat.add(U.N(x), 1n) == P.Nat.pow2(p) : Nat}
+  for +hk: {Nat.cmp(k, p) == LT{} : Cmp}
+  {U.bit(x, k) == True{} : Bool}
+
+def U.bit_ones(x, p, k, e, hk):
+  match x:
+    case U32{a}:
+      W.W.bit_ones(32n, a, p, k, e, hk)
+
+# The mask of p low bits.
+def U.ones(+p: Nat) -> U32:
+  U32.sub(U32.shln(1, p), 1)
+
+law U.N_ones:
+  for +p: Nat
+  for +hd: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  {Nat.add(U.N(U.ones(p)), 1n) == P.Nat.pow2(p) : Nat}
+
+def U.N_ones(p, hd):
+  %U.N_pow(p, hd) : {Nat.add(U.N(U.ones(p)), 1n) == _ : Nat}
+  U.sub_nat(U32.shln(1, p), 1,
+    (%Equal.sym(Cmp, U32.cmp(1, U32.shln(1, p)), Nat.cmp(1n, U.N(U32.shln(1, p))),
+        U.cmp_nat(1, U32.shln(1, p))) :
+      {Cmp.is_le(_) == True{} : Bool}
+      (%Equal.sym(Nat, U.N(U32.shln(1, p)), P.Nat.pow2(p), U.N_pow(p, hd)) :
+        {Cmp.is_le(Nat.cmp(1n, _)) == True{} : Bool}
+        P.Nat.one_le(P.Nat.pow2(p), P.Nat.pow2_pos(p)))))
+
+law U.mask_bit:
+  for +i: U32
+  for +p: Nat
+  for +hd: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  for +hi: {U32.is_lt(i, U32.shln(1, p)) == True{} : Bool}
+  for +j: Nat
+  {U.bit(U32.and(i, U.ones(p)), j) == U.bit(i, j) : Bool}
+
+law U.mask_bit.go:
+  for +i: U32
+  for +p: Nat
+  for +hd: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  for +hi: {U32.is_lt(i, U32.shln(1, p)) == True{} : Bool}
+  for +j: Nat
+  for +c: Cmp
+  for +e: {Nat.cmp(j, p) == c : Cmp}
+  {Bool.and(U.bit(i, j), U.bit(U.ones(p), j)) == U.bit(i, j) : Bool}
+
+law U.mask_bit.hi:
+  for +i: U32
+  for +p: Nat
+  for +hd: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  for +hi: {U32.is_lt(i, U32.shln(1, p)) == True{} : Bool}
+  for +j: Nat
+  for +h: {Cmp.is_le(P.Cmp.flip(Nat.cmp(j, p))) == True{} : Bool}
+  {Bool.and(U.bit(i, j), U.bit(U.ones(p), j)) == U.bit(i, j) : Bool}
+
+def U.mask_bit.hi(i, p, hd, hi, j, h):
+  %Equal.sym(Bool, U.bit(i, j), False{},
+    U.bit_high(i, p, j,
+      (%U.N_pow(p, hd) : {Nat.cmp(U.N(i), _) == LT{} : Cmp}
+        U.lt_N(i, U32.shln(1, p), hi)),
+      (%Equal.sym(Cmp, Nat.cmp(p, j), P.Cmp.flip(Nat.cmp(j, p)), P.Nat.cmp_swap(j, p)) :
+        {Cmp.is_le(_) == True{} : Bool}
+        h))) :
+    {Bool.and(_, U.bit(U.ones(p), j)) == _ : Bool}
+  {==}
+
+def U.mask_bit.go(i, p, hd, hi, j, c, e):
+  match c:
+    case LT{}:
+      %Equal.sym(Bool, U.bit(U.ones(p), j), True{}, U.bit_ones(U.ones(p), p, j, U.N_ones(p, hd), e)) :
+        {Bool.and(U.bit(i, j), _) == U.bit(i, j) : Bool}
+      P.Bool.and_true(U.bit(i, j))
+    case EQ{}:
+      U.mask_bit.hi(i, p, hd, hi, j, (%Equal.sym(Cmp, Nat.cmp(j, p), EQ{}, e) :
+        {Cmp.is_le(P.Cmp.flip(_)) == True{} : Bool}
+        {==}))
+    case GT{}:
+      U.mask_bit.hi(i, p, hd, hi, j, (%Equal.sym(Cmp, Nat.cmp(j, p), GT{}, e) :
+        {Cmp.is_le(P.Cmp.flip(_)) == True{} : Bool}
+        {==}))
+
+def U.mask_bit(i, p, hd, hi, j):
+  %Equal.sym(Bool, U.bit(U32.and(i, U.ones(p)), j), Bool.and(U.bit(i, j), U.bit(U.ones(p), j)),
+    U.bit_and(i, U.ones(p), j)) : {_ == U.bit(i, j) : Bool}
+  U.mask_bit.go(i, p, hd, hi, j, Nat.cmp(j, p), {==})
+
+def U.mask_all(+i: U32, +p: Nat, +hd: {Nat.cmp(p, 32n) == LT{} : Cmp},
+  +hi: {U32.is_lt(i, U32.shln(1, p)) == True{} : Bool}, +k: Nat) ->
+  U.allb(U32.and(i, U.ones(p)), i, k):
+  match k:
+    case 0n:
+      Unit{}
+    case 1n+j:
+      W.W.allb.con({U.bit(U32.and(i, U.ones(p)), j) == U.bit(i, j) : Bool},
+        U.allb(U32.and(i, U.ones(p)), i, j),
+        U.mask_bit(i, p, hd, hi, j), U.mask_all(i, p, hd, hi, j))
+
+# Masking an index below 2^p to p bits keeps it.
+law U.mask_id:
+  for +i: U32
+  for +p: Nat
+  for +hd: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  for +hi: {U32.is_lt(i, U32.shln(1, p)) == True{} : Bool}
+  {U32.and(i, U32.sub(U32.shln(1, p), 1)) == i : U32}
+
+def U.mask_id(i, p, hd, hi):
+  U.ext(U32.and(i, U.ones(p)), i, U.mask_all(i, p, hd, hi, 32n))

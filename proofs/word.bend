@@ -293,7 +293,7 @@ law W.not_sum.step:
   for +x: Nat
   for +y: Nat
   for +q: Nat
-  for e: {Nat.add(Nat.add(x, y), 1n) == q : Nat}
+  for +e: {Nat.add(Nat.add(x, y), 1n) == q : Nat}
   {Nat.add(Nat.add(1n+Nat.double(x), Nat.double(y)), 1n) == Nat.double(q) : Nat}
 
 def W.not_sum.step(x, y, q, e):
@@ -349,7 +349,7 @@ law W.add_sub.fn:
   for +x: Nat
   for +nb: Nat
   for +y: Nat
-  for e: {Nat.add(Nat.add(nb, y), 1n) == P.Nat.pow2(n) : Nat}
+  for +e: {Nat.add(Nat.add(nb, y), 1n) == P.Nat.pow2(n) : Nat}
   {Word.add(n, Word.adc(n, W.fn(n, x), W.fn(n, nb), False{}, True{}), W.fn(n, y))
     == W.fn(n, x) : Word(n)}
 
@@ -395,7 +395,7 @@ law W.sub_add.fn:
   for +x: Nat
   for +nb: Nat
   for +y: Nat
-  for e: {Nat.add(Nat.add(nb, y), 1n) == P.Nat.pow2(n) : Nat}
+  for +e: {Nat.add(Nat.add(nb, y), 1n) == P.Nat.pow2(n) : Nat}
   {Word.adc(n, Word.add(n, W.fn(n, x), W.fn(n, y)), W.fn(n, nb), False{}, True{})
     == W.fn(n, x) : Word(n)}
 
@@ -490,7 +490,7 @@ law W.eq_N:
   for +n: Nat
   for +a: Word(n)
   for +b: Word(n)
-  for e: {Word.to_nat(n, a) == Word.to_nat(n, b) : Nat}
+  for +e: {Word.to_nat(n, a) == Word.to_nat(n, b) : Nat}
   {a == b : Word(n)}
 
 def W.eq_N(n, a, b, e):
@@ -504,7 +504,7 @@ law W.cmp_eq:
   for +n: Nat
   for +a: Word(n)
   for +b: Word(n)
-  for e: {Word.cmp(n, a, b) == EQ{} : Cmp}
+  for +e: {Word.cmp(n, a, b) == EQ{} : Cmp}
   {a == b : Word(n)}
 
 def W.cmp_eq(n, a, b, e):
@@ -655,7 +655,7 @@ law W.add_nowrap:
   for +n: Nat
   for +a: Word(n)
   for +b: Word(n)
-  for h: {Cmp.is_le(Word.cmp(n, a, Word.add(n, a, b))) == True{} : Bool}
+  for +h: {Cmp.is_le(Word.cmp(n, a, Word.add(n, a, b))) == True{} : Bool}
   {Word.to_nat(n, Word.add(n, a, b)) == Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)) : Nat}
 
 law W.add_nowrap.go:
@@ -663,8 +663,8 @@ law W.add_nowrap.go:
   for +a: Word(n)
   for +b: Word(n)
   for +k: Bool
-  for e: {W.carry(n, a, b, False{}) == k : Bool}
-  for h: {Cmp.is_le(Word.cmp(n, a, Word.add(n, a, b))) == True{} : Bool}
+  for +e: {W.carry(n, a, b, False{}) == k : Bool}
+  for +h: {Cmp.is_le(Word.cmp(n, a, Word.add(n, a, b))) == True{} : Bool}
   {Word.to_nat(n, Word.add(n, a, b)) == Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)) : Nat}
 
 def W.add_nowrap.go(n, a, b, k, e, h):
@@ -696,7 +696,7 @@ law W.sub_nat:
   for +n: Nat
   for +a: Word(n)
   for +b: Word(n)
-  for h: {Cmp.is_le(Word.cmp(n, b, a)) == True{} : Bool}
+  for +h: {Cmp.is_le(Word.cmp(n, b, a)) == True{} : Bool}
   {Nat.add(Word.to_nat(n, Word.sub(n, a, b)), Word.to_nat(n, b)) == Word.to_nat(n, a) : Nat}
 
 law W.sub_nat.go:
@@ -704,8 +704,8 @@ law W.sub_nat.go:
   for +a: Word(n)
   for +b: Word(n)
   for +k: Bool
-  for e: {W.carry(n, Word.sub(n, a, b), b, False{}) == k : Bool}
-  for h: {Cmp.is_le(Word.cmp(n, b, a)) == True{} : Bool}
+  for +e: {W.carry(n, Word.sub(n, a, b), b, False{}) == k : Bool}
+  for +h: {Cmp.is_le(Word.cmp(n, b, a)) == True{} : Bool}
   {Nat.add(Word.to_nat(n, Word.sub(n, a, b)), Word.to_nat(n, b)) == Word.to_nat(n, a) : Nat}
 
 def W.sub_nat.go(n, a, b, k, e, h):
@@ -822,7 +822,7 @@ law W.ext.con:
   for +at: Word(p)
   for +y: Bool
   for +bt: Word(p)
-  for e: {x == y : Bool}
+  for +e: {x == y : Bool}
   for f: {at == bt : Word(p)}
   {WCon{x, at} == WCon{y, bt} : Word(1n+p)}
 
@@ -910,7 +910,7 @@ law W.bit_not:
   for +n: Nat
   for +w: Word(n)
   for +i: Nat
-  for h: {Nat.cmp(i, n) == LT{} : Cmp}
+  for +h: {Nat.cmp(i, n) == LT{} : Cmp}
   {W.bit(n, Word.not(n, w), i) == Bool.not(W.bit(n, w, i)) : Bool}
 
 def W.bit_not(n, w, i, h):
@@ -994,7 +994,7 @@ law W.bit_put:
   for +c: Bool
   for +w: Word(p)
   for +i: Nat
-  for h: {Nat.cmp(i, p) == LT{} : Cmp}
+  for +h: {Nat.cmp(i, p) == LT{} : Cmp}
   {W.bit(p, Word.shl.put(p, c, w), i) == W.bit(1n+p, WCon{c, w}, i) : Bool}
 
 def W.bit_put(p, c, w, i, h):
@@ -1034,7 +1034,7 @@ law W.bit_shl:
   for +n: Nat
   for +w: Word(n)
   for +i: Nat
-  for h: {Nat.cmp(1n+i, n) == LT{} : Cmp}
+  for +h: {Nat.cmp(1n+i, n) == LT{} : Cmp}
   {W.bit(n, Word.shl(n, w), 1n+i) == W.bit(n, w, i) : Bool}
 
 def W.bit_shl(n, w, i, h):
@@ -1045,3 +1045,262 @@ def W.bit_shl(n, w, i, h):
       match w:
         case WCon{b, t}:
           W.bit_put(p, b, t, i, h)
+
+# Shifts and values
+# =================
+
+law W.N_shr:
+  for +n: Nat
+  for +w: Word(n)
+  {Word.to_nat(n, Word.shr(n, w)) == P.Nat.half(Word.to_nat(n, w)) : Nat}
+
+law W.N_pad:
+  for +p: Nat
+  for +t: Word(p)
+  {Word.to_nat(1n+p, Word.shr.pad(p, t)) == Word.to_nat(p, t) : Nat}
+
+def W.N_pad(p, t):
+  match p:
+    case 0n:
+      match t:
+        case WNil{}:
+          {==}
+    case 1n+q:
+      match t:
+        case WCon{b, u}:
+          %Equal.sym(Nat, Word.to_nat(2n+q, WCon{b, Word.shr.pad(q, u)}),
+            Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, Word.shr.pad(q, u)))),
+            W.N_cons(1n+q, b, Word.shr.pad(q, u))) :
+            {_ == Word.to_nat(1n+q, WCon{b, u}) : Nat}
+          %Equal.sym(Nat, Word.to_nat(1n+q, WCon{b, u}),
+            Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(q, u))), W.N_cons(q, b, u)) :
+            {Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, Word.shr.pad(q, u)))) == _ : Nat}
+          %W.N_pad(q, u) :
+            {Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, Word.shr.pad(q, u))))
+              == Nat.add(P.Nat.bit(b), Nat.double(_)) : Nat}
+          {==}
+
+def W.N_shr(n, w):
+  match n:
+    case 0n:
+      {==}
+    case 1n+p:
+      match w:
+        case WCon{b, t}:
+          %Equal.sym(Nat, Word.to_nat(1n+p, WCon{b, t}),
+            Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(p, t))), W.N_cons(p, b, t)) :
+            {Word.to_nat(1n+p, Word.shr.pad(p, t)) == P.Nat.half(_) : Nat}
+          %Equal.sym(Nat, P.Nat.half(Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(p, t)))),
+            Word.to_nat(p, t), P.Nat.half_bit_double(b, Word.to_nat(p, t))) :
+            {Word.to_nat(1n+p, Word.shr.pad(p, t)) == _ : Nat}
+          W.N_pad(p, t)
+
+# The top bit of a word of 1 + p bits.
+def W.top(+p: Nat, w: Word(1n+p)) -> Bool:
+  W.bit(1n+p, w, p)
+
+# Shifting a bit in below a word whose top bit is clear doubles it.
+law W.N_put:
+  for +p: Nat
+  for +c: Bool
+  for +w: Word(1n+p)
+  for +h: {W.top(p, w) == False{} : Bool}
+  {Word.to_nat(1n+p, Word.shl.put(1n+p, c, w))
+    == Nat.add(P.Nat.bit(c), Nat.double(Word.to_nat(1n+p, w))) : Nat}
+
+def W.N_put(p, c, w, h):
+  match p:
+    case 0n:
+      match w:
+        case WCon{b, u}:
+          match u:
+            case WNil{}:
+              %Equal.sym(Bool, b, False{}, h) : {Word.to_nat(1n, Word.shl.put(1n, c, WCon{b, WNil{}}))
+                == Nat.add(P.Nat.bit(c), Nat.double(Word.to_nat(1n, WCon{_, WNil{}}))) : Nat}
+              %Equal.sym(Nat, Word.to_nat(1n, WCon{c, WNil{}}),
+                Nat.add(P.Nat.bit(c), Nat.double(Word.to_nat(0n, WNil{}))),
+                W.N_cons(0n, c, WNil{})) :
+                {_ == Nat.add(P.Nat.bit(c), Nat.double(Word.to_nat(1n, WCon{False{}, WNil{}})))
+                  : Nat}
+              {==}
+    case 1n+q:
+      match w:
+        case WCon{b, u}:
+          %Equal.sym(Nat, Word.to_nat(2n+q, WCon{c, Word.shl.put(1n+q, b, u)}),
+            Nat.add(P.Nat.bit(c), Nat.double(Word.to_nat(1n+q, Word.shl.put(1n+q, b, u)))),
+            W.N_cons(1n+q, c, Word.shl.put(1n+q, b, u))) :
+            {_ == Nat.add(P.Nat.bit(c), Nat.double(Word.to_nat(2n+q, WCon{b, u}))) : Nat}
+          %Equal.sym(Nat, Word.to_nat(1n+q, Word.shl.put(1n+q, b, u)),
+            Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, u))), W.N_put(q, b, u, h)) :
+            {Nat.add(P.Nat.bit(c), Nat.double(_))
+              == Nat.add(P.Nat.bit(c), Nat.double(Word.to_nat(2n+q, WCon{b, u}))) : Nat}
+          %Equal.sym(Nat, Word.to_nat(2n+q, WCon{b, u}),
+            Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, u))), W.N_cons(1n+q, b, u)) :
+            {Nat.add(P.Nat.bit(c), Nat.double(Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, u)))))
+              == Nat.add(P.Nat.bit(c), Nat.double(_)) : Nat}
+          {==}
+
+# Shifting up a word whose top bit is clear doubles it.
+law W.N_shl:
+  for +p: Nat
+  for +w: Word(1n+p)
+  for +h: {W.top(p, w) == False{} : Bool}
+  {Word.to_nat(1n+p, Word.shl(1n+p, w)) == Nat.double(Word.to_nat(1n+p, w)) : Nat}
+
+def W.N_shl(p, w, h):
+  match p:
+    case 0n:
+      match w:
+        case WCon{b, u}:
+          match u:
+            case WNil{}:
+              %Equal.sym(Bool, b, False{}, h) : {Word.to_nat(1n, Word.shl(1n, WCon{b, WNil{}}))
+                == Nat.double(Word.to_nat(1n, WCon{_, WNil{}})) : Nat}
+              {==}
+    case 1n+q:
+      match w:
+        case WCon{b, u}:
+          %Equal.sym(Nat, Word.to_nat(1n+q, Word.shl.put(1n+q, b, u)),
+            Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, u))), W.N_put(q, b, u, h)) :
+            {Nat.double(_) == Nat.double(Word.to_nat(2n+q, WCon{b, u})) : Nat}
+          %Equal.sym(Nat, Word.to_nat(2n+q, WCon{b, u}),
+            Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, u))), W.N_cons(1n+q, b, u)) :
+            {Nat.double(Nat.add(P.Nat.bit(b), Nat.double(Word.to_nat(1n+q, u)))) == Nat.double(_)
+              : Nat}
+          {==}
+
+law W.cmp_refl:
+  for +n: Nat
+  for +a: Word(n)
+  {Word.cmp(n, a, a) == EQ{} : Cmp}
+
+def W.cmp_refl(n, a):
+  %Equal.sym(Cmp, Word.cmp(n, a, a), Nat.cmp(Word.to_nat(n, a), Word.to_nat(n, a)),
+    W.cmp_nat(n, a, a)) : {_ == EQ{} : Cmp}
+  P.Nat.cmp_refl(Word.to_nat(n, a))
+
+# A value below 2^p has no bits at p or above.
+law W.bit_high:
+  for +n: Nat
+  for +w: Word(n)
+  for +p: Nat
+  for +k: Nat
+  for +h1: {Nat.cmp(Word.to_nat(n, w), P.Nat.pow2(p)) == LT{} : Cmp}
+  for +h2: {Cmp.is_le(Nat.cmp(p, k)) == True{} : Bool}
+  {W.bit(n, w, k) == False{} : Bool}
+
+def W.bit_high(n, w, p, k, h1, h2):
+  match n:
+    case 0n:
+      {==}
+    case 1n+m:
+      match w:
+        case WCon{b, t}:
+          match p k:
+            case 0n 0n:
+              P.Nat.split_lt_one(b, Word.to_nat(m, t),
+                (%W.N_cons(m, b, t) : {Nat.cmp(_, 1n) == LT{} : Cmp}
+                  h1))
+            case 0n 1n+j:
+              W.bit_high(m, t, 0n, j,
+                P.Nat.split_lt_one_t(b, Word.to_nat(m, t),
+                  (%W.N_cons(m, b, t) : {Nat.cmp(_, 1n) == LT{} : Cmp}
+                    h1)),
+                P.Nat.le_zero(j))
+            case 1n+q 0n:
+              P.Bool.false_true({W.bit(1n+m, WCon{b, t}, 0n) == False{} : Bool}, h2)
+            case 1n+q 1n+j:
+              W.bit_high(m, t, q, j,
+                P.Nat.split_lt_half(b, Word.to_nat(m, t), P.Nat.pow2(q),
+                  (%W.N_cons(m, b, t) : {Nat.cmp(_, Nat.double(P.Nat.pow2(q))) == LT{} : Cmp}
+                    h1)),
+                h2)
+
+# Past the top, every bit is clear.
+law W.bit_beyond:
+  for +n: Nat
+  for +w: Word(n)
+  for +k: Nat
+  for +h: {Cmp.is_le(Nat.cmp(n, k)) == True{} : Bool}
+  {W.bit(n, w, k) == False{} : Bool}
+
+def W.bit_beyond(n, w, k, h):
+  match n:
+    case 0n:
+      {==}
+    case 1n+m:
+      match w:
+        case WCon{b, t}:
+          match k:
+            case 0n:
+              P.Bool.false_true({W.bit(1n+m, WCon{b, t}, 0n) == False{} : Bool}, h)
+            case 1n+j:
+              W.bit_beyond(m, t, j, h)
+
+# A value one below 2^p has its p low bits set.
+law W.bit_ones:
+  for +n: Nat
+  for +w: Word(n)
+  for +p: Nat
+  for +k: Nat
+  for +e: {Nat.add(Word.to_nat(n, w), 1n) == P.Nat.pow2(p) : Nat}
+  for +hk: {Nat.cmp(k, p) == LT{} : Cmp}
+  {W.bit(n, w, k) == True{} : Bool}
+
+law W.N_zero0:
+  for +w: Word(0n)
+  {Word.to_nat(0n, w) == 0n : Nat}
+
+def W.N_zero0(w):
+  {==}
+
+# The low bit, for p >= 1.
+law W.bit_ones.low:
+  for +m: Nat
+  for +b: Bool
+  for +t: Word(m)
+  for +p: Nat
+  for +e: {Nat.add(Word.to_nat(1n+m, WCon{b, t}), 1n) == P.Nat.pow2(p) : Nat}
+  for +hk: {Nat.cmp(0n, p) == LT{} : Cmp}
+  {b == True{} : Bool}
+
+def W.bit_ones.low(m, b, t, p, e, hk):
+  match p:
+    case 0n:
+      P.Nat.lt_zero({b == True{} : Bool}, 0n, hk)
+    case 1n+q:
+      P.Nat.ones_step_b(b, Word.to_nat(m, t), P.Nat.pow2(q),
+        (%W.N_cons(m, b, t) : {Nat.add(_, 1n) == Nat.double(P.Nat.pow2(q)) : Nat}
+          e))
+
+def W.bit_ones(n, w, p, k, e, hk):
+  match n:
+    case 0n:
+      match p:
+        case 0n:
+          P.Nat.lt_zero({W.bit(0n, w, k) == True{} : Bool}, k, hk)
+        case 1n+q:
+          P.Bool.true_false({W.bit(0n, w, k) == True{} : Bool},
+            (%W.N_zero0(w) : {P.Nat.odd(Nat.add(_, 1n)) == False{} : Bool}
+              (%Equal.sym(Nat, Nat.add(Word.to_nat(0n, w), 1n), P.Nat.pow2(1n+q), e) :
+                {P.Nat.odd(_) == False{} : Bool}
+                P.Nat.odd_double(P.Nat.pow2(q)))))
+    case 1n+m:
+      match w:
+        case WCon{b, t}:
+          match p k:
+            case _ 0n:
+              W.bit_ones.low(m, b, t, p, e, hk)
+            case 0n 1n+j:
+              P.Nat.lt_zero({W.bit(1n+m, WCon{b, t}, 1n+j) == True{} : Bool}, 1n+j, hk)
+            case 1n+q 1n+j:
+              W.bit_ones(m, t, q, j,
+                P.Nat.ones_step_x(Word.to_nat(m, t), P.Nat.pow2(q),
+                  (%P.Nat.ones_step_b(b, Word.to_nat(m, t), P.Nat.pow2(q),
+                      (%W.N_cons(m, b, t) : {Nat.add(_, 1n) == Nat.double(P.Nat.pow2(q)) : Nat}
+                        e)) :
+                    {Nat.add(Nat.add(P.Nat.bit(_), Nat.double(Word.to_nat(m, t))), 1n)
+                      == Nat.double(P.Nat.pow2(q)) : Nat}
+                    (%W.N_cons(m, b, t) : {Nat.add(_, 1n) == Nat.double(P.Nat.pow2(q)) : Nat}
+                      e))),
+                hk)

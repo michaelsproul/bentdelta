@@ -57,7 +57,7 @@ def Bool.or_true(x):
 law Bool.and_l:
   for +a: Bool
   for +b: Bool
-  for e: {Bool.and(a, b) == True{} : Bool}
+  for +e: {Bool.and(a, b) == True{} : Bool}
   {a == True{} : Bool}
 
 def Bool.and_l(a, b, e):
@@ -70,7 +70,7 @@ def Bool.and_l(a, b, e):
 law Bool.and_r:
   for +a: Bool
   for +b: Bool
-  for e: {Bool.and(a, b) == True{} : Bool}
+  for +e: {Bool.and(a, b) == True{} : Bool}
   {b == True{} : Bool}
 
 # False is not True.
@@ -83,7 +83,7 @@ def Bool.not_true(b: Bool) -> Type:
 
 law Bool.false_true:
   for -A: Type
-  for e: {False{} == True{} : Bool}
+  for +e: {False{} == True{} : Bool}
   A
 
 def Bool.false_true(A, e):
@@ -677,7 +677,7 @@ def Nat.cmp_split(a, x, b, y):
 law Nat.cmp_eq:
   for +a: Nat
   for +b: Nat
-  for e: {Nat.cmp(a, b) == EQ{} : Cmp}
+  for +e: {Nat.cmp(a, b) == EQ{} : Cmp}
   {a == b : Nat}
 
 # A Cmp that is not EQ is not EQ.
@@ -692,7 +692,7 @@ def Cmp.not_eq(c: Cmp) -> Type:
 
 law Cmp.lt_eq:
   for -A: Type
-  for e: {LT{} == EQ{} : Cmp}
+  for +e: {LT{} == EQ{} : Cmp}
   A
 
 def Cmp.lt_eq(A, e):
@@ -701,7 +701,7 @@ def Cmp.lt_eq(A, e):
 
 law Cmp.gt_eq:
   for -A: Type
-  for e: {GT{} == EQ{} : Cmp}
+  for +e: {GT{} == EQ{} : Cmp}
   A
 
 def Cmp.gt_eq(A, e):
@@ -726,8 +726,8 @@ law Nat.lt_of_sum:
   for +p: Nat
   for +a: Nat
   for +b: Nat
-  for e: {Nat.add(x, p) == Nat.add(a, b) : Nat}
-  for h: {Nat.cmp(b, p) == LT{} : Cmp}
+  for +e: {Nat.add(x, p) == Nat.add(a, b) : Nat}
+  for +h: {Nat.cmp(b, p) == LT{} : Cmp}
   {Nat.cmp(x, a) == LT{} : Cmp}
 
 # Adding the same on the right keeps the order.
@@ -754,7 +754,7 @@ law Nat.split_lt:
   for +b: Bool
   for +t: Nat
   for +p: Nat
-  for h: {Nat.cmp(t, p) == LT{} : Cmp}
+  for +h: {Nat.cmp(t, p) == LT{} : Cmp}
   {Nat.cmp(Nat.add(Nat.bit(b), Nat.double(t)), Nat.double(p)) == LT{} : Cmp}
 
 def Nat.split_lt(b, t, p, h):
@@ -766,12 +766,12 @@ def Nat.split_lt(b, t, p, h):
 
 law Cmp.eq_lt:
   for -A: Type
-  for e: {EQ{} == LT{} : Cmp}
+  for +e: {EQ{} == LT{} : Cmp}
   A
 
 law Cmp.gt_lt:
   for -A: Type
-  for e: {GT{} == LT{} : Cmp}
+  for +e: {GT{} == LT{} : Cmp}
   A
 
 def Cmp.not_lt(c: Cmp) -> Type:
@@ -790,3 +790,302 @@ def Cmp.eq_lt(A, e):
 def Cmp.gt_lt(A, e):
   Empty.absurd(A, (%e : Cmp.not_lt(_)
     Unit{}))
+
+law Nat.lt_succ_l:
+  for +m: Nat
+  for +c: Nat
+  for +h: {Nat.cmp(1n+m, c) == LT{} : Cmp}
+  {Nat.cmp(m, c) == LT{} : Cmp}
+
+def Nat.lt_succ_l(m, c, h):
+  match m c:
+    case 0n 0n:
+      Cmp.gt_lt({Nat.cmp(0n, 0n) == LT{} : Cmp}, h)
+    case 0n 1n+q:
+      {==}
+    case 1n+p 0n:
+      Cmp.gt_lt({Nat.cmp(1n+p, 0n) == LT{} : Cmp}, h)
+    case 1n+p 1n+q:
+      Nat.lt_succ_l(p, q, h)
+
+# A split number below 2P has its half below P.
+law Nat.split_lt_half:
+  for +b: Bool
+  for +t: Nat
+  for +p: Nat
+  for +h: {Nat.cmp(Nat.add(Nat.bit(b), Nat.double(t)), Nat.double(p)) == LT{} : Cmp}
+  {Nat.cmp(t, p) == LT{} : Cmp}
+
+law Nat.split_lt_half.go:
+  for +b: Bool
+  for +t: Nat
+  for +p: Nat
+  for +c: Cmp
+  for +e: {Nat.cmp(t, p) == c : Cmp}
+  for +h: {Word.cmp.fin(b, False{}, Nat.cmp(t, p)) == LT{} : Cmp}
+  {Nat.cmp(t, p) == LT{} : Cmp}
+
+def Nat.split_lt_half.go(b, t, p, c, e, h):
+  match b c:
+    case False{} LT{}:
+      e
+    case False{} EQ{}:
+      Cmp.eq_lt({Nat.cmp(t, p) == LT{} : Cmp},
+        (%e : {Word.cmp.fin(False{}, False{}, _) == LT{} : Cmp}
+          h))
+    case False{} GT{}:
+      Cmp.gt_lt({Nat.cmp(t, p) == LT{} : Cmp},
+        (%e : {Word.cmp.fin(False{}, False{}, _) == LT{} : Cmp}
+          h))
+    case True{} LT{}:
+      e
+    case True{} EQ{}:
+      Cmp.gt_lt({Nat.cmp(t, p) == LT{} : Cmp},
+        (%e : {Word.cmp.fin(True{}, False{}, _) == LT{} : Cmp}
+          h))
+    case True{} GT{}:
+      Cmp.gt_lt({Nat.cmp(t, p) == LT{} : Cmp},
+        (%e : {Word.cmp.fin(True{}, False{}, _) == LT{} : Cmp}
+          h))
+
+# A split number below 1 is 0 with a clear low bit.
+law Nat.split_lt_one:
+  for +b: Bool
+  for +t: Nat
+  for +h: {Nat.cmp(Nat.add(Nat.bit(b), Nat.double(t)), 1n) == LT{} : Cmp}
+  {b == False{} : Bool}
+
+def Nat.split_lt_one(b, t, h):
+  match b t:
+    case False{} _:
+      {==}
+    case True{} 0n:
+      Cmp.eq_lt({True{} == False{} : Bool}, h)
+    case True{} 1n+q:
+      Cmp.gt_lt({True{} == False{} : Bool}, h)
+
+law Nat.split_lt_one_t:
+  for +b: Bool
+  for +t: Nat
+  for +h: {Nat.cmp(Nat.add(Nat.bit(b), Nat.double(t)), 1n) == LT{} : Cmp}
+  {Nat.cmp(t, 1n) == LT{} : Cmp}
+
+def Nat.split_lt_one_t(b, t, h):
+  match b t:
+    case False{} 0n:
+      {==}
+    case False{} 1n+q:
+      Cmp.gt_lt({Nat.cmp(1n+q, 1n) == LT{} : Cmp}, h)
+    case True{} 0n:
+      {==}
+    case True{} 1n+q:
+      Cmp.gt_lt({Nat.cmp(1n+q, 1n) == LT{} : Cmp}, h)
+
+def Nat.split_lt_half(b, t, p, h):
+  Nat.split_lt_half.go(b, t, p, Nat.cmp(t, p), {==},
+    (%Nat.cmp_split(b, t, False{}, p) : {_ == LT{} : Cmp}
+      h))
+
+law Nat.le_zero:
+  for +k: Nat
+  {Cmp.is_le(Nat.cmp(0n, k)) == True{} : Bool}
+
+def Nat.le_zero(k):
+  match k:
+    case 0n:
+      {==}
+    case 1n+q:
+      {==}
+
+law Nat.pow2_pos:
+  for +p: Nat
+  {Nat.cmp(0n, Nat.pow2(p)) == LT{} : Cmp}
+
+law Nat.pos_double:
+  for +x: Nat
+  for +h: {Nat.cmp(0n, x) == LT{} : Cmp}
+  {Nat.cmp(0n, Nat.double(x)) == LT{} : Cmp}
+
+def Nat.pos_double(x, h):
+  match x:
+    case 0n:
+      h
+    case 1n+q:
+      {==}
+
+def Nat.pow2_pos(p):
+  match p:
+    case 0n:
+      {==}
+    case 1n+q:
+      Nat.pos_double(Nat.pow2(q), Nat.pow2_pos(q))
+
+law Nat.lt_double:
+  for +x: Nat
+  for +h: {Nat.cmp(0n, x) == LT{} : Cmp}
+  {Nat.cmp(x, Nat.double(x)) == LT{} : Cmp}
+
+# 1 + q < 2 + 2q.
+law Nat.lt_double.go:
+  for +q: Nat
+  {Nat.cmp(q, 1n+Nat.double(q)) == LT{} : Cmp}
+
+def Nat.lt_double.go(q):
+  match q:
+    case 0n:
+      {==}
+    case 1n+r:
+      Nat.lt_succ_l(r, 2n+Nat.double(r), Nat.lt_double.go(r))
+
+def Nat.lt_double(x, h):
+  match x:
+    case 0n:
+      h
+    case 1n+q:
+      Nat.lt_double.go(q)
+
+# a < 1 + b gives a <= b.
+law Nat.lt_succ_le:
+  for +a: Nat
+  for +b: Nat
+  for +h: {Nat.cmp(a, 1n+b) == LT{} : Cmp}
+  {Cmp.is_le(Nat.cmp(a, b)) == True{} : Bool}
+
+# Nothing is below 0.
+law Nat.lt_zero:
+  for -A: Type
+  for +p: Nat
+  for +h: {Nat.cmp(p, 0n) == LT{} : Cmp}
+  A
+
+def Nat.lt_zero(A, p, h):
+  match p:
+    case 0n:
+      Cmp.eq_lt(A, h)
+    case 1n+q:
+      Cmp.gt_lt(A, h)
+
+def Nat.lt_succ_le(a, b, h):
+  match a b:
+    case 0n _:
+      Nat.le_zero(b)
+    case 1n+p 0n:
+      Nat.lt_zero({Cmp.is_le(Nat.cmp(1n+p, 0n)) == True{} : Bool}, p, h)
+    case 1n+p 1n+q:
+      Nat.lt_succ_le(p, q, h)
+
+law Nat.lt_le_trans:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  for +h1: {Nat.cmp(a, b) == LT{} : Cmp}
+  for +h2: {Cmp.is_le(Nat.cmp(b, c)) == True{} : Bool}
+  {Nat.cmp(a, c) == LT{} : Cmp}
+
+def Nat.lt_le_trans(a, b, c, h1, h2):
+  match a b c:
+    case _ 0n _:
+      Nat.lt_zero({Nat.cmp(a, c) == LT{} : Cmp}, a, h1)
+    case _ 1n+q 0n:
+      Bool.false_true({Nat.cmp(a, 0n) == LT{} : Cmp}, h2)
+    case 0n 1n+q 1n+r:
+      {==}
+    case 1n+p 1n+q 1n+r:
+      Nat.lt_le_trans(p, q, r, h1, h2)
+
+law Nat.le_succ_l:
+  for +p: Nat
+  for +c: Nat
+  for +h: {Cmp.is_le(Nat.cmp(1n+p, c)) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(p, c)) == True{} : Bool}
+
+def Nat.le_succ_l(p, c, h):
+  match p c:
+    case 0n _:
+      Nat.le_zero(c)
+    case 1n+q 0n:
+      Bool.false_true({Cmp.is_le(Nat.cmp(1n+q, 0n)) == True{} : Bool}, h)
+    case 1n+q 1n+r:
+      Nat.le_succ_l(q, r, h)
+
+law Bool.true_false:
+  for -A: Type
+  for e: {True{} == False{} : Bool}
+  A
+
+def Bool.true_false(A, e):
+  Bool.false_true(A, Equal.sym(Bool, True{}, False{}, e))
+
+law Cmp.is_lt_lt:
+  for +c: Cmp
+  for +h: {Cmp.is_lt(c) == True{} : Bool}
+  {c == LT{} : Cmp}
+
+def Cmp.is_lt_lt(c, h):
+  match c:
+    case LT{}:
+      {==}
+    case EQ{}:
+      Bool.false_true({EQ{} == LT{} : Cmp}, h)
+    case GT{}:
+      Bool.false_true({GT{} == LT{} : Cmp}, h)
+
+# b + 2x + 1 = 2y forces b and x + 1 = y.
+law Nat.ones_step_b:
+  for +b: Bool
+  for +x: Nat
+  for +y: Nat
+  for +e: {Nat.add(Nat.add(Nat.bit(b), Nat.double(x)), 1n) == Nat.double(y) : Nat}
+  {b == True{} : Bool}
+
+def Nat.ones_step_b(b, x, y, e):
+  match b:
+    case True{}:
+      {==}
+    case False{}:
+      Bool.true_false({False{} == True{} : Bool},
+        (%Nat.odd_double(x) : {Bool.not(_) == False{} : Bool}
+          (%Nat.add_one(Nat.double(x)) : {Nat.odd(_) == False{} : Bool}
+            (%Equal.sym(Nat, Nat.add(Nat.double(x), 1n), Nat.double(y), e) :
+              {Nat.odd(_) == False{} : Bool}
+              Nat.odd_double(y)))))
+
+law Nat.ones_step_x:
+  for +x: Nat
+  for +y: Nat
+  for +e: {Nat.add(Nat.add(1n, Nat.double(x)), 1n) == Nat.double(y) : Nat}
+  {Nat.add(x, 1n) == y : Nat}
+
+def Nat.ones_step_x(x, y, e):
+  %Nat.half_double(y) : {Nat.add(x, 1n) == _ : Nat}
+  %e : {Nat.add(x, 1n) == Nat.half(_) : Nat}
+  %Equal.sym(Nat, Nat.add(Nat.add(1n, Nat.double(x)), 1n), 1n+Nat.add(1n, Nat.double(x)),
+    Nat.add_one(Nat.add(1n, Nat.double(x)))) : {Nat.add(x, 1n) == Nat.half(_) : Nat}
+  %Equal.sym(Nat, Nat.add(x, 1n), 1n+x, Nat.add_one(x)) :
+    {_ == Nat.half(2n+Nat.double(x)) : Nat}
+  %Equal.sym(Nat, Nat.half(Nat.double(x)), x, Nat.half_double(x)) :
+    {1n+x == 1n+_ : Nat}
+  {==}
+
+law Nat.lt_of_succ_eq:
+  for +x: Nat
+  for +y: Nat
+  for +e: {Nat.add(x, 1n) == y : Nat}
+  {Nat.cmp(x, y) == LT{} : Cmp}
+
+def Nat.lt_of_succ_eq(x, y, e):
+  %e : {Nat.cmp(x, _) == LT{} : Cmp}
+  %Equal.sym(Nat, Nat.add(x, 1n), 1n+x, Nat.add_one(x)) : {Nat.cmp(x, _) == LT{} : Cmp}
+  Nat.cmp_succ(x)
+
+law Nat.one_le:
+  for +x: Nat
+  for +h: {Nat.cmp(0n, x) == LT{} : Cmp}
+  {Cmp.is_le(Nat.cmp(1n, x)) == True{} : Bool}
+
+def Nat.one_le(x, h):
+  match x:
+    case 0n:
+      Cmp.eq_lt({Cmp.is_le(Nat.cmp(1n, 0n)) == True{} : Bool}, h)
+    case 1n+y:
+      Nat.le_zero(y)
