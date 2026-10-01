@@ -1321,3 +1321,65 @@ def W.and_zero(n, r):
         case WCon{b, t}:
           %W.and_zero(p, t) : {WCon{False{}, Word.and(p, Word.zero(p), t)} == WCon{False{}, _} : Word(1n+p)}
           {==}
+
+# A sum below some word's value does not wrap.
+law W.add_bound:
+  for +n: Nat
+  for +a: Word(n)
+  for +b: Word(n)
+  for +e: Word(n)
+  for +h: {Cmp.is_le(Nat.cmp(Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)), Word.to_nat(n, e))) == True{} : Bool}
+  {Word.to_nat(n, Word.add(n, a, b)) == Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)) : Nat}
+
+law W.add_bound.go:
+  for +n: Nat
+  for +a: Word(n)
+  for +b: Word(n)
+  for +e: Word(n)
+  for +k: Bool
+  for +ek: {W.carry(n, a, b, False{}) == k : Bool}
+  for +h: {Cmp.is_le(Nat.cmp(Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)), Word.to_nat(n, e))) == True{} : Bool}
+  {Word.to_nat(n, Word.add(n, a, b)) == Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)) : Nat}
+
+def W.add_bound.go(n, a, b, e, k, ek, h):
+  match k:
+    case False{}:
+      %P.Nat.add_zero_r(Word.to_nat(n, Word.add(n, a, b))) : {_ == Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)) : Nat}
+      %P.Nat.add_zero_r(Nat.add(Word.to_nat(n, a), Word.to_nat(n, b))) :
+        {Nat.add(Word.to_nat(n, Word.add(n, a, b)), 0n) == _ : Nat}
+      %ek : {Nat.add(Word.to_nat(n, Word.add(n, a, b)), W.cv(n, _)) == W.sum(Word.to_nat(n, a), Word.to_nat(n, b), False{}) : Nat}
+      W.adc_carry(n, a, b, False{})
+    case True{}:
+      P.Cmp.eq_lt({Word.to_nat(n, Word.add(n, a, b)) == Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)) : Nat},
+        (%P.Nat.cmp_refl(P.Nat.pow2(n)) : {_ == LT{} : Cmp}
+          P.Nat.le_lt_trans(P.Nat.pow2(n), Word.to_nat(n, e), P.Nat.pow2(n),
+            P.Nat.le_trans(P.Nat.pow2(n), Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)), Word.to_nat(n, e),
+              (%{(%P.Nat.add_zero_r(Nat.add(Word.to_nat(n, a), Word.to_nat(n, b))) :
+                    {Nat.add(Word.to_nat(n, Word.add(n, a, b)), P.Nat.pow2(n)) == _ : Nat}
+                    (%ek : {Nat.add(Word.to_nat(n, Word.add(n, a, b)), W.cv(n, _)) == W.sum(Word.to_nat(n, a), Word.to_nat(n, b), False{}) : Nat}
+                      W.adc_carry(n, a, b, False{})))
+                  : {Nat.add(Word.to_nat(n, Word.add(n, a, b)), P.Nat.pow2(n)) == Nat.add(Word.to_nat(n, a), Word.to_nat(n, b)) : Nat}} :
+                  {Cmp.is_le(Nat.cmp(P.Nat.pow2(n), _)) == True{} : Bool}
+                P.Nat.le_add_l(Word.to_nat(n, Word.add(n, a, b)), P.Nat.pow2(n))),
+              h),
+            W.N_lt(n, e))))
+
+def W.add_bound(n, a, b, e, h):
+  W.add_bound.go(n, a, b, e, W.carry(n, a, b, False{}), {==}, h)
+
+law W.and_idem_r:
+  for +n: Nat
+  for +a: Word(n)
+  for +b: Word(n)
+  {Word.and(n, Word.and(n, a, b), b) == Word.and(n, a, b) : Word(n)}
+
+def W.and_idem_r(n, a, b):
+  match n a b:
+    case 0n _ _:
+      {==}
+    case 1n+p WCon{x, at} WCon{y, bt}:
+      %Equal.sym(Bool, Bool.and(Bool.and(x, y), y), Bool.and(x, y), P.Bool.and_idem_r(x, y)) :
+        {WCon{_, Word.and(p, Word.and(p, at, bt), bt)} == WCon{Bool.and(x, y), Word.and(p, at, bt)} : Word(1n+p)}
+      %Equal.sym(Word(p), Word.and(p, Word.and(p, at, bt), bt), Word.and(p, at, bt), W.and_idem_r(p, at, bt)) :
+        {WCon{Bool.and(x, y), _} == WCon{Bool.and(x, y), Word.and(p, at, bt)} : Word(1n+p)}
+      {==}

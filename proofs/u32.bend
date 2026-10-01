@@ -742,3 +742,41 @@ def U.bit_low_hi(v, k, h):
   %Equal.sym(Bool, U.bit(255, k), False{}, U.bit_255_hi(k, h)) :
     {Bool.and(U.bit(v, k), _) == False{} : Bool}
   P.Bool.and_false(U.bit(v, k))
+
+# A sum below some U32 does not wrap.
+law U.add_N:
+  for +x: U32
+  for +y: U32
+  for +e: U32
+  for +h: {Cmp.is_le(Nat.cmp(Nat.add(U.N(x), U.N(y)), U.N(e))) == True{} : Bool}
+  {U.N(U32.add(x, y)) == Nat.add(U.N(x), U.N(y)) : Nat}
+
+def U.add_N(x, y, e, h):
+  match x y e:
+    case U32{a} U32{b} U32{c}:
+      W.W.add_bound(32n, a, b, c, h)
+
+# The successor of a U32 below another.
+law U.succ_N:
+  for +i: U32
+  for +e: U32
+  for +h: {Nat.cmp(U.N(i), U.N(e)) == LT{} : Cmp}
+  {U.N(U32.add(i, 1)) == 1n+U.N(i) : Nat}
+
+def U.succ_N(i, e, h):
+  %P.Nat.add_one(U.N(i)) : {U.N(U32.add(i, 1)) == _ : Nat}
+  U.add_N(i, 1, e,
+    (%Equal.sym(Nat, Nat.add(U.N(i), 1n), 1n+U.N(i), P.Nat.add_one(U.N(i))) : {Cmp.is_le(Nat.cmp(_, U.N(e))) == True{} : Bool}
+      P.Nat.lt_le_succ(U.N(i), U.N(e), h)))
+
+law U.and_idem_r:
+  for +x: U32
+  for +y: U32
+  {U32.and(U32.and(x, y), y) == U32.and(x, y) : U32}
+
+def U.and_idem_r(x, y):
+  match x y:
+    case U32{a} U32{b}:
+      %Equal.sym(Word(32n), Word.and(32n, Word.and(32n, a, b), b), Word.and(32n, a, b), W.W.and_idem_r(32n, a, b)) :
+        {U32{_} == U32{Word.and(32n, a, b)} : U32}
+      {==}

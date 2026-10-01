@@ -475,3 +475,50 @@ def A.clone_from(t):
         {Array.clone.node(U32, (A.from(l), A.from(l)), _) == (A.from(TN{l, r}), A.from(TN{l, r}))
           : Array<U32> & Array<U32>}
       {==}
+
+# A write keeps the tree's shape.
+law T.pf_swap:
+  for +d: Nat
+  for +t: Tr
+  for +n: U32
+  for +i: U32
+  for +v: U32
+  for +z: Bool
+  {T.pf(d, T.swap.go(t, n, i, v, z)) == T.pf(d, t) : Bool}
+
+def T.pf_swap(d, t, n, i, v, z):
+  match d t z:
+    case 0n TL{w} _:
+      {==}
+    case 0n TN{l, r} True{}:
+      {==}
+    case 0n TN{l, r} False{}:
+      {==}
+    case 1n+p TL{w} _:
+      {==}
+    case 1n+p TN{l, r} True{}:
+      %Equal.sym(Bool, T.pf(p, T.swap.go(l, U32.shr(n), i, v, U32.is_lt(i, U32.shr(U32.shr(n))))), T.pf(p, l),
+        T.pf_swap(p, l, U32.shr(n), i, v, U32.is_lt(i, U32.shr(U32.shr(n))))) :
+        {Bool.and(_, T.pf(p, r)) == Bool.and(T.pf(p, l), T.pf(p, r)) : Bool}
+      {==}
+    case 1n+p TN{l, r} False{}:
+      %Equal.sym(Bool, T.pf(p, T.swap.go(r, U32.shr(n), U32.sub(i, U32.shr(n)), v,
+          U32.is_lt(U32.sub(i, U32.shr(n)), U32.shr(U32.shr(n))))), T.pf(p, r),
+        T.pf_swap(p, r, U32.shr(n), U32.sub(i, U32.shr(n)), v,
+          U32.is_lt(U32.sub(i, U32.shr(n)), U32.shr(U32.shr(n))))) :
+        {Bool.and(T.pf(p, l), _) == Bool.and(T.pf(p, l), T.pf(p, r)) : Bool}
+      {==}
+
+law T.pf_set:
+  for +d: Nat
+  for +t: Tr
+  for +i: U32
+  for +v: U32
+  for +hp: {T.pf(d, t) == True{} : Bool}
+  {T.pf(d, T.set(t, i, v)) == True{} : Bool}
+
+def T.pf_set(d, t, i, v, hp):
+  %Equal.sym(Bool, T.pf(d, T.set(t, i, v)), T.pf(d, t),
+    T.pf_swap(d, t, T.size(t), T.mask(T.size(t), i), v, T.half(T.size(t), i))) :
+    {_ == True{} : Bool}
+  hp

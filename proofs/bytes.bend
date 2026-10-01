@@ -660,3 +660,124 @@ def BP.lane_lt(w, v, i, j, hlt, ew):
   match i j:
     case U32{WCon{a0, WCon{a1, ri}}} U32{WCon{c0, WCon{c1, rj}}}:
       BP.lane_lt.go(w, v, a0, a1, ri, c0, c1, rj, hlt, ew)
+
+# Frames
+# ======
+
+# The word of a byte below one in range is in range.
+law BP.wj_lt:
+  for +d: Nat
+  for +i: U32
+  for +j: U32
+  for +hi: {U32.is_lt(U32.shrn(i, 2n), U32.shln(1, d)) == True{} : Bool}
+  for +hji: {U32.is_lt(j, i) == True{} : Bool}
+  {U32.is_lt(U32.shrn(j, 2n), U32.shln(1, d)) == True{} : Bool}
+
+def BP.wj_lt(d, i, j, hi, hji):
+  V.U.N_lt(U32.shrn(j, 2n), U32.shln(1, d),
+    P.Nat.le_lt_trans(V.U.N(U32.shrn(j, 2n)), V.U.N(U32.shrn(i, 2n)), V.U.N(U32.shln(1, d)),
+      (%Equal.sym(Nat, V.U.N(U32.shr(U32.shr(i))), P.Nat.half(V.U.N(U32.shr(i))), V.U.N_shr(U32.shr(i))) :
+          {Cmp.is_le(Nat.cmp(V.U.N(U32.shr(U32.shr(j))), _)) == True{} : Bool}
+        (%Equal.sym(Nat, V.U.N(U32.shr(U32.shr(j))), P.Nat.half(V.U.N(U32.shr(j))), V.U.N_shr(U32.shr(j))) :
+            {Cmp.is_le(Nat.cmp(_, P.Nat.half(V.U.N(U32.shr(i))))) == True{} : Bool}
+          (%Equal.sym(Nat, V.U.N(U32.shr(i)), P.Nat.half(V.U.N(i)), V.U.N_shr(i)) :
+              {Cmp.is_le(Nat.cmp(P.Nat.half(V.U.N(U32.shr(j))), P.Nat.half(_))) == True{} : Bool}
+            (%Equal.sym(Nat, V.U.N(U32.shr(j)), P.Nat.half(V.U.N(j)), V.U.N_shr(j)) :
+                {Cmp.is_le(Nat.cmp(P.Nat.half(_), P.Nat.half(P.Nat.half(V.U.N(i))))) == True{} : Bool}
+              P.Nat.half_mono(P.Nat.half(V.U.N(j)), P.Nat.half(V.U.N(i)),
+                P.Nat.half_mono(V.U.N(j), V.U.N(i), P.Nat.lt_to_le(V.U.N(j), V.U.N(i), V.U.lt_N(j, i, hji)))))))),
+      V.U.lt_N(U32.shrn(i, 2n), U32.shln(1, d), hi)))
+
+law BP.byt_put_lt.go:
+  for +d: Nat
+  for +t: A.Tr
+  for +i: U32
+  for +j: U32
+  for +v: U32
+  for +hp: {A.T.pf(d, t) == True{} : Bool}
+  for +hd: {Nat.cmp(d, 32n) == LT{} : Cmp}
+  for +hi: {U32.is_lt(U32.shrn(i, 2n), U32.shln(1, d)) == True{} : Bool}
+  for +hji: {U32.is_lt(j, i) == True{} : Bool}
+  for +z: Bool
+  for +e: {U32.is_eq(U32.shrn(i, 2n), U32.shrn(j, 2n)) == z : Bool}
+  {BP.byt(BP.put(t, i, v), j) == BP.byt(t, j) : U32}
+
+def BP.byt_put_lt.go(d, t, i, j, v, hp, hd, hi, hji, z, e):
+  match z:
+    case True{}:
+      %V.U.is_eq(U32.shrn(i, 2n), U32.shrn(j, 2n), e) :
+        {BP.ext(A.T.word(A.T.set(t, U32.shrn(i, 2n), BP.ins(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i), v)), _), B.B.sh(j))
+          == BP.ext(A.T.word(t, U32.shrn(j, 2n)), B.B.sh(j)) : U32}
+      %Equal.sym(U32, A.T.word(A.T.set(t, U32.shrn(i, 2n), BP.ins(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i), v)), U32.shrn(i, 2n)),
+        BP.ins(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i), v),
+        A.T.word_set(t, U32.shrn(i, 2n), BP.ins(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i), v))) :
+        {BP.ext(_, B.B.sh(j)) == BP.ext(A.T.word(t, U32.shrn(j, 2n)), B.B.sh(j)) : U32}
+      %V.U.is_eq(U32.shrn(i, 2n), U32.shrn(j, 2n), e) :
+        {BP.ext(BP.ins(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i), v), B.B.sh(j))
+          == BP.ext(A.T.word(t, _), B.B.sh(j)) : U32}
+      BP.lane_lt(A.T.word(t, U32.shrn(i, 2n)), v, i, j, hji, V.U.is_eq(U32.shrn(i, 2n), U32.shrn(j, 2n), e))
+    case False{}:
+      %Equal.sym(U32, A.T.word(A.T.set(t, U32.shrn(i, 2n), BP.ins(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i), v)), U32.shrn(j, 2n)),
+        A.T.word(t, U32.shrn(j, 2n)),
+        A.T.word_other(d, t, U32.shrn(i, 2n), U32.shrn(j, 2n), BP.ins(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i), v),
+          hp, hd, hi, BP.wj_lt(d, i, j, hi, hji), e)) :
+        {BP.ext(_, B.B.sh(j)) == BP.ext(A.T.word(t, U32.shrn(j, 2n)), B.B.sh(j)) : U32}
+      {==}
+
+# A write at i leaves every byte below i (in a perfect tree, i in range).
+law BP.byt_put_lt:
+  for +d: Nat
+  for +t: A.Tr
+  for +i: U32
+  for +j: U32
+  for +v: U32
+  for +hp: {A.T.pf(d, t) == True{} : Bool}
+  for +hd: {Nat.cmp(d, 32n) == LT{} : Cmp}
+  for +hi: {U32.is_lt(U32.shrn(i, 2n), U32.shln(1, d)) == True{} : Bool}
+  for +hji: {U32.is_lt(j, i) == True{} : Bool}
+  {BP.byt(BP.put(t, i, v), j) == BP.byt(t, j) : U32}
+
+def BP.byt_put_lt(d, t, i, j, v, hp, hd, hi, hji):
+  BP.byt_put_lt.go(d, t, i, j, v, hp, hd, hi, hji, U32.is_eq(U32.shrn(i, 2n), U32.shrn(j, 2n)), {==})
+
+# A byte write keeps the tree perfect.
+law BP.pf_put:
+  for +d: Nat
+  for +t: A.Tr
+  for +i: U32
+  for +v: U32
+  for +hp: {A.T.pf(d, t) == True{} : Bool}
+  {A.T.pf(d, BP.put(t, i, v)) == True{} : Bool}
+
+def BP.pf_put(d, t, i, v, hp):
+  A.T.pf_set(d, t, U32.shrn(i, 2n), BP.ins(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i), v), hp)
+
+# A byte below e, where e <= 4 * 2^d, is in a tree of depth d.
+law BP.in_range:
+  for +d: Nat
+  for +q: U32
+  for +e: U32
+  for +hd: {Nat.cmp(d, 32n) == LT{} : Cmp}
+  for +he: {Cmp.is_le(Nat.cmp(V.U.N(e), Nat.double(Nat.double(P.Nat.pow2(d))))) == True{} : Bool}
+  for +hq: {Nat.cmp(V.U.N(q), V.U.N(e)) == LT{} : Cmp}
+  {U32.is_lt(U32.shrn(q, 2n), U32.shln(1, d)) == True{} : Bool}
+
+def BP.in_range(d, q, e, hd, he, hq):
+  V.U.N_lt(U32.shrn(q, 2n), U32.shln(1, d),
+    (%Equal.sym(Nat, V.U.N(U32.shln(1, d)), P.Nat.pow2(d), V.U.N_pow(d, hd)) : {Nat.cmp(V.U.N(U32.shr(U32.shr(q))), _) == LT{} : Cmp}
+      (%Equal.sym(Nat, V.U.N(U32.shr(U32.shr(q))), P.Nat.half(V.U.N(U32.shr(q))), V.U.N_shr(U32.shr(q))) :
+          {Nat.cmp(_, P.Nat.pow2(d)) == LT{} : Cmp}
+        (%Equal.sym(Nat, V.U.N(U32.shr(q)), P.Nat.half(V.U.N(q)), V.U.N_shr(q)) :
+            {Nat.cmp(P.Nat.half(_), P.Nat.pow2(d)) == LT{} : Cmp}
+          P.Nat.half_lt(P.Nat.half(V.U.N(q)), P.Nat.pow2(d),
+            P.Nat.half_lt(V.U.N(q), Nat.double(P.Nat.pow2(d)),
+              P.Nat.lt_le_trans(V.U.N(q), V.U.N(e), Nat.double(Nat.double(P.Nat.pow2(d))), hq, he)))))))
+
+# A byte is below 256.
+law BP.byt_255:
+  for +t: A.Tr
+  for +i: U32
+  {U32.and(BP.byt(t, i), 255) == BP.byt(t, i) : U32}
+
+def BP.byt_255(t, i):
+  V.U.and_idem_r(U32.shrn(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i)), 255)

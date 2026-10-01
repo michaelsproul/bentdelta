@@ -1179,3 +1179,114 @@ def Nat.not_lt_le(a, b, c, e, h):
         {Cmp.is_le(_) == True{} : Bool}
       %Equal.sym(Cmp, Nat.cmp(a, b), GT{}, e) : {Cmp.is_le(Cmp.flip(_)) == True{} : Bool}
       {==}
+
+law Nat.le_lt_trans:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  for +h1: {Cmp.is_le(Nat.cmp(a, b)) == True{} : Bool}
+  for +h2: {Nat.cmp(b, c) == LT{} : Cmp}
+  {Nat.cmp(a, c) == LT{} : Cmp}
+
+def Nat.le_lt_trans(a, b, c, h1, h2):
+  match a b c:
+    case _ _ 0n:
+      Nat.lt_zero({Nat.cmp(a, 0n) == LT{} : Cmp}, b, h2)
+    case 0n _ 1n+r:
+      {==}
+    case 1n+p 0n 1n+r:
+      Bool.false_true({Nat.cmp(1n+p, 1n+r) == LT{} : Cmp}, h1)
+    case 1n+p 1n+q 1n+r:
+      Nat.le_lt_trans(p, q, r, h1, h2)
+
+# Halving keeps order.
+law Nat.half_mono:
+  for +a: Nat
+  for +b: Nat
+  for +h: {Cmp.is_le(Nat.cmp(a, b)) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.half(a), Nat.half(b))) == True{} : Bool}
+
+def Nat.half_mono(a, b, h):
+  match a b:
+    case 0n _:
+      Nat.le_zero(Nat.half(b))
+    case 1n+p 0n:
+      Bool.false_true({Cmp.is_le(Nat.cmp(Nat.half(1n+p), Nat.half(0n))) == True{} : Bool}, h)
+    case 1n 1n+q:
+      Nat.le_zero(Nat.half(1n+q))
+    case 2n+x 1n:
+      Bool.false_true({Cmp.is_le(Nat.cmp(Nat.half(2n+x), Nat.half(1n))) == True{} : Bool}, h)
+    case 2n+x 2n+y:
+      Nat.half_mono(x, y, h)
+
+law Nat.lt_le_succ:
+  for +a: Nat
+  for +b: Nat
+  for +h: {Nat.cmp(a, b) == LT{} : Cmp}
+  {Cmp.is_le(Nat.cmp(1n+a, b)) == True{} : Bool}
+
+def Nat.lt_le_succ(a, b, h):
+  match a b:
+    case _ 0n:
+      Nat.lt_zero({Cmp.is_le(Nat.cmp(1n+a, 0n)) == True{} : Bool}, a, h)
+    case 0n 1n+q:
+      Nat.le_zero(q)
+    case 1n+p 1n+q:
+      Nat.lt_le_succ(p, q, h)
+
+law Bool.and_idem_r:
+  for +x: Bool
+  for +y: Bool
+  {Bool.and(Bool.and(x, y), y) == Bool.and(x, y) : Bool}
+
+def Bool.and_idem_r(x, y):
+  match x y:
+    case False{} _:
+      {==}
+    case True{} False{}:
+      {==}
+    case True{} True{}:
+      {==}
+
+# x < 2y gives x / 2 < y.
+law Nat.half_lt:
+  for +x: Nat
+  for +y: Nat
+  for +h: {Nat.cmp(x, Nat.double(y)) == LT{} : Cmp}
+  {Nat.cmp(Nat.half(x), y) == LT{} : Cmp}
+
+def Nat.half_lt(x, y, h):
+  Nat.split_lt_half(Nat.odd(x), Nat.half(x), y,
+    (%Nat.split(x) : {Nat.cmp(_, Nat.double(y)) == LT{} : Cmp}
+      h))
+
+# a <= b gives a < 1 + b.
+law Nat.le_lt_succ:
+  for +a: Nat
+  for +b: Nat
+  for +h: {Cmp.is_le(Nat.cmp(a, b)) == True{} : Bool}
+  {Nat.cmp(a, 1n+b) == LT{} : Cmp}
+
+def Nat.le_lt_succ(a, b, h):
+  match a b:
+    case 0n _:
+      {==}
+    case 1n+p 0n:
+      Bool.false_true({Nat.cmp(1n+p, 1n) == LT{} : Cmp}, h)
+    case 1n+p 1n+q:
+      Nat.le_lt_succ(p, q, h)
+
+# a + (1 + b) <= c gives a < c.
+law Nat.lt_of_add_succ:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  for +h: {Cmp.is_le(Nat.cmp(Nat.add(a, 1n+b), c)) == True{} : Bool}
+  {Nat.cmp(a, c) == LT{} : Cmp}
+
+def Nat.lt_of_add_succ(a, b, c, h):
+  Nat.lt_le_trans(a, Nat.add(a, 1n+b), c,
+    (%Equal.sym(Nat, Nat.add(a, 1n+b), 1n+Nat.add(a, b), Nat.add_succ_r(a, b)) :
+        {Nat.cmp(a, _) == LT{} : Cmp}
+      Nat.le_lt_succ(a, Nat.add(a, b), Nat.cmp_add_r(a, b))),
+    h)
