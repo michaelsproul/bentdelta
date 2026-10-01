@@ -1,9 +1,10 @@
 # Generates proofs/ctab.bp: the code-table facts for op.single / op.double.
-# usage: python3 tools/ctab_gen.py <header.bp> proofs/ctab.bp
-# (the header is proofs/ctab.bp up to and including its first law line)
+# usage: python3 tools/ctab_gen.py proofs/ctab.bp proofs/ctab.bp
+# (it keeps the header of the given file, up to its first law)
 import sys
 
-HEAD = open(sys.argv[1]).read().split("law CT.single.t:")[0]
+src = open(sys.argv[1]).read()
+HEAD = src[:src.index("\nlaw ")].rstrip() + "\n"
 
 def le(a, b): return f"{{Cmp.is_le(Nat.cmp({a}, {b})) == True{{}} : Bool}}"
 def rwlit(v, L, ek): return f"@rwx V.U.eq_N({v}, {L}, {ek}) : {{{v} == {L} : U32}}"

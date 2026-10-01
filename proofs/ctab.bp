@@ -32,7 +32,6 @@ def CT.D(+c: U32, +pt: U32, +ps: U32, +pm: U32, +t: U32, +size: U32, +mode: U32)
     Bool.and(Bool.not(Q.SP.z(Q.SP.e1(c))), Bool.not(Q.SP.z(Q.SP.e2(c)))))))
 
 
-
 law CT.add.e:
   for +size: U32
   for +k: Nat
