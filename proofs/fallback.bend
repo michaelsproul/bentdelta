@@ -103,12 +103,12 @@ def F.loop_from(k, tt, w, td, p):
 # The whole encoding
 # ==================
 
-# The delta's capacity, its depth and the empty tree it starts from.
+# The delta's capacity in bytes, its depth and the empty tree it starts from.
 def F.cap(+len: U32) -> U32:
   ((len + 1 : U32) << 4n : U32)
 
 def F.dep(+len: U32) -> Nat:
-  B.B.depth(B.B.words(F.cap(len)))
+  B.B.depth(((len + 1 : U32) << 2n : U32))
 
 def F.t0(+len: U32) -> A.Tr:
   A.T.new(F.dep(len), 0)
@@ -199,3 +199,186 @@ def F.spec0(len, tt, z):
       == (B.Bytes{len, A.A.from(tt)}, B.Bytes{12, A.A.from(S.S.puts(F.hdr(F.empty()), F.t0(len), 0))})
       : B.Bytes & B.Bytes}
   {==}
+
+# Sizes
+# =====
+
+def F.d4(+n: Nat) -> Nat:
+  Nat.double(Nat.double(Nat.double(Nat.double(n))))
+
+# Nine bytes per byte are at most sixteen.
+law F.len_wins:
+  for +n: Nat
+  for +tt: A.Tr
+  for +w: U32
+  {Cmp.is_le(Nat.cmp(S.S.len(F.wins(S.S.sl(n, tt, w))), F.d4(n))) == True{} : Bool}
+
+def F.len_wins(n, tt, w):
+  match n:
+    case 0n:
+      {==}
+    case 1n+m:
+      P.Nat.le_trans(S.S.len(F.wins(S.S.sl(m, tt, (w + 1 : U32)))), F.d4(m), Nat.add(7n, F.d4(m)),
+        F.len_wins(m, tt, (w + 1 : U32)), P.Nat.le_add_l(7n, F.d4(m)))
+
+law F.len_le:
+  for +n: Nat
+  for +tt: A.Tr
+  for +w: U32
+  {Cmp.is_le(Nat.cmp(Nat.add(5n, S.S.len(F.wins(S.S.sl(n, tt, w)))), F.d4(1n+n))) == True{} : Bool}
+
+def F.len_le(n, tt, w):
+  P.Nat.le_trans(S.S.len(F.wins(S.S.sl(n, tt, w))), F.d4(n), Nat.add(11n, F.d4(n)),
+    F.len_wins(n, tt, w), P.Nat.le_add_l(11n, F.d4(n)))
+
+# At least one byte per byte.
+law F.len_ge:
+  for +n: Nat
+  for +tt: A.Tr
+  for +w: U32
+  {Cmp.is_le(Nat.cmp(n, S.S.len(F.wins(S.S.sl(n, tt, w))))) == True{} : Bool}
+
+def F.len_ge(n, tt, w):
+  match n:
+    case 0n:
+      {==}
+    case 1n+m:
+      P.Nat.le_trans(m, S.S.len(F.wins(S.S.sl(m, tt, (w + 1 : U32)))),
+        Nat.add(8n, S.S.len(F.wins(S.S.sl(m, tt, (w + 1 : U32))))),
+        F.len_ge(m, tt, (w + 1 : U32)), P.Nat.le_add_l(8n, S.S.len(F.wins(S.S.sl(m, tt, (w + 1 : U32))))))
+
+# len + 1 (len < 2^27) is below 2^28.
+law F.x1_lt:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {U32.is_lt((len + 1 : U32), U32.shln(1, 28n)) == True{} : Bool}
+
+def F.x1_lt(len, hlen):
+  V.U.le_lt_trans((len + 1 : U32), 134217728, U32.shln(1, 28n), V.U.lt_succ_le(len, 134217728, hlen), {==})
+
+law F.x1_bit:
+  for +len: U32
+  for +k: Nat
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +hk: {Cmp.is_le(Nat.cmp(28n, k)) == True{} : Bool}
+  {V.U.bit((len + 1 : U32), k) == False{} : Bool}
+
+def F.x1_bit(len, k, hlen, hk):
+  V.U.bit_lt_pow((len + 1 : U32), 28n, k, F.x1_lt(len, hlen), {==}, hk)
+
+# The value of a U32 shifted up once, then twice, with the bits it loses clear.
+law F.N_shl2:
+  for +x: U32
+  for +h31: {V.U.bit(x, 31n) == False{} : Bool}
+  for +h30: {V.U.bit(x, 30n) == False{} : Bool}
+  {V.U.N(U32.shl(U32.shl(x))) == Nat.double(Nat.double(V.U.N(x))) : Nat}
+
+def F.N_shl2(x, h31, h30):
+  %Equal.sym(Nat, V.U.N(U32.shl(U32.shl(x))), Nat.double(V.U.N(U32.shl(x))),
+    V.U.N_shl(U32.shl(x), (%Equal.sym(Bool, V.U.bit(U32.shl(x), 31n), V.U.bit(x, 30n), V.U.bit_shl(x, 30n, {==})) :
+        {_ == False{} : Bool}
+      h30))) :
+    {_ == Nat.double(Nat.double(V.U.N(x))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shl(x)), Nat.double(V.U.N(x)), V.U.N_shl(x, h31)) :
+    {Nat.double(_) == Nat.double(Nat.double(V.U.N(x))) : Nat}
+  {==}
+
+# The words of the delta: 4 (len + 1).
+def F.w(+len: U32) -> U32:
+  ((len + 1 : U32) << 2n : U32)
+
+law F.Nw:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {V.U.N(F.w(len)) == Nat.double(Nat.double(1n+V.U.N(len))) : Nat}
+
+def F.Nw(len, hlen):
+  %V.U.succ_lt(len, 134217728, hlen) :
+    {V.U.N(F.w(len)) == Nat.double(Nat.double(_)) : Nat}
+  F.N_shl2((len + 1 : U32), F.x1_bit(len, 31n, hlen, {==}), F.x1_bit(len, 30n, hlen, {==}))
+
+law F.Ncap:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {V.U.N(F.cap(len)) == F.d4(1n+V.U.N(len)) : Nat}
+
+def F.Ncap(len, hlen):
+  %F.Nw(len, hlen) :
+    {V.U.N(F.cap(len)) == Nat.double(Nat.double(_)) : Nat}
+  F.N_shl2(F.w(len),
+    (%Equal.sym(Bool, V.U.bit(U32.shl(U32.shl((len + 1 : U32))), 31n), V.U.bit((len + 1 : U32), 29n),
+        V.U.bit_shln_hi((len + 1 : U32), 2n, 29n, {==})) : {_ == False{} : Bool}
+      F.x1_bit(len, 29n, hlen, {==})),
+    (%Equal.sym(Bool, V.U.bit(U32.shl(U32.shl((len + 1 : U32))), 30n), V.U.bit((len + 1 : U32), 28n),
+        V.U.bit_shln_hi((len + 1 : U32), 2n, 28n, {==})) : {_ == False{} : Bool}
+      F.x1_bit(len, 28n, hlen, {==})))
+
+law F.w_le:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {U32.is_le(F.w(len), U32.shln(1, 31n)) == True{} : Bool}
+
+def F.w_le(len, hlen):
+  V.U.lt_to_le(F.w(len), U32.shln(1, 31n),
+    V.U.lt_of_top(F.w(len), U32.shln(1, 31n),
+      (%Equal.sym(Bool, V.U.bit(U32.shl(U32.shl((len + 1 : U32))), 31n), V.U.bit((len + 1 : U32), 29n),
+          V.U.bit_shln_hi((len + 1 : U32), 2n, 29n, {==})) : {_ == False{} : Bool}
+        F.x1_bit(len, 29n, hlen, {==})),
+      {==}))
+
+# The capacity fits the tree.
+law F.he:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(V.U.N(F.cap(len)), Nat.double(Nat.double(P.Nat.pow2(F.dep(len)))))) == True{} : Bool}
+
+def F.he(len, hlen):
+  %Equal.sym(Nat, V.U.N(F.cap(len)), Nat.double(Nat.double(V.U.N(F.w(len)))),
+    F.N_shl2(F.w(len),
+      (%Equal.sym(Bool, V.U.bit(U32.shl(U32.shl((len + 1 : U32))), 31n), V.U.bit((len + 1 : U32), 29n),
+          V.U.bit_shln_hi((len + 1 : U32), 2n, 29n, {==})) : {_ == False{} : Bool}
+        F.x1_bit(len, 29n, hlen, {==})),
+      (%Equal.sym(Bool, V.U.bit(U32.shl(U32.shl((len + 1 : U32))), 30n), V.U.bit((len + 1 : U32), 28n),
+          V.U.bit_shln_hi((len + 1 : U32), 2n, 28n, {==})) : {_ == False{} : Bool}
+        F.x1_bit(len, 28n, hlen, {==})))) :
+    {Cmp.is_le(Nat.cmp(_, Nat.double(Nat.double(P.Nat.pow2(F.dep(len)))))) == True{} : Bool}
+  P.Nat.double_mono(Nat.double(V.U.N(F.w(len))), Nat.double(P.Nat.pow2(F.dep(len))),
+    P.Nat.double_mono(V.U.N(F.w(len)), P.Nat.pow2(F.dep(len)),
+      (%V.U.N_pow(F.dep(len), Y.BD.lt(F.w(len))) : {Cmp.is_le(Nat.cmp(V.U.N(F.w(len)), _)) == True{} : Bool}
+        V.U.le_N(F.w(len), U32.shln(1, F.dep(len)), Y.BD.le(F.w(len), F.w_le(len, hlen))))))
+
+# The plain encoding fits its capacity.
+law F.hb:
+  for +len: U32
+  for +tt: A.Tr
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(0), S.S.len(F.hdr(F.wins(S.S.sl(U32.to_nat(len), tt, 0))))), V.U.N(F.cap(len))))
+    == True{} : Bool}
+
+def F.hb(len, tt, hlen):
+  %Equal.sym(Nat, V.U.N(F.cap(len)), F.d4(1n+V.U.N(len)), F.Ncap(len, hlen)) :
+    {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(0), S.S.len(F.hdr(F.wins(S.S.sl(U32.to_nat(len), tt, 0))))), _)) == True{} : Bool}
+  F.len_le(U32.to_nat(len), tt, 0)
+
+# The delta holds the plain encoding.
+law F.has:
+  for +len: U32
+  for +tt: A.Tr
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {S.S.has(F.hdr(F.wins(S.S.sl(U32.to_nat(len), tt, 0))),
+    S.S.puts(F.hdr(F.wins(S.S.sl(U32.to_nat(len), tt, 0))), F.t0(len), 0), 0) == True{} : Bool}
+
+def F.has(len, tt, hlen):
+  S.S.has_puts(F.dep(len), F.hdr(F.wins(S.S.sl(U32.to_nat(len), tt, 0))), F.t0(len), 0, F.cap(len),
+    A.T.pf_new(F.dep(len), 0), Y.BD.lt(F.w(len)), F.he(len, hlen), F.hb(len, tt, hlen))
+
+# Its length.
+law F.dl:
+  for +len: U32
+  for +tt: A.Tr
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {V.U.N(S.S.adv(F.wins(S.S.sl(U32.to_nat(len), tt, 0)), 5))
+    == Nat.add(5n, S.S.len(F.wins(S.S.sl(U32.to_nat(len), tt, 0)))) : Nat}
+
+def F.dl(len, tt, hlen):
+  S.S.adv_N(F.hdr(F.wins(S.S.sl(U32.to_nat(len), tt, 0))), 0, F.cap(len), F.hb(len, tt, hlen))

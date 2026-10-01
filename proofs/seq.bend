@@ -268,3 +268,17 @@ def S.list(n, t):
   %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(t), 0), (A.A.from(t), Y.BP.byt(t, 0)), Y.BP.get_from(t, 0)) :
     {B.B.list.go(U32.to_nat(n), 0, _) == S.sl(U32.to_nat(n), t, 0) : List<&2, U32>}
   S.list_go(U32.to_nat(n), t, 0)
+
+law S.len_sl:
+  for +n: Nat
+  for +t: A.Tr
+  for +i: U32
+  {S.len(S.sl(n, t, i)) == n : Nat}
+
+def S.len_sl(n, t, i):
+  match n:
+    case 0n:
+      {==}
+    case 1n+m:
+      %Equal.sym(Nat, S.len(S.sl(m, t, (i + 1 : U32))), m, S.len_sl(m, t, (i + 1 : U32))) : {1n+_ == 1n+m : Nat}
+      {==}

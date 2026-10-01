@@ -781,3 +781,75 @@ law BP.byt_255:
 
 def BP.byt_255(t, i):
   V.U.and_idem_r(U32.shrn(A.T.word(t, U32.shrn(i, 2n)), B.B.sh(i)), 255)
+
+# Depths
+# ======
+
+law BD.go:
+  for +k: Nat
+  for +done: Bool
+  for +n: U32
+  for +d: Nat
+  for +p: U32
+  for +ep: {p == U32.shln(1, d) : U32}
+  for +edone: {done == U32.is_ge(p, n) : Bool}
+  for +hkd: {Nat.add(k, d) == 31n : Nat}
+  for +hn: {U32.is_le(n, U32.shln(1, 31n)) == True{} : Bool}
+  {U32.is_le(n, U32.shln(1, B.B.depth.go(k, done, n, d, p))) == True{} : Bool}
+
+def BD.go(k, done, n, d, p, ep, edone, hkd, hn):
+  match k done:
+    case _ True{}:
+      %ep : {U32.is_le(n, _) == True{} : Bool}
+      V.U.ge_le(p, n, Equal.sym(Bool, True{}, U32.is_ge(p, n), edone))
+    case 0n False{}:
+      %Equal.sym(Nat, d, 31n, hkd) : {U32.is_le(n, U32.shln(1, _)) == True{} : Bool}
+      hn
+    case 1n+q False{}:
+      BD.go(q, U32.is_ge(U32.shln(p, 1n), n), n, 1n+d, U32.shln(p, 1n),
+        (%Equal.sym(U32, p, U32.shln(1, d), ep) : {U32.shln(_, 1n) == U32.shln(1, 1n+d) : U32}
+          {==}),
+        {==},
+        (%Equal.sym(Nat, Nat.add(q, 1n+d), 1n+Nat.add(q, d), P.Nat.add_succ_r(q, d)) : {_ == 31n : Nat}
+          hkd),
+        hn)
+
+law BD.go_lt:
+  for +k: Nat
+  for +done: Bool
+  for +n: U32
+  for +d: Nat
+  for +p: U32
+  for +hkd: {Nat.add(k, d) == 31n : Nat}
+  {Nat.cmp(B.B.depth.go(k, done, n, d, p), 32n) == LT{} : Cmp}
+
+def BD.go_lt(k, done, n, d, p, hkd):
+  match k done:
+    case _ True{}:
+      P.Nat.le_lt_succ(d, 31n,
+        (%hkd : {Cmp.is_le(Nat.cmp(d, _)) == True{} : Bool}
+          P.Nat.le_add_l(k, d)))
+    case 0n False{}:
+      P.Nat.le_lt_succ(d, 31n,
+        (%hkd : {Cmp.is_le(Nat.cmp(d, _)) == True{} : Bool}
+          P.Nat.le_add_l(0n, d)))
+    case 1n+q False{}:
+      BD.go_lt(q, U32.is_ge(U32.shln(p, 1n), n), n, 1n+d, U32.shln(p, 1n),
+        (%Equal.sym(Nat, Nat.add(q, 1n+d), 1n+Nat.add(q, d), P.Nat.add_succ_r(q, d)) : {_ == 31n : Nat}
+          hkd))
+
+# 2^depth(n) >= n, for n <= 2^31.
+law BD.le:
+  for +n: U32
+  for +hn: {U32.is_le(n, U32.shln(1, 31n)) == True{} : Bool}
+  {U32.is_le(n, U32.shln(1, B.B.depth(n))) == True{} : Bool}
+
+def BD.le(n, hn):
+  BD.go(31n, U32.is_ge(1, n), n, 0n, 1, {==}, {==}, {==}, hn)
+
+law BD.lt:
+  for +n: U32
+  {Nat.cmp(B.B.depth(n), 32n) == LT{} : Cmp}
+
+def BD.lt(n):
+  BD.go_lt(31n, U32.is_ge(1, n), n, 0n, 1, {==})

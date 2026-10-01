@@ -1,6 +1,7 @@
 import Base
 import ../bytes.bend as B
 import ../vcdiff.bend as D
+import ../check.bend as C
 import ./nat.bend as P
 import ./u32.bend as V
 import ./array.bend as A
@@ -532,3 +533,215 @@ def L.pre(k, f, tt, w, td, dlen, p, total, lenU, h, e, hf, hlo, hlen):
         R.tl(td, ((((((((p + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32), 2, F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), R.tl(td, (((((((p + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32), Y.BP.byt(tt, w), 2 <> F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), R.tl(td, ((((((p + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32), 0, Y.BP.byt(tt, w) <> 2 <> F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), R.tl(td, (((((p + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32), 1, 0 <> Y.BP.byt(tt, w) <> 2 <> F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), R.tl(td, ((((p + 1 : U32) + 1 : U32) + 1 : U32) + 1 : U32), 1, 1 <> 0 <> Y.BP.byt(tt, w) <> 2 <> F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), R.tl(td, (((p + 1 : U32) + 1 : U32) + 1 : U32), 0, 1 <> 1 <> 0 <> Y.BP.byt(tt, w) <> 2 <> F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), R.tl(td, ((p + 1 : U32) + 1 : U32), 1, 0 <> 1 <> 1 <> 0 <> Y.BP.byt(tt, w) <> 2 <> F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), R.tl(td, (p + 1 : U32), 7, 1 <> 0 <> 1 <> 1 <> 0 <> Y.BP.byt(tt, w) <> 2 <> F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), R.tl(td, p, 0, 7 <> 1 <> 0 <> 1 <> 1 <> 0 <> Y.BP.byt(tt, w) <> 2 <> F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32))), h))))))))),
         W.next(p, dlen, S.S.len(F.F.wins(S.S.sl(1n+j, tt, (w + 1 : U32)))), e), hf, S.S.bound_succ(total, 1n+j, lenU, hlo), hlen)
 
+
+# The target buffer
+# =================
+
+# Its depth: one word for up to four bytes, else a new tree.
+def O.d(z: Bool, +len: U32) -> Nat:
+  match z:
+    case True{}:
+      0n
+    case False{}:
+      B.B.depth(B.B.words(len))
+
+def O.dep(+len: U32) -> Nat:
+  O.d(U32.is_le(B.B.words(len), 1), len)
+
+law O.buf.go:
+  for +len: U32
+  for +z: Bool
+  for +ez: {U32.is_le(B.B.words(len), 1) == z : Bool}
+  {D.dec.buf(len, Array.size(U32, [0 : U32^0n])) == A.A.from(A.T.new(O.dep(len), 0)) : Array<U32>}
+
+def O.buf.go(len, z, ez):
+  match z:
+    case True{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), True{}, ez) :
+        {D.dec.buf.if(Bool.and(_, True{}), len, [0 : U32^0n]) == A.A.from(A.T.new(O.d(_, len), 0)) : Array<U32>}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), False{}, ez) :
+        {D.dec.buf.if(Bool.and(_, True{}), len, [0 : U32^0n]) == A.A.from(A.T.new(O.d(_, len), 0)) : Array<U32>}
+      A.A.new_from(B.B.depth(B.B.words(len)), 0)
+
+law O.buf:
+  for +len: U32
+  {D.dec.buf(len, Array.size(U32, [0 : U32^0n])) == A.A.from(A.T.new(O.dep(len), 0)) : Array<U32>}
+
+def O.buf(len):
+  O.buf.go(len, U32.is_le(B.B.words(len), 1), {==})
+
+law O.lt32.go:
+  for +len: U32
+  for +z: Bool
+  for +ez: {U32.is_le(B.B.words(len), 1) == z : Bool}
+  {Nat.cmp(O.dep(len), 32n) == LT{} : Cmp}
+
+def O.lt32.go(len, z, ez):
+  match z:
+    case True{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), True{}, ez) : {Nat.cmp(O.d(_, len), 32n) == LT{} : Cmp}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), False{}, ez) : {Nat.cmp(O.d(_, len), 32n) == LT{} : Cmp}
+      Y.BD.lt(B.B.words(len))
+
+law O.lt32:
+  for +len: U32
+  {Nat.cmp(O.dep(len), 32n) == LT{} : Cmp}
+
+def O.lt32(len):
+  O.lt32.go(len, U32.is_le(B.B.words(len), 1), {==})
+
+# The words of len bytes, as a value.
+law O.Nw:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {V.U.N(B.B.words(len)) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
+
+def O.Nw(len, hlen):
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr((len + 3 : U32)))), P.Nat.half(V.U.N(U32.shr((len + 3 : U32)))),
+    V.U.N_shr(U32.shr((len + 3 : U32)))) :
+    {_ == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr((len + 3 : U32))), P.Nat.half(V.U.N((len + 3 : U32))), V.U.N_shr((len + 3 : U32))) :
+    {P.Nat.half(_) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
+  %Equal.sym(Nat, V.U.N((len + 3 : U32)), Nat.add(V.U.N(len), V.U.N(3)),
+    V.U.add_top(len, 3, V.U.bit_lt_pow(len, 27n, 31n, hlen, {==}, {==}), {==})) :
+    {P.Nat.half(P.Nat.half(_)) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
+  {==}
+
+law O.he.go:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +z: Bool
+  for +ez: {U32.is_le(B.B.words(len), 1) == z : Bool}
+  {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.dep(len)))))) == True{} : Bool}
+
+def O.he.go(len, hlen, z, ez):
+  match z:
+    case True{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), True{}, ez) :
+        {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.d(_, len)))))) == True{} : Bool}
+      P.Nat.le_trans(V.U.N(len), Nat.double(Nat.double(V.U.N(B.B.words(len)))), 4n,
+        (%Equal.sym(Nat, V.U.N(B.B.words(len)), P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))), O.Nw(len, hlen)) :
+            {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(_)))) == True{} : Bool}
+          P.Nat.le_words(V.U.N(len))),
+        P.Nat.double_mono(Nat.double(V.U.N(B.B.words(len))), 2n,
+          P.Nat.double_mono(V.U.N(B.B.words(len)), 1n, V.U.le_N(B.B.words(len), 1, ez))))
+    case False{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), False{}, ez) :
+        {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.d(_, len)))))) == True{} : Bool}
+      P.Nat.le_trans(V.U.N(len), Nat.double(Nat.double(V.U.N(B.B.words(len)))),
+        Nat.double(Nat.double(P.Nat.pow2(B.B.depth(B.B.words(len))))),
+        (%Equal.sym(Nat, V.U.N(B.B.words(len)), P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))), O.Nw(len, hlen)) :
+            {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(_)))) == True{} : Bool}
+          P.Nat.le_words(V.U.N(len))),
+        P.Nat.double_mono(Nat.double(V.U.N(B.B.words(len))), Nat.double(P.Nat.pow2(B.B.depth(B.B.words(len)))),
+          P.Nat.double_mono(V.U.N(B.B.words(len)), P.Nat.pow2(B.B.depth(B.B.words(len))),
+            (%V.U.N_pow(B.B.depth(B.B.words(len)), Y.BD.lt(B.B.words(len))) :
+                {Cmp.is_le(Nat.cmp(V.U.N(B.B.words(len)), _)) == True{} : Bool}
+              V.U.le_N(B.B.words(len), U32.shln(1, B.B.depth(B.B.words(len))),
+                Y.BD.le(B.B.words(len),
+                  V.U.lt_to_le(B.B.words(len), U32.shln(1, 31n),
+                    V.U.lt_of_top(B.B.words(len), U32.shln(1, 31n),
+                      (%Equal.sym(Bool, V.U.bit(U32.shr(U32.shr((len + 3 : U32))), 31n),
+                          V.U.bit(U32.shr((len + 3 : U32)), 32n), V.U.bit_shr(U32.shr((len + 3 : U32)), 31n)) :
+                          {_ == False{} : Bool}
+                        V.U.bit_beyond(U32.shr((len + 3 : U32)), 32n, {==})),
+                      {==}))))))))
+
+# The target fits its buffer.
+law O.he:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.dep(len)))))) == True{} : Bool}
+
+def O.he(len, hlen):
+  O.he.go(len, hlen, U32.is_le(B.B.words(len), 1), {==})
+
+# Decoding the plain encoding
+# ===========================
+
+# A nonempty target of 1 + k bytes.
+law FB.dec:
+  for +k: Nat
+  for +len: U32
+  for +tt: A.Tr
+  for +slen: U32
+  for sa: Array<U32>
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +en: {U32.to_nat(len) == 1n+k : Nat}
+  {C.restore.k(D.decode.into(B.Bytes{slen, sa}, B.Bytes{S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0))}, [0 : U32^0n])) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+
+def FB.dec(k, len, tt, slen, sa, hlen, en):
+  %Equal.sym(Array<U32> & (U32 & U32), D.hdr.parse(A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), (A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), (5, 0)),
+    H.parse(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), F.F.wins(S.S.sl(1n+k, tt, 0)), (%en : {S.S.has(F.F.hdr(F.F.wins(S.S.sl(_, tt, 0))), S.S.puts(F.F.hdr(F.F.wins(S.S.sl(_, tt, 0))), F.F.t0(len), 0), 0) == True{} : Bool}
+    F.F.has(len, tt, hlen)), (%Equal.sym(Nat, V.U.N(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), Nat.add(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))), (%en : {V.U.N(S.S.adv(F.F.wins(S.S.sl(_, tt, 0)), 5)) == Nat.add(5n, S.S.len(F.F.wins(S.S.sl(_, tt, 0)))) : Nat}
+    F.F.dl(len, tt, hlen))) : {Nat.cmp(4n, _) == LT{} : Cmp}
+    {==}))) :
+    {C.restore.k(D.dec.hdr(slen, sa, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), [0 : U32^0n], _)) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(Bool, U32.is_lt(5, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), True{}, Q.lt(5, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), Nat.add(8n, S.S.len(F.F.wins(S.S.sl(k, tt, 1)))), (%P.Nat.add_comm(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))) : {V.U.N(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)) == _ : Nat}
+    (%en : {V.U.N(S.S.adv(F.F.wins(S.S.sl(_, tt, 0)), 5)) == Nat.add(5n, S.S.len(F.F.wins(S.S.sl(_, tt, 0)))) : Nat}
+    F.F.dl(len, tt, hlen))))) :
+    {C.restore.k(D.dec.pre(slen, sa, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, [0 : U32^0n], D.pre.loop(U32.to_nat(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), (Bool.and(_, True{}), D.PS{A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0})))) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(Nat, V.U.N(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), Nat.add(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))), (%en : {V.U.N(S.S.adv(F.F.wins(S.S.sl(_, tt, 0)), 5)) == Nat.add(5n, S.S.len(F.F.wins(S.S.sl(_, tt, 0)))) : Nat}
+    F.F.dl(len, tt, hlen))) :
+    {C.restore.k(D.dec.pre(slen, sa, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, [0 : U32^0n], D.pre.loop(_, (True{}, D.PS{A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0})))) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(D.PS, D.pre.loop(1n+Nat.add(13n, S.S.len(F.F.wins(S.S.sl(k, tt, 1)))), (True{}, D.PS{A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0})), D.PS{A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), S.S.adv(S.S.sl(1n+k, tt, 0), 0), 0},
+    L.pre(k, Nat.add(13n, S.S.len(F.F.wins(S.S.sl(k, tt, 1)))), tt, 0, S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, len,
+      R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 4, 0, F.F.wins(S.S.sl(1n+k, tt, 0)), R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 3, 0, 0 <> F.F.wins(S.S.sl(1n+k, tt, 0)), R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 2, 196, 0 <> 0 <> F.F.wins(S.S.sl(1n+k, tt, 0)), R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 1, 195, 196 <> 0 <> 0 <> F.F.wins(S.S.sl(1n+k, tt, 0)), R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 0, 214, 195 <> 196 <> 0 <> 0 <> F.F.wins(S.S.sl(1n+k, tt, 0)), (%en : {S.S.has(F.F.hdr(F.F.wins(S.S.sl(_, tt, 0))), S.S.puts(F.F.hdr(F.F.wins(S.S.sl(_, tt, 0))), F.F.t0(len), 0), 0) == True{} : Bool}
+    F.F.has(len, tt, hlen))))))),
+      (%P.Nat.add_comm(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))) : {V.U.N(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)) == _ : Nat}
+    (%en : {V.U.N(S.S.adv(F.F.wins(S.S.sl(_, tt, 0)), 5)) == Nat.add(5n, S.S.len(F.F.wins(S.S.sl(_, tt, 0)))) : Nat}
+    F.F.dl(len, tt, hlen))),
+      P.Nat.le_trans(k, S.S.len(F.F.wins(S.S.sl(k, tt, 1))), Nat.add(13n, S.S.len(F.F.wins(S.S.sl(k, tt, 1)))), F.F.len_ge(k, tt, 1), P.Nat.le_add_l(13n, S.S.len(F.F.wins(S.S.sl(k, tt, 1))))),
+      (%Equal.sym(Nat, V.U.N(len), 1n+k, en) : {Cmp.is_le(Nat.cmp(1n+k, _)) == True{} : Bool}
+    (%Equal.sym(Cmp, Nat.cmp(1n+k, 1n+k), EQ{}, P.Nat.cmp_refl(1n+k)) : {Cmp.is_le(_) == True{} : Bool}
+      {==})), hlen)) :
+    {C.restore.k(D.dec.pre(slen, sa, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, [0 : U32^0n], _)) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(Bool, U32.is_lt(5, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), True{}, Q.lt(5, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), Nat.add(8n, S.S.len(F.F.wins(S.S.sl(k, tt, 1)))), (%P.Nat.add_comm(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))) : {V.U.N(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)) == _ : Nat}
+    (%en : {V.U.N(S.S.adv(F.F.wins(S.S.sl(_, tt, 0)), 5)) == Nat.add(5n, S.S.len(F.F.wins(S.S.sl(_, tt, 0)))) : Nat}
+    F.F.dl(len, tt, hlen))))) :
+    {C.restore.k(D.dec.done(S.S.adv(S.S.sl(1n+k, tt, 0), 0), D.win.loop(U32.to_nat(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), (Bool.and(_, True{}), D.DS{sa, A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), D.dec.buf(S.S.adv(S.S.sl(1n+k, tt, 0), 0), Array.size(U32, [0 : U32^0n])), D.ct.table(), D.cache.new(), slen, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0})))) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(U32, S.S.adv(S.S.sl(1n+k, tt, 0), 0), len, V.U.eq_N(S.S.adv(S.S.sl(1n+k, tt, 0), 0), len,
+    (%Equal.sym(Nat, V.U.N(len), 1n+k, en) : {V.U.N(S.S.adv(S.S.sl(1n+k, tt, 0), 0)) == _ : Nat}
+      (%S.S.len_sl(1n+k, tt, 0) : {V.U.N(S.S.adv(S.S.sl(1n+k, tt, 0), 0)) == _ : Nat}
+        S.S.adv_N(S.S.sl(1n+k, tt, 0), 0, len, (%Equal.sym(Nat, S.S.len(S.S.sl(1n+k, tt, 0)), 1n+k, S.S.len_sl(1n+k, tt, 0)) : {Cmp.is_le(Nat.cmp(_, V.U.N(len))) == True{} : Bool}
+    (%Equal.sym(Nat, V.U.N(len), 1n+k, en) : {Cmp.is_le(Nat.cmp(1n+k, _)) == True{} : Bool}
+    (%Equal.sym(Cmp, Nat.cmp(1n+k, 1n+k), EQ{}, P.Nat.cmp_refl(1n+k)) : {Cmp.is_le(_) == True{} : Bool}
+      {==})))))))) :
+    {C.restore.k(D.dec.done(_, D.win.loop(U32.to_nat(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), (True{}, D.DS{sa, A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), D.dec.buf(_, Array.size(U32, [0 : U32^0n])), D.ct.table(), D.cache.new(), slen, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0})))) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(Nat, V.U.N(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)), Nat.add(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))), (%en : {V.U.N(S.S.adv(F.F.wins(S.S.sl(_, tt, 0)), 5)) == Nat.add(5n, S.S.len(F.F.wins(S.S.sl(_, tt, 0)))) : Nat}
+    F.F.dl(len, tt, hlen))) :
+    {C.restore.k(D.dec.done(len, D.win.loop(_, (True{}, D.DS{sa, A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), D.dec.buf(len, Array.size(U32, [0 : U32^0n])), D.ct.table(), D.cache.new(), slen, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0})))) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(Array<U32>, D.dec.buf(len, Array.size(U32, [0 : U32^0n])), A.A.from(A.T.new(O.dep(len), 0)), O.buf(len)) :
+    {C.restore.k(D.dec.done(len, D.win.loop(Nat.add(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))), (True{}, D.DS{sa, A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), _, D.ct.table(), D.cache.new(), slen, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0})))) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %A.A.from_to(D.ct.table()) :
+    {C.restore.k(D.dec.done(len, D.win.loop(Nat.add(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))), (True{}, D.DS{sa, A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), A.A.from(A.T.new(O.dep(len), 0)), _, D.cache.new(), slen, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0})))) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>),
+    D.dec.done(len, D.win.loop(1n+Nat.add(13n, S.S.len(F.F.wins(S.S.sl(k, tt, 1)))), (True{}, D.DS{sa, A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0)), A.A.from(A.T.new(O.dep(len), 0)), A.A.from(A.A.to(D.ct.table())), D.cache.new(), slen, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, 0}))),
+    (B.Bytes{slen, sa}, (B.Bytes{S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0))}, Done{B.Bytes{len, A.A.from(S.S.puts(S.S.sl(1n+k, tt, 0), A.T.new(O.dep(len), 0), 0))}})),
+    L.dec(k, Nat.add(13n, S.S.len(F.F.wins(S.S.sl(k, tt, 1)))), tt, 0, sa, S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), A.T.new(O.dep(len), 0), A.A.to(D.ct.table()), D.cache.new(), slen, S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5), 5, 0, len, len,
+      R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 4, 0, F.F.wins(S.S.sl(1n+k, tt, 0)), R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 3, 0, 0 <> F.F.wins(S.S.sl(1n+k, tt, 0)), R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 2, 196, 0 <> 0 <> F.F.wins(S.S.sl(1n+k, tt, 0)), R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 1, 195, 196 <> 0 <> 0 <> F.F.wins(S.S.sl(1n+k, tt, 0)), R.tl(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0), 0, 214, 195 <> 196 <> 0 <> 0 <> F.F.wins(S.S.sl(1n+k, tt, 0)), (%en : {S.S.has(F.F.hdr(F.F.wins(S.S.sl(_, tt, 0))), S.S.puts(F.F.hdr(F.F.wins(S.S.sl(_, tt, 0))), F.F.t0(len), 0), 0) == True{} : Bool}
+    F.F.has(len, tt, hlen))))))),
+      (%P.Nat.add_comm(5n, S.S.len(F.F.wins(S.S.sl(1n+k, tt, 0)))) : {V.U.N(S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5)) == _ : Nat}
+    (%en : {V.U.N(S.S.adv(F.F.wins(S.S.sl(_, tt, 0)), 5)) == Nat.add(5n, S.S.len(F.F.wins(S.S.sl(_, tt, 0)))) : Nat}
+    F.F.dl(len, tt, hlen))),
+      P.Nat.le_trans(k, S.S.len(F.F.wins(S.S.sl(k, tt, 1))), Nat.add(13n, S.S.len(F.F.wins(S.S.sl(k, tt, 1)))), F.F.len_ge(k, tt, 1), P.Nat.le_add_l(13n, S.S.len(F.F.wins(S.S.sl(k, tt, 1))))),
+      (%Equal.sym(Nat, V.U.N(len), 1n+k, en) : {Cmp.is_le(Nat.cmp(1n+k, _)) == True{} : Bool}
+    (%Equal.sym(Cmp, Nat.cmp(1n+k, 1n+k), EQ{}, P.Nat.cmp_refl(1n+k)) : {Cmp.is_le(_) == True{} : Bool}
+      {==})), hlen, {==})) :
+    {C.restore.k(_) == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(List<&2, U32>, B.B.list(B.Bytes{len, A.A.from(S.S.puts(S.S.sl(1n+k, tt, 0), A.T.new(O.dep(len), 0), 0))}), S.S.sl(U32.to_nat(len), S.S.puts(S.S.sl(1n+k, tt, 0), A.T.new(O.dep(len), 0), 0), 0),
+    S.S.list(len, S.S.puts(S.S.sl(1n+k, tt, 0), A.T.new(O.dep(len), 0), 0))) :
+    {Done{_} == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(Nat, V.U.N(len), 1n+k, en) :
+    {Done{S.S.sl(_, S.S.puts(S.S.sl(1n+k, tt, 0), A.T.new(O.dep(len), 0), 0), 0)} == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  %Equal.sym(List<&2, U32>, S.S.sl(1n+k, S.S.puts(S.S.sl(1n+k, tt, 0), A.T.new(O.dep(len), 0), 0), 0), S.S.sl(1n+k, tt, 0),
+    S.S.sl_has(1n+k, S.S.puts(S.S.sl(1n+k, tt, 0), A.T.new(O.dep(len), 0), 0), 0, tt, 0, S.S.has_puts(O.dep(len), S.S.sl(1n+k, tt, 0), A.T.new(O.dep(len), 0), 0, len, A.T.pf_new(O.dep(len), 0), O.lt32(len), O.he(len, hlen), (%Equal.sym(Nat, S.S.len(S.S.sl(1n+k, tt, 0)), 1n+k, S.S.len_sl(1n+k, tt, 0)) : {Cmp.is_le(Nat.cmp(_, V.U.N(len))) == True{} : Bool}
+    (%Equal.sym(Nat, V.U.N(len), 1n+k, en) : {Cmp.is_le(Nat.cmp(1n+k, _)) == True{} : Bool}
+    (%Equal.sym(Cmp, Nat.cmp(1n+k, 1n+k), EQ{}, P.Nat.cmp_refl(1n+k)) : {Cmp.is_le(_) == True{} : Bool}
+      {==})))))) :
+    {Done{_} == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+  {==}

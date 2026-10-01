@@ -63,14 +63,14 @@ def fb.done(+len: U32, r: Array<U32> & (Array<U32> & U32)) ->
   (B.Bytes{len, tgt}, B.Bytes{n, d})
 
 # The plain encoding of tgt. Answers tgt back. Its nine bytes per byte (and
-# the header) fit in 16 * (len + 1) bytes, which needs no carry for targets
+# the header) fit in 4 * (len + 1) words, which needs no carry for targets
 # under 2^27 bytes.
 def fallback(tgt: B.Bytes) -> B.Bytes & B.Bytes:
   match tgt:
     case B.Bytes{+len, buf}:
       fb.done(len, fb.body(U32.is_eq(len, 0), len, buf,
         wr.byte(0, wr.byte(0, wr.byte(196, wr.byte(195, wr.byte(214,
-          (B.B.zeros(((len + 1 : U32) << 4n : U32)), 0))))))))
+          (Array.new(U32, B.B.depth(((len + 1 : U32) << 2n : U32)), 0), 0))))))))
 
 # Checking
 # ========

@@ -1354,3 +1354,66 @@ law Nat.lt_trans:
 
 def Nat.lt_trans(a, b, c, h1, h2):
   Nat.lt_le_trans(a, b, c, h1, Nat.lt_to_le(b, c, h2))
+
+law Nat.double_mono:
+  for +a: Nat
+  for +b: Nat
+  for +h: {Cmp.is_le(Nat.cmp(a, b)) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.double(a), Nat.double(b))) == True{} : Bool}
+
+def Nat.double_mono(a, b, h):
+  match a b:
+    case 0n _:
+      Nat.le_zero(Nat.double(b))
+    case 1n+p 0n:
+      Bool.false_true({Cmp.is_le(Nat.cmp(Nat.double(1n+p), 0n)) == True{} : Bool}, h)
+    case 1n+p 1n+q:
+      Nat.double_mono(p, q, h)
+
+# a < c and b < c give a + b < c + c.
+law Nat.add_lt2:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  for +ha: {Nat.cmp(a, c) == LT{} : Cmp}
+  for +hb: {Nat.cmp(b, c) == LT{} : Cmp}
+  {Nat.cmp(Nat.add(a, b), Nat.add(c, c)) == LT{} : Cmp}
+
+def Nat.add_lt2(a, b, c, ha, hb):
+  Nat.le_lt_trans(Nat.add(a, b), Nat.add(a, c), Nat.add(c, c),
+    Nat.lt_to_le(Nat.add(a, b), Nat.add(a, c),
+      (%Equal.sym(Cmp, Nat.cmp(Nat.add(a, b), Nat.add(a, c)), Nat.cmp(b, c), Nat.cmp_add_l(a, b, c)) :
+          {_ == LT{} : Cmp}
+        hb)),
+    Nat.add_lt_r(a, c, c, ha))
+
+# x <= 4 * ((x + 3) / 4).
+law Nat.le_words:
+  for +x: Nat
+  {Cmp.is_le(Nat.cmp(x, Nat.double(Nat.double(Nat.half(Nat.half(Nat.add(x, 3n))))))) == True{} : Bool}
+
+def Nat.le_words(x):
+  match x:
+    case 0n:
+      {==}
+    case 1n:
+      {==}
+    case 2n:
+      {==}
+    case 3n:
+      {==}
+    case 4n+y:
+      Nat.le_words(y)
+
+law Cmp.ge_flip:
+  for +c: Cmp
+  {Cmp.is_ge(Cmp.flip(c)) == Cmp.is_le(c) : Bool}
+
+def Cmp.ge_flip(c):
+  match c:
+    case LT{}:
+      {==}
+    case EQ{}:
+      {==}
+    case GT{}:
+      {==}

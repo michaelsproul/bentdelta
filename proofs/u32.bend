@@ -888,3 +888,121 @@ law U.big:
 
 def U.big(x, h):
   U.gt1_false(U32.sub(2147483648, x), U.big.go(x, h, U32.is_eq(U32.sub(2147483648, x), 0), {==}))
+
+# Order as values, both ways, for <=.
+law U.le_N:
+  for +x: U32
+  for +y: U32
+  for +h: {U32.is_le(x, y) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(U.N(x), U.N(y))) == True{} : Bool}
+
+def U.le_N(x, y, h):
+  (%U.cmp_nat(x, y) : {Cmp.is_le(_) == True{} : Bool}
+    h)
+
+law U.N_le:
+  for +x: U32
+  for +y: U32
+  for +h: {Cmp.is_le(Nat.cmp(U.N(x), U.N(y))) == True{} : Bool}
+  {U32.is_le(x, y) == True{} : Bool}
+
+def U.N_le(x, y, h):
+  (%Equal.sym(Cmp, U32.cmp(x, y), Nat.cmp(U.N(x), U.N(y)), U.cmp_nat(x, y)) : {Cmp.is_le(_) == True{} : Bool}
+    h)
+
+# The successor of a U32 below another, by U32 order.
+law U.succ_lt:
+  for +i: U32
+  for +e: U32
+  for +h: {U32.is_lt(i, e) == True{} : Bool}
+  {U.N(U32.add(i, 1)) == 1n+U.N(i) : Nat}
+
+def U.succ_lt(i, e, h):
+  U.succ_N(i, e, U.lt_N(i, e, h))
+
+law U.lt_succ_le:
+  for +x: U32
+  for +y: U32
+  for +h: {U32.is_lt(x, y) == True{} : Bool}
+  {U32.is_le(U32.add(x, 1), y) == True{} : Bool}
+
+def U.lt_succ_le(x, y, h):
+  U.N_le(U32.add(x, 1), y,
+    (%Equal.sym(Nat, U.N(U32.add(x, 1)), 1n+U.N(x), U.succ_lt(x, y, h)) : {Cmp.is_le(Nat.cmp(_, U.N(y))) == True{} : Bool}
+      P.Nat.lt_le_succ(U.N(x), U.N(y), U.lt_N(x, y, h))))
+
+law U.le_lt_trans:
+  for +a: U32
+  for +b: U32
+  for +c: U32
+  for +h1: {U32.is_le(a, b) == True{} : Bool}
+  for +h2: {U32.is_lt(b, c) == True{} : Bool}
+  {U32.is_lt(a, c) == True{} : Bool}
+
+def U.le_lt_trans(a, b, c, h1, h2):
+  U.N_lt(a, c, P.Nat.le_lt_trans(U.N(a), U.N(b), U.N(c), U.le_N(a, b, h1), U.lt_N(b, c, h2)))
+
+law U.lt_to_le:
+  for +a: U32
+  for +b: U32
+  for +h: {U32.is_lt(a, b) == True{} : Bool}
+  {U32.is_le(a, b) == True{} : Bool}
+
+def U.lt_to_le(a, b, h):
+  U.N_le(a, b, P.Nat.lt_to_le(U.N(a), U.N(b), U.lt_N(a, b, h)))
+
+# A U32 below 2^p has no bits from p up.
+law U.bit_lt_pow:
+  for +x: U32
+  for +p: Nat
+  for +k: Nat
+  for +h: {U32.is_lt(x, U32.shln(1, p)) == True{} : Bool}
+  for +hp: {Nat.cmp(p, 32n) == LT{} : Cmp}
+  for +hk: {Cmp.is_le(Nat.cmp(p, k)) == True{} : Bool}
+  {U.bit(x, k) == False{} : Bool}
+
+def U.bit_lt_pow(x, p, k, h, hp, hk):
+  U.bit_high(x, p, k,
+    (%U.N_pow(p, hp) : {Nat.cmp(U.N(x), _) == LT{} : Cmp}
+      U.lt_N(x, U32.shln(1, p), h)),
+    hk)
+
+# By top bits: clear is below set.
+law U.lt_of_top:
+  for +x: U32
+  for +c: U32
+  for +hx: {U.bit(x, 31n) == False{} : Bool}
+  for +hc: {U.bit(c, 31n) == True{} : Bool}
+  {U32.is_lt(x, c) == True{} : Bool}
+
+def U.lt_of_top(x, c, hx, hc):
+  match x c:
+    case U32{a} U32{b}:
+      %Equal.sym(Cmp, Word.cmp(32n, a, b), LT{}, W.W.cmp_top(31n, a, b, hx, hc)) : {Cmp.is_lt(_) == True{} : Bool}
+      {==}
+
+# Two U32s with their top bits clear add without a carry.
+law U.add_top:
+  for +x: U32
+  for +y: U32
+  for +hx: {U.bit(x, 31n) == False{} : Bool}
+  for +hy: {U.bit(y, 31n) == False{} : Bool}
+  {U.N(U32.add(x, y)) == Nat.add(U.N(x), U.N(y)) : Nat}
+
+def U.add_top(x, y, hx, hy):
+  match x y:
+    case U32{a} U32{b}:
+      W.W.add_top(31n, a, b, hx, hy)
+
+law U.ge_le:
+  for +x: U32
+  for +y: U32
+  for +h: {U32.is_ge(x, y) == True{} : Bool}
+  {U32.is_le(y, x) == True{} : Bool}
+
+def U.ge_le(x, y, h):
+  U.N_le(y, x,
+    (%P.Cmp.ge_flip(Nat.cmp(U.N(y), U.N(x))) : {_ == True{} : Bool}
+      (%P.Nat.cmp_swap(U.N(y), U.N(x)) : {Cmp.is_ge(_) == True{} : Bool}
+        (%U.cmp_nat(x, y) : {Cmp.is_ge(_) == True{} : Bool}
+          h))))
