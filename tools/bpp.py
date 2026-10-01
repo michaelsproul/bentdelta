@@ -677,7 +677,7 @@ def instance(cur, call):
     if len(law.params) != len(call[2]):
         raise Err(f"{call[1]} takes {len(law.params)} arguments, given {len(call[2])}")
     c = requalify(law.concl, m, cur, set(law.params))
-    c = norm(subst(c, dict(zip(law.params, call[2]))))
+    c = fold_all(norm(subst(c, dict(zip(law.params, call[2])))))
     if c[0] != 'eq':
         raise Err(f"{call[1]} is not an equation: {show(c)}")
     return c[1], c[2], c[3]
@@ -912,8 +912,70 @@ def unfold(e, name, ps, body):
     return tuple(unfold(x, name, ps, body) if isinstance(x, tuple) else x for x in e)
 
 
+def u32_lit(e):
+    if e[0] == 'lit' and re.fullmatch(r'\d+', e[1]):
+        return int(e[1])
+    return None
+
+
+def fold(e):
+    """Constant folding of U32 operations on literals."""
+    if e[0] != 'call' or not isinstance(e[1], str):
+        return None
+    if e[1] in ('Nat.mul', 'Nat.add', 'Nat.sub') and len(e[2]) == 2:
+        a, b = nat_lit(e[2][0]), nat_lit(e[2][1])
+        if a is not None and b is not None:
+            r = {'Nat.mul': a * b, 'Nat.add': a + b, 'Nat.sub': max(0, a - b)}[e[1]]
+            return ('lit', f"{r}n")
+        return None
+    if re.fullmatch(r'(\w+\.)?U\.N', e[1]):
+        op = 'to_nat'
+    elif e[1].startswith('U32.'):
+        op = e[1][4:]
+    else:
+        return None
+    args = e[2]
+    M = 1 << 32
+    if op in ('add', 'sub', 'mul', 'and', 'or', 'xor', 'min', 'max', 'div', 'mod') and len(args) == 2:
+        a, b = u32_lit(args[0]), u32_lit(args[1])
+        if a is None or b is None:
+            return None
+        if op in ('div', 'mod') and b == 0:
+            return None
+        r = {'add': (a + b) % M, 'sub': (a - b) % M, 'mul': (a * b) % M, 'and': a & b,
+             'or': a | b, 'xor': a ^ b, 'min': min(a, b), 'max': max(a, b),
+             'div': a // b if b else 0, 'mod': a % b if b else a}[op]
+        return ('lit', str(r))
+    if op in ('shln', 'shrn') and len(args) == 2:
+        a, k = u32_lit(args[0]), nat_lit(args[1])
+        if a is None or k is None:
+            return None
+        return ('lit', str((a << k) % M if op == 'shln' else a >> k))
+    if op in ('is_lt', 'is_le', 'is_gt', 'is_ge', 'is_eq', 'is_ne') and len(args) == 2:
+        a, b = u32_lit(args[0]), u32_lit(args[1])
+        if a is None or b is None:
+            return None
+        r = {'is_lt': a < b, 'is_le': a <= b, 'is_gt': a > b, 'is_ge': a >= b,
+             'is_eq': a == b, 'is_ne': a != b}[op]
+        return ('ctor', 'True' if r else 'False', ())
+    if op == 'to_nat' and len(args) == 1:
+        a = u32_lit(args[0])
+        if a is not None and a < 4096:
+            return ('lit', f"{a}n")
+    return None
+
+
+def fold_all(e):
+    """Constant folding everywhere in e."""
+    if not isinstance(e, tuple) or not e:
+        return e
+    e = norm(tuple(fold_all(x) if isinstance(x, tuple) else x for x in e))
+    c = fold(e)
+    return c if c is not None else e
+
+
 DEFCACHE = {}
-NOSIMP = {'U32.shrn', 'U32.shln'}
+NOSIMP = {'U32.shrn', 'U32.shln', 'Nat.mul'}
 
 
 def simp(cur, e, fuel=None, skip=frozenset()):
@@ -923,6 +985,9 @@ def simp(cur, e, fuel=None, skip=frozenset()):
     if not isinstance(e, tuple) or not e:
         return e
     e = norm(tuple(simp(cur, x, fuel, skip) if isinstance(x, tuple) else x for x in e))
+    c = fold(e)
+    if c is not None:
+        return c
     if e[0] == 'call' and isinstance(e[1], str) and fuel[0] > 0 and e[1] not in skip:
         key = (cur.path, e[1])
         if key not in DEFCACHE:
@@ -946,18 +1011,31 @@ def indent_of(line):
     return len(line) - len(line.lstrip())
 
 
+def depth_of(text):
+    d = 0
+    for c in re.sub(r'#.*', '', text):
+        if c in '([{':
+            d += 1
+        elif c in ')]}':
+            d -= 1
+    return d
+
+
 def statements(lines, ind):
-    """Splits lines of a block (indented by ind) into statements."""
+    """Splits lines of a block (indented by ind) into statements; a line
+    continues the statement before it while its brackets are open."""
     out = []
+    depth = 0
     for line in lines:
         if line.strip() == '':
             if out:
                 out[-1].append(line)
             continue
-        if indent_of(line) == ind and not line.lstrip().startswith('#') or not out:
+        if (indent_of(line) == ind and not line.lstrip().startswith('#') and depth == 0) or not out:
             out.append([line])
         else:
             out[-1].append(line)
+        depth += depth_of(line)
     return out
 
 

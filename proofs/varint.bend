@@ -1,0 +1,674 @@
+import Base
+import ../bytes.bend as B
+import ./nat.bend as P
+import ./word.bend as W
+import ./u32.bend as V
+import ./array.bend as A
+import ./bytes.bend as Y
+import ./seq.bend as S
+import ./bits.bend as Z
+import ./words.bend as D
+import ./copy.bend as C
+
+# Varints (bytes.bend): the bytes B.var.put writes, and B.var.get reading
+# them back; single bytes and big-endian words likewise.
+#
+# Source: proofs/varint.bp (tools/bpp.py writes proofs/varint.bend from it).
+
+# Reading held bytes
+# ==================
+
+# A read of a byte the tree holds.
+law VI.rd:
+  for +td: A.Tr
+  for +q: U32
+  for +x: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(x <> rest, td, q) == True{} : Bool}
+  {B.B.get(A.A.from(td), q) == (A.A.from(td), U32.and(x, 255)) : Array<U32> & U32}
+
+def VI.rd(td, q, x, rest, h):
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), q), (A.A.from(td), Y.BP.byt(td, q)), Y.BP.get_from(td, q)) :
+    {_ == (A.A.from(td), U32.and(x, 255)) : Array<U32> & U32}
+  %Equal.sym(U32, Y.BP.byt(td, q), U32.and(x, 255), V.U.is_eq(Y.BP.byt(td, q), U32.and(x, 255), P.Bool.and_l(U32.is_eq(Y.BP.byt(td, q), U32.and(x, 255)), S.S.has(rest, td, U32.add(q, 1)), h))) :
+    {(A.A.from(td), _) == (A.A.from(td), U32.and(x, 255)) : Array<U32> & U32}
+  {==}
+
+# The rest of a list held.
+law VI.tl:
+  for +td: A.Tr
+  for +q: U32
+  for +x: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(x <> rest, td, q) == True{} : Bool}
+  {S.S.has(rest, td, U32.add(q, 1)) == True{} : Bool}
+
+def VI.tl(td, q, x, rest, h):
+  P.Bool.and_r(U32.is_eq(Y.BP.byt(td, q), U32.and(x, 255)), S.S.has(rest, td, U32.add(q, 1)), h)
+
+# A position j steps on, below a bound.
+law VI.pos:
+  for +s: U32
+  for +E: U32
+  for +j: Nat
+  for +h: {Nat.cmp(Nat.add(j, V.U.N(s)), V.U.N(E)) == LT{} : Cmp}
+  {V.U.N(D.WD.step(j, s)) == Nat.add(j, V.U.N(s)) : Nat}
+
+def VI.pos(s, E, j, h):
+  match j:
+    case 0n:
+      {==}
+    case 1n+q:
+      %Equal.sym(Nat, V.U.N(U32.add(D.WD.step(q, s), 1)), 1n+V.U.N(D.WD.step(q, s)), V.U.succ_N(D.WD.step(q, s), E, (%Equal.sym(Nat, V.U.N(D.WD.step(q, s)), Nat.add(q, V.U.N(s)), VI.pos(s, E, q, P.Nat.lt_succ_l(Nat.add(q, V.U.N(s)), V.U.N(E), h))) : {Nat.cmp(_, V.U.N(E)) == LT{} : Cmp}; P.Nat.lt_succ_l(Nat.add(q, V.U.N(s)), V.U.N(E), h)))) :
+        {_ == 1n+Nat.add(q, V.U.N(s)) : Nat}
+      %Equal.sym(Nat, V.U.N(D.WD.step(q, s)), Nat.add(q, V.U.N(s)), VI.pos(s, E, q, P.Nat.lt_succ_l(Nat.add(q, V.U.N(s)), V.U.N(E), h))) :
+        {1n+_ == 1n+Nat.add(q, V.U.N(s)) : Nat}
+      {==}
+
+law VI.pos_lt:
+  for +s: U32
+  for +E: U32
+  for +j: Nat
+  for +h: {Nat.cmp(Nat.add(j, V.U.N(s)), V.U.N(E)) == LT{} : Cmp}
+  {U32.is_lt(D.WD.step(j, s), E) == True{} : Bool}
+
+def VI.pos_lt(s, E, j, h):
+  V.U.N_lt(D.WD.step(j, s), E, (%Equal.sym(Nat, V.U.N(D.WD.step(j, s)), Nat.add(j, V.U.N(s)), VI.pos(s, E, j, h)) : {Nat.cmp(_, V.U.N(E)) == LT{} : Cmp}; h))
+
+
+# Varints
+# =======
+
+# The k low 7-bit groups of v, most significant first, as B.var.put writes
+# them.
+def VI.go(+k: Nat, +v: U32) -> List<&2, U32>:
+  match k:
+    case 0n:
+      []
+    case 1n+p:
+      U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p)))) <> VI.go(p, v)
+
+def VI.var(+v: U32) -> List<&2, U32>:
+  VI.go(U32.to_nat(B.B.var.len(v)), v)
+
+law VI.put_go:
+  for +k: Nat
+  for +t: A.Tr
+  for +pos: U32
+  for +v: U32
+  {B.B.var.put.go(k, A.A.from(t), pos, v) == A.A.from(S.S.puts(VI.go(k, v), t, pos)) : Array<U32>}
+
+def VI.put_go(k, t, pos, v):
+  match k:
+    case 0n:
+      {==}
+    case 1n+p:
+      %Equal.sym(Array<U32>, B.B.put(A.A.from(t), pos, U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p))))), A.A.from(Y.BP.put(t, pos, U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p)))))), Y.BP.put_from(t, pos, U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p)))))) :
+        {B.B.var.put.go(p, _, U32.add(pos, 1), v) == A.A.from(S.S.puts(VI.go(p, v), Y.BP.put(t, pos, U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p))))), U32.add(pos, 1))) : Array<U32>}
+      %Equal.sym(Array<U32>, B.B.var.put.go(p, A.A.from(Y.BP.put(t, pos, U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p)))))), U32.add(pos, 1), v), A.A.from(S.S.puts(VI.go(p, v), Y.BP.put(t, pos, U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p))))), U32.add(pos, 1))), VI.put_go(p, Y.BP.put(t, pos, U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p))))), U32.add(pos, 1), v)) :
+        {_ == A.A.from(S.S.puts(VI.go(p, v), Y.BP.put(t, pos, U32.or(B.B.var.flag(p), U32.and(127, U32.shrn(v, Nat.mul(7n, p))))), U32.add(pos, 1))) : Array<U32>}
+      {==}
+
+# B.var.put writes the bytes of the varint and answers the position after.
+law VI.put:
+  for +t: A.Tr
+  for +pos: U32
+  for +v: U32
+  {B.B.var.put(A.A.from(t), pos, v) == (A.A.from(S.S.puts(VI.var(v), t, pos)), U32.add(pos, B.B.var.len(v))) : Array<U32> & U32}
+
+def VI.put(t, pos, v):
+  %Equal.sym(Array<U32>, B.B.var.put.go(U32.to_nat(B.B.var.len(v)), A.A.from(t), pos, v), A.A.from(S.S.puts(VI.go(U32.to_nat(B.B.var.len(v)), v), t, pos)), VI.put_go(U32.to_nat(B.B.var.len(v)), t, pos, v)) :
+    {(_, U32.add(pos, B.B.var.len(v))) == (A.A.from(S.S.puts(VI.go(U32.to_nat(B.B.var.len(v)), v), t, pos)), U32.add(pos, B.B.var.len(v))) : Array<U32> & U32}
+  {==}
+
+law VI.get1:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.go(1n, v), rest), td, pos) == True{} : Bool}
+  for +hb: {Nat.cmp(Nat.add(0n, V.U.N(pos)), V.U.N(end)) == LT{} : Cmp}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), U32.and(v, 127), U32.add(pos, 1), True{}} : B.VR}
+
+def VI.get1(td, pos, end, v, rest, h, hb):
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), pos), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), VI.rd(td, pos, U32.or(0, U32.and(127, U32.shrn(v, 0n))), rest, h)) :
+    {B.B.var.go(5n, end, 0, pos, True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 127), U32.add(pos, 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), 0, Z.BB.vf0(U32.shrn(v, 0n))) :
+    {B.B.var.go(5n, end, 0, pos, True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 127), U32.add(pos, 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(pos, end), True{}, VI.pos_lt(pos, end, 0n, hb)) :
+    {B.VR{A.A.from(td), U32.or(0, U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(pos, 1), _} == B.VR{A.A.from(td), U32.and(v, 127), U32.add(pos, 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(0, U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.and(v, 127), Z.BB.v1(v)) :
+    {B.VR{A.A.from(td), _, U32.add(pos, 1), True{}} == B.VR{A.A.from(td), U32.and(v, 127), U32.add(pos, 1), True{}} : B.VR}
+  {==}
+
+law VI.get2:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.go(2n, v), rest), td, pos) == True{} : Bool}
+  for +hb: {Nat.cmp(Nat.add(1n, V.U.N(pos)), V.U.N(end)) == LT{} : Cmp}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+
+def VI.get2(td, pos, end, v, rest, h, hb):
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), pos), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)), VI.rd(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 7n))), U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h)) :
+    {B.B.var.go(5n, end, 0, pos, True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 7n))) :
+    {B.B.var.go(5n, end, 0, pos, True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(pos, end), True{}, VI.pos_lt(pos, end, 0n, P.Nat.lt_succ_l(Nat.add(0n, V.U.N(pos)), V.U.N(end), hb))) :
+    {B.B.var.go(4n, end, U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.add(pos, 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(pos, 1)))) == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.shrn(U32.and(v, 16383), 7n), Z.BB.v2f(v)) :
+    {B.B.var.go(4n, end, _, U32.add(pos, 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(pos, 1)))) == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(pos, 1)), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), VI.rd(td, U32.add(pos, 1), U32.or(0, U32.and(127, U32.shrn(v, 0n))), rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 7n))), U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h))) :
+    {B.B.var.go(4n, end, U32.shrn(U32.and(v, 16383), 7n), U32.add(pos, 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), 0, Z.BB.vf0(U32.shrn(v, 0n))) :
+    {B.B.var.go(4n, end, U32.shrn(U32.and(v, 16383), 7n), U32.add(pos, 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(U32.and(v, 16383), 7n), 25n), 0, Z.BB.vfit2_1(v)) :
+    {B.VR{A.A.from(td), U32.or(U32.shln(U32.shrn(U32.and(v, 16383), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(U32.add(pos, 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(pos, 1), end))} == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(pos, 1), end), True{}, VI.pos_lt(pos, end, 1n, hb)) :
+    {B.VR{A.A.from(td), U32.or(U32.shln(U32.shrn(U32.and(v, 16383), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(U32.add(pos, 1), 1), _} == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(U32.and(v, 16383), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.and(v, 16383), Z.BB.v2l(v)) :
+    {B.VR{A.A.from(td), _, U32.add(U32.add(pos, 1), 1), True{}} == B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}} : B.VR}
+  {==}
+
+law VI.get3:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.go(3n, v), rest), td, pos) == True{} : Bool}
+  for +hb: {Nat.cmp(Nat.add(2n, V.U.N(pos)), V.U.N(end)) == LT{} : Cmp}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+
+def VI.get3(td, pos, end, v, rest, h, hb):
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), pos), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)), VI.rd(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h)) :
+    {B.B.var.go(5n, end, 0, pos, True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 14n))) :
+    {B.B.var.go(5n, end, 0, pos, True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(pos, end), True{}, VI.pos_lt(pos, end, 0n, P.Nat.lt_succ_l(Nat.add(0n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(1n, V.U.N(pos)), V.U.N(end), hb)))) :
+    {B.B.var.go(4n, end, U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127)), U32.add(pos, 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(pos, 1)))) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127)), U32.shrn(U32.and(v, 2097151), 14n), Z.BB.v3f(v)) :
+    {B.B.var.go(4n, end, _, U32.add(pos, 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(pos, 1)))) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(pos, 1)), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)), VI.rd(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 7n))), U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h))) :
+    {B.B.var.go(4n, end, U32.shrn(U32.and(v, 2097151), 14n), U32.add(pos, 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 7n))) :
+    {B.B.var.go(4n, end, U32.shrn(U32.and(v, 2097151), 14n), U32.add(pos, 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(U32.and(v, 2097151), 14n), 25n), 0, Z.BB.vfit3_2(v)) :
+    {B.B.var.go(3n, end, U32.or(U32.shln(U32.shrn(U32.and(v, 2097151), 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.add(U32.add(pos, 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(pos, 1), end)), B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(pos, 1), end), True{}, VI.pos_lt(pos, end, 1n, P.Nat.lt_succ_l(Nat.add(1n, V.U.N(pos)), V.U.N(end), hb))) :
+    {B.B.var.go(3n, end, U32.or(U32.shln(U32.shrn(U32.and(v, 2097151), 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.add(U32.add(pos, 1), 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(U32.and(v, 2097151), 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.shrn(U32.and(v, 2097151), 7n), Z.BB.v3m1(v)) :
+    {B.B.var.go(3n, end, _, U32.add(U32.add(pos, 1), 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), VI.rd(td, U32.add(U32.add(pos, 1), 1), U32.or(0, U32.and(127, U32.shrn(v, 0n))), rest, VI.tl(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 7n))), U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h)))) :
+    {B.B.var.go(3n, end, U32.shrn(U32.and(v, 2097151), 7n), U32.add(U32.add(pos, 1), 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), 0, Z.BB.vf0(U32.shrn(v, 0n))) :
+    {B.B.var.go(3n, end, U32.shrn(U32.and(v, 2097151), 7n), U32.add(U32.add(pos, 1), 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(U32.and(v, 2097151), 7n), 25n), 0, Z.BB.vfit3_1(v)) :
+    {B.VR{A.A.from(td), U32.or(U32.shln(U32.shrn(U32.and(v, 2097151), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(U32.add(U32.add(pos, 1), 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(U32.add(pos, 1), 1), end))} == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(U32.add(pos, 1), 1), end), True{}, VI.pos_lt(pos, end, 2n, hb)) :
+    {B.VR{A.A.from(td), U32.or(U32.shln(U32.shrn(U32.and(v, 2097151), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(U32.add(U32.add(pos, 1), 1), 1), _} == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(U32.and(v, 2097151), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.and(v, 2097151), Z.BB.v3l(v)) :
+    {B.VR{A.A.from(td), _, U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} == B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} : B.VR}
+  {==}
+
+law VI.get4:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.go(4n, v), rest), td, pos) == True{} : Bool}
+  for +hb: {Nat.cmp(Nat.add(3n, V.U.N(pos)), V.U.N(end)) == LT{} : Cmp}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+
+def VI.get4(td, pos, end, v, rest, h, hb):
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), pos), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255)), VI.rd(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 21n))), U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h)) :
+    {B.B.var.go(5n, end, 0, pos, True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 21n))) :
+    {B.B.var.go(5n, end, 0, pos, True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(pos, end), True{}, VI.pos_lt(pos, end, 0n, P.Nat.lt_succ_l(Nat.add(0n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(1n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(2n, V.U.N(pos)), V.U.N(end), hb))))) :
+    {B.B.var.go(4n, end, U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255), 127)), U32.add(pos, 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(pos, 1)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255), 127)), U32.shrn(U32.and(v, 268435455), 21n), Z.BB.v4f(v)) :
+    {B.B.var.go(4n, end, _, U32.add(pos, 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(pos, 1)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(pos, 1)), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)), VI.rd(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 21n))), U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h))) :
+    {B.B.var.go(4n, end, U32.shrn(U32.and(v, 268435455), 21n), U32.add(pos, 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 14n))) :
+    {B.B.var.go(4n, end, U32.shrn(U32.and(v, 268435455), 21n), U32.add(pos, 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(U32.and(v, 268435455), 21n), 25n), 0, Z.BB.vfit4_3(v)) :
+    {B.B.var.go(3n, end, U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 21n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127)), U32.add(U32.add(pos, 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(pos, 1), end)), B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(pos, 1), end), True{}, VI.pos_lt(pos, end, 1n, P.Nat.lt_succ_l(Nat.add(1n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(2n, V.U.N(pos)), V.U.N(end), hb)))) :
+    {B.B.var.go(3n, end, U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 21n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127)), U32.add(U32.add(pos, 1), 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 21n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127)), U32.shrn(U32.and(v, 268435455), 14n), Z.BB.v4m2(v)) :
+    {B.B.var.go(3n, end, _, U32.add(U32.add(pos, 1), 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)), VI.rd(td, U32.add(U32.add(pos, 1), 1), U32.or(128, U32.and(127, U32.shrn(v, 7n))), U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 21n))), U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h)))) :
+    {B.B.var.go(3n, end, U32.shrn(U32.and(v, 268435455), 14n), U32.add(U32.add(pos, 1), 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 7n))) :
+    {B.B.var.go(3n, end, U32.shrn(U32.and(v, 268435455), 14n), U32.add(U32.add(pos, 1), 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(U32.and(v, 268435455), 14n), 25n), 0, Z.BB.vfit4_2(v)) :
+    {B.B.var.go(2n, end, U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.add(U32.add(U32.add(pos, 1), 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(U32.add(pos, 1), 1), end)), B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(pos, 1), 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(U32.add(pos, 1), 1), end), True{}, VI.pos_lt(pos, end, 2n, P.Nat.lt_succ_l(Nat.add(2n, V.U.N(pos)), V.U.N(end), hb))) :
+    {B.B.var.go(2n, end, U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.add(U32.add(U32.add(pos, 1), 1), 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(pos, 1), 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.shrn(U32.and(v, 268435455), 7n), Z.BB.v4m1(v)) :
+    {B.B.var.go(2n, end, _, U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(pos, 1), 1), 1)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(U32.add(U32.add(pos, 1), 1), 1)), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), VI.rd(td, U32.add(U32.add(U32.add(pos, 1), 1), 1), U32.or(0, U32.and(127, U32.shrn(v, 0n))), rest, VI.tl(td, U32.add(U32.add(pos, 1), 1), U32.or(128, U32.and(127, U32.shrn(v, 7n))), U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 21n))), U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h))))) :
+    {B.B.var.go(2n, end, U32.shrn(U32.and(v, 268435455), 7n), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), 0, Z.BB.vf0(U32.shrn(v, 0n))) :
+    {B.B.var.go(2n, end, U32.shrn(U32.and(v, 268435455), 7n), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)))) == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(U32.and(v, 268435455), 7n), 25n), 0, Z.BB.vfit4_1(v)) :
+    {B.VR{A.A.from(td), U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(U32.add(U32.add(pos, 1), 1), 1), end))} == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(U32.add(U32.add(pos, 1), 1), 1), end), True{}, VI.pos_lt(pos, end, 3n, hb)) :
+    {B.VR{A.A.from(td), U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), _} == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.and(v, 268435455), Z.BB.v4l(v)) :
+    {B.VR{A.A.from(td), _, U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} == B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} : B.VR}
+  {==}
+
+law VI.get5:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.go(5n, v), rest), td, pos) == True{} : Bool}
+  for +hb: {Nat.cmp(Nat.add(4n, V.U.N(pos)), V.U.N(end)) == LT{} : Cmp}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+
+def VI.get5(td, pos, end, v, rest, h, hb):
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), pos), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 28n))), 255)), VI.rd(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 28n))), U32.or(128, U32.and(127, U32.shrn(v, 21n))) <> U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h)) :
+    {B.B.var.go(5n, end, 0, pos, True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 28n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 28n))) :
+    {B.B.var.go(5n, end, 0, pos, True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 28n))), 255)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(pos, end), True{}, VI.pos_lt(pos, end, 0n, P.Nat.lt_succ_l(Nat.add(0n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(1n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(2n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(3n, V.U.N(pos)), V.U.N(end), hb)))))) :
+    {B.B.var.go(4n, end, U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 28n))), 255), 127)), U32.add(pos, 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(pos, 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 28n))), 255), 127)), U32.shrn(v, 28n), Z.BB.v5f(v)) :
+    {B.B.var.go(4n, end, _, U32.add(pos, 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(pos, 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(pos, 1)), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255)), VI.rd(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 21n))), U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 28n))), U32.or(128, U32.and(127, U32.shrn(v, 21n))) <> U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h))) :
+    {B.B.var.go(4n, end, U32.shrn(v, 28n), U32.add(pos, 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 21n))) :
+    {B.B.var.go(4n, end, U32.shrn(v, 28n), U32.add(pos, 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(v, 28n), 25n), 0, Z.BB.vfit5_4(v)) :
+    {B.B.var.go(3n, end, U32.or(U32.shln(U32.shrn(v, 28n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255), 127)), U32.add(U32.add(pos, 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(pos, 1), end)), B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(pos, 1), end), True{}, VI.pos_lt(pos, end, 1n, P.Nat.lt_succ_l(Nat.add(1n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(2n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(3n, V.U.N(pos)), V.U.N(end), hb))))) :
+    {B.B.var.go(3n, end, U32.or(U32.shln(U32.shrn(v, 28n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255), 127)), U32.add(U32.add(pos, 1), 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(v, 28n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255), 127)), U32.shrn(v, 21n), Z.BB.v5m3(v)) :
+    {B.B.var.go(3n, end, _, U32.add(U32.add(pos, 1), 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(U32.add(pos, 1), 1)), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)), VI.rd(td, U32.add(U32.add(pos, 1), 1), U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 21n))), U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 28n))), U32.or(128, U32.and(127, U32.shrn(v, 21n))) <> U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h)))) :
+    {B.B.var.go(3n, end, U32.shrn(v, 21n), U32.add(U32.add(pos, 1), 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 14n))) :
+    {B.B.var.go(3n, end, U32.shrn(v, 21n), U32.add(U32.add(pos, 1), 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(v, 21n), 25n), 0, Z.BB.vfit5_3(v)) :
+    {B.B.var.go(2n, end, U32.or(U32.shln(U32.shrn(v, 21n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127)), U32.add(U32.add(U32.add(pos, 1), 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(U32.add(pos, 1), 1), end)), B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(pos, 1), 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(U32.add(pos, 1), 1), end), True{}, VI.pos_lt(pos, end, 2n, P.Nat.lt_succ_l(Nat.add(2n, V.U.N(pos)), V.U.N(end), P.Nat.lt_succ_l(Nat.add(3n, V.U.N(pos)), V.U.N(end), hb)))) :
+    {B.B.var.go(2n, end, U32.or(U32.shln(U32.shrn(v, 21n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127)), U32.add(U32.add(U32.add(pos, 1), 1), 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(pos, 1), 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(v, 21n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127)), U32.shrn(v, 14n), Z.BB.v5m2(v)) :
+    {B.B.var.go(2n, end, _, U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(pos, 1), 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(U32.add(U32.add(pos, 1), 1), 1)), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)), VI.rd(td, U32.add(U32.add(U32.add(pos, 1), 1), 1), U32.or(128, U32.and(127, U32.shrn(v, 7n))), U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, U32.add(U32.add(pos, 1), 1), U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 21n))), U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 28n))), U32.or(128, U32.and(127, U32.shrn(v, 21n))) <> U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h))))) :
+    {B.B.var.go(2n, end, U32.shrn(v, 14n), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)), 128, Z.BB.vf1(U32.shrn(v, 7n))) :
+    {B.B.var.go(2n, end, U32.shrn(v, 14n), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(v, 14n), 25n), 0, Z.BB.vfit5_2(v)) :
+    {B.B.var.go(1n, end, U32.or(U32.shln(U32.shrn(v, 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(U32.add(U32.add(pos, 1), 1), 1), end)), B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(U32.add(U32.add(pos, 1), 1), 1), end), True{}, VI.pos_lt(pos, end, 3n, P.Nat.lt_succ_l(Nat.add(3n, V.U.N(pos)), V.U.N(end), hb))) :
+    {B.B.var.go(1n, end, U32.or(U32.shln(U32.shrn(v, 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), _, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(v, 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127)), U32.shrn(v, 7n), Z.BB.v5m1(v)) :
+    {B.B.var.go(1n, end, _, U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}, B.B.var.cont(B.B.get(A.A.from(td), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1)), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), VI.rd(td, U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), U32.or(0, U32.and(127, U32.shrn(v, 0n))), rest, VI.tl(td, U32.add(U32.add(U32.add(pos, 1), 1), 1), U32.or(128, U32.and(127, U32.shrn(v, 7n))), U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, U32.add(U32.add(pos, 1), 1), U32.or(128, U32.and(127, U32.shrn(v, 14n))), U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, U32.add(pos, 1), U32.or(128, U32.and(127, U32.shrn(v, 21n))), U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, VI.tl(td, pos, U32.or(128, U32.and(127, U32.shrn(v, 28n))), U32.or(128, U32.and(127, U32.shrn(v, 21n))) <> U32.or(128, U32.and(127, U32.shrn(v, 14n))) <> U32.or(128, U32.and(127, U32.shrn(v, 7n))) <> U32.or(0, U32.and(127, U32.shrn(v, 0n))) <> rest, h)))))) :
+    {B.B.var.go(1n, end, U32.shrn(v, 7n), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}, B.B.var.cont(_)) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(128, U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), 0, Z.BB.vf0(U32.shrn(v, 0n))) :
+    {B.B.var.go(1n, end, U32.shrn(v, 7n), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}, (U32.is_ne(_, 0), (A.A.from(td), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)))) == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.shrn(U32.shrn(v, 7n), 25n), 0, Z.BB.vfit5_1(v)) :
+    {B.VR{A.A.from(td), U32.or(U32.shln(U32.shrn(v, 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), Bool.and(U32.is_eq(_, 0), U32.is_lt(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), end))} == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(Bool, U32.is_lt(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), end), True{}, VI.pos_lt(pos, end, 4n, hb)) :
+    {B.VR{A.A.from(td), U32.or(U32.shln(U32.shrn(v, 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), _} == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(v, 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255)), v, Z.BB.v5l(v)) :
+    {B.VR{A.A.from(td), _, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} == B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}} : B.VR}
+  {==}
+
+law VI.step2:
+  for +x: U32
+  {D.WD.step(2n, x) == U32.add(x, 2) : U32}
+
+def VI.step2(x):
+  %Equal.sym(U32, U32.add(U32.add(x, 1), 1), U32.add(x, 2), V.U.add_assoc(x, 1, 1)) :
+    {_ == U32.add(x, 2) : U32}
+  {==}
+
+law VI.step3:
+  for +x: U32
+  {D.WD.step(3n, x) == U32.add(x, 3) : U32}
+
+def VI.step3(x):
+  %Equal.sym(U32, U32.add(U32.add(x, 1), 1), U32.add(x, 2), V.U.add_assoc(x, 1, 1)) :
+    {U32.add(_, 1) == U32.add(x, 3) : U32}
+  %Equal.sym(U32, U32.add(U32.add(x, 2), 1), U32.add(x, 3), V.U.add_assoc(x, 2, 1)) :
+    {_ == U32.add(x, 3) : U32}
+  {==}
+
+law VI.step4:
+  for +x: U32
+  {D.WD.step(4n, x) == U32.add(x, 4) : U32}
+
+def VI.step4(x):
+  %Equal.sym(U32, U32.add(U32.add(x, 1), 1), U32.add(x, 2), V.U.add_assoc(x, 1, 1)) :
+    {U32.add(U32.add(_, 1), 1) == U32.add(x, 4) : U32}
+  %Equal.sym(U32, U32.add(U32.add(x, 2), 1), U32.add(x, 3), V.U.add_assoc(x, 2, 1)) :
+    {U32.add(_, 1) == U32.add(x, 4) : U32}
+  %Equal.sym(U32, U32.add(U32.add(x, 3), 1), U32.add(x, 4), V.U.add_assoc(x, 3, 1)) :
+    {_ == U32.add(x, 4) : U32}
+  {==}
+
+law VI.step5:
+  for +x: U32
+  {D.WD.step(5n, x) == U32.add(x, 5) : U32}
+
+def VI.step5(x):
+  %Equal.sym(U32, U32.add(U32.add(x, 1), 1), U32.add(x, 2), V.U.add_assoc(x, 1, 1)) :
+    {U32.add(U32.add(U32.add(_, 1), 1), 1) == U32.add(x, 5) : U32}
+  %Equal.sym(U32, U32.add(U32.add(x, 2), 1), U32.add(x, 3), V.U.add_assoc(x, 2, 1)) :
+    {U32.add(U32.add(_, 1), 1) == U32.add(x, 5) : U32}
+  %Equal.sym(U32, U32.add(U32.add(x, 3), 1), U32.add(x, 4), V.U.add_assoc(x, 3, 1)) :
+    {U32.add(_, 1) == U32.add(x, 5) : U32}
+  %Equal.sym(U32, U32.add(U32.add(x, 4), 1), U32.add(x, 5), V.U.add_assoc(x, 4, 1)) :
+    {_ == U32.add(x, 5) : U32}
+  {==}
+
+# The bound on the last byte of a varint of 1 + k bytes.
+law VI.last:
+  for +k: Nat
+  for +pos: U32
+  for +end: U32
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(1n+k, V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  {Nat.cmp(Nat.add(k, V.U.N(pos)), V.U.N(end)) == LT{} : Cmp}
+
+def VI.last(k, pos, end, hb):
+  D.WD.lt_of_succ_le(Nat.add(k, V.U.N(pos)), V.U.N(end), hb)
+
+law VI.len1:
+  for +v: U32
+  for +ek: {U32.is_lt(v, 128) == True{} : Bool}
+  {B.B.var.len(v) == 1 : U32}
+
+def VI.len1(v, ek):
+  %Equal.sym(Bool, U32.is_lt(v, 128), True{}, ek) :
+    {B.u32.pick(_, 1, B.u32.pick(U32.is_lt(v, 16384), 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 1 : U32}
+  {==}
+
+law VI.get.k1:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +ek: {U32.is_lt(v, 128) == True{} : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.k1(td, pos, end, v, rest, h, hb, ek):
+  %Equal.sym(U32, B.B.var.len(v), 1, VI.len1(v, ek)) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, _), True{}} : B.VR}
+  %Equal.sym(B.VR, B.B.var.get(A.A.from(td), pos, end), B.VR{A.A.from(td), U32.and(v, 127), U32.add(pos, 1), True{}}, VI.get1(td, pos, end, v, rest, (%VI.len1(v, ek) : {S.S.has(D.WD.app(VI.go(U32.to_nat(_), v), rest), td, pos) == True{} : Bool}; h), VI.last(0n, pos, end, (%VI.len1(v, ek) : {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(_), V.U.N(pos)), V.U.N(end))) == True{} : Bool}; hb)))) :
+    {_ == B.VR{A.A.from(td), v, U32.add(pos, 1), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(v, 127), v, V.U.mask_id(v, 7n, {==}, ek)) :
+    {B.VR{A.A.from(td), _, U32.add(pos, 1), True{}} == B.VR{A.A.from(td), v, U32.add(pos, 1), True{}} : B.VR}
+  {==}
+
+law VI.len2:
+  for +v: U32
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +ek: {U32.is_lt(v, 16384) == True{} : Bool}
+  {B.B.var.len(v) == 2 : U32}
+
+def VI.len2(v, e1, ek):
+  %Equal.sym(Bool, U32.is_lt(v, 128), False{}, e1) :
+    {B.u32.pick(_, 1, B.u32.pick(U32.is_lt(v, 16384), 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 2 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 16384), True{}, ek) :
+    {B.u32.pick(False{}, 1, B.u32.pick(_, 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 2 : U32}
+  {==}
+
+law VI.get.k2:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +ek: {U32.is_lt(v, 16384) == True{} : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.k2(td, pos, end, v, rest, h, hb, e1, ek):
+  %Equal.sym(U32, B.B.var.len(v), 2, VI.len2(v, e1, ek)) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, _), True{}} : B.VR}
+  %VI.step2(pos) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, _, True{}} : B.VR}
+  %Equal.sym(B.VR, B.B.var.get(A.A.from(td), pos, end), B.VR{A.A.from(td), U32.and(v, 16383), U32.add(U32.add(pos, 1), 1), True{}}, VI.get2(td, pos, end, v, rest, (%VI.len2(v, e1, ek) : {S.S.has(D.WD.app(VI.go(U32.to_nat(_), v), rest), td, pos) == True{} : Bool}; h), VI.last(1n, pos, end, (%VI.len2(v, e1, ek) : {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(_), V.U.N(pos)), V.U.N(end))) == True{} : Bool}; hb)))) :
+    {_ == B.VR{A.A.from(td), v, D.WD.step(2n, pos), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(v, 16383), v, V.U.mask_id(v, 14n, {==}, ek)) :
+    {B.VR{A.A.from(td), _, U32.add(U32.add(pos, 1), 1), True{}} == B.VR{A.A.from(td), v, D.WD.step(2n, pos), True{}} : B.VR}
+  {==}
+
+law VI.len3:
+  for +v: U32
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +e2: {U32.is_lt(v, 16384) == False{} : Bool}
+  for +ek: {U32.is_lt(v, 2097152) == True{} : Bool}
+  {B.B.var.len(v) == 3 : U32}
+
+def VI.len3(v, e1, e2, ek):
+  %Equal.sym(Bool, U32.is_lt(v, 128), False{}, e1) :
+    {B.u32.pick(_, 1, B.u32.pick(U32.is_lt(v, 16384), 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 3 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 16384), False{}, e2) :
+    {B.u32.pick(False{}, 1, B.u32.pick(_, 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 3 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 2097152), True{}, ek) :
+    {B.u32.pick(False{}, 1, B.u32.pick(False{}, 2, B.u32.pick(_, 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 3 : U32}
+  {==}
+
+law VI.get.k3:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +e2: {U32.is_lt(v, 16384) == False{} : Bool}
+  for +ek: {U32.is_lt(v, 2097152) == True{} : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.k3(td, pos, end, v, rest, h, hb, e1, e2, ek):
+  %Equal.sym(U32, B.B.var.len(v), 3, VI.len3(v, e1, e2, ek)) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, _), True{}} : B.VR}
+  %VI.step3(pos) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, _, True{}} : B.VR}
+  %Equal.sym(B.VR, B.B.var.get(A.A.from(td), pos, end), B.VR{A.A.from(td), U32.and(v, 2097151), U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}}, VI.get3(td, pos, end, v, rest, (%VI.len3(v, e1, e2, ek) : {S.S.has(D.WD.app(VI.go(U32.to_nat(_), v), rest), td, pos) == True{} : Bool}; h), VI.last(2n, pos, end, (%VI.len3(v, e1, e2, ek) : {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(_), V.U.N(pos)), V.U.N(end))) == True{} : Bool}; hb)))) :
+    {_ == B.VR{A.A.from(td), v, D.WD.step(3n, pos), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(v, 2097151), v, V.U.mask_id(v, 21n, {==}, ek)) :
+    {B.VR{A.A.from(td), _, U32.add(U32.add(U32.add(pos, 1), 1), 1), True{}} == B.VR{A.A.from(td), v, D.WD.step(3n, pos), True{}} : B.VR}
+  {==}
+
+law VI.len4:
+  for +v: U32
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +e2: {U32.is_lt(v, 16384) == False{} : Bool}
+  for +e3: {U32.is_lt(v, 2097152) == False{} : Bool}
+  for +ek: {U32.is_lt(v, 268435456) == True{} : Bool}
+  {B.B.var.len(v) == 4 : U32}
+
+def VI.len4(v, e1, e2, e3, ek):
+  %Equal.sym(Bool, U32.is_lt(v, 128), False{}, e1) :
+    {B.u32.pick(_, 1, B.u32.pick(U32.is_lt(v, 16384), 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 4 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 16384), False{}, e2) :
+    {B.u32.pick(False{}, 1, B.u32.pick(_, 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 4 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 2097152), False{}, e3) :
+    {B.u32.pick(False{}, 1, B.u32.pick(False{}, 2, B.u32.pick(_, 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 4 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 268435456), True{}, ek) :
+    {B.u32.pick(False{}, 1, B.u32.pick(False{}, 2, B.u32.pick(False{}, 3, B.u32.pick(_, 4, 5)))) == 4 : U32}
+  {==}
+
+law VI.get.k4:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +e2: {U32.is_lt(v, 16384) == False{} : Bool}
+  for +e3: {U32.is_lt(v, 2097152) == False{} : Bool}
+  for +ek: {U32.is_lt(v, 268435456) == True{} : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.k4(td, pos, end, v, rest, h, hb, e1, e2, e3, ek):
+  %Equal.sym(U32, B.B.var.len(v), 4, VI.len4(v, e1, e2, e3, ek)) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, _), True{}} : B.VR}
+  %VI.step4(pos) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, _, True{}} : B.VR}
+  %Equal.sym(B.VR, B.B.var.get(A.A.from(td), pos, end), B.VR{A.A.from(td), U32.and(v, 268435455), U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}}, VI.get4(td, pos, end, v, rest, (%VI.len4(v, e1, e2, e3, ek) : {S.S.has(D.WD.app(VI.go(U32.to_nat(_), v), rest), td, pos) == True{} : Bool}; h), VI.last(3n, pos, end, (%VI.len4(v, e1, e2, e3, ek) : {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(_), V.U.N(pos)), V.U.N(end))) == True{} : Bool}; hb)))) :
+    {_ == B.VR{A.A.from(td), v, D.WD.step(4n, pos), True{}} : B.VR}
+  %Equal.sym(U32, U32.and(v, 268435455), v, V.U.mask_id(v, 28n, {==}, ek)) :
+    {B.VR{A.A.from(td), _, U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), True{}} == B.VR{A.A.from(td), v, D.WD.step(4n, pos), True{}} : B.VR}
+  {==}
+
+law VI.len5:
+  for +v: U32
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +e2: {U32.is_lt(v, 16384) == False{} : Bool}
+  for +e3: {U32.is_lt(v, 2097152) == False{} : Bool}
+  for +e4: {U32.is_lt(v, 268435456) == False{} : Bool}
+  {B.B.var.len(v) == 5 : U32}
+
+def VI.len5(v, e1, e2, e3, e4):
+  %Equal.sym(Bool, U32.is_lt(v, 128), False{}, e1) :
+    {B.u32.pick(_, 1, B.u32.pick(U32.is_lt(v, 16384), 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 5 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 16384), False{}, e2) :
+    {B.u32.pick(False{}, 1, B.u32.pick(_, 2, B.u32.pick(U32.is_lt(v, 2097152), 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 5 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 2097152), False{}, e3) :
+    {B.u32.pick(False{}, 1, B.u32.pick(False{}, 2, B.u32.pick(_, 3, B.u32.pick(U32.is_lt(v, 268435456), 4, 5)))) == 5 : U32}
+  %Equal.sym(Bool, U32.is_lt(v, 268435456), False{}, e4) :
+    {B.u32.pick(False{}, 1, B.u32.pick(False{}, 2, B.u32.pick(False{}, 3, B.u32.pick(_, 4, 5)))) == 5 : U32}
+  {==}
+
+law VI.get.k5:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +e2: {U32.is_lt(v, 16384) == False{} : Bool}
+  for +e3: {U32.is_lt(v, 2097152) == False{} : Bool}
+  for +e4: {U32.is_lt(v, 268435456) == False{} : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.k5(td, pos, end, v, rest, h, hb, e1, e2, e3, e4):
+  %Equal.sym(U32, B.B.var.len(v), 5, VI.len5(v, e1, e2, e3, e4)) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, _), True{}} : B.VR}
+  %VI.step5(pos) :
+    {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, _, True{}} : B.VR}
+  %Equal.sym(B.VR, B.B.var.get(A.A.from(td), pos, end), B.VR{A.A.from(td), v, U32.add(U32.add(U32.add(U32.add(U32.add(pos, 1), 1), 1), 1), 1), True{}}, VI.get5(td, pos, end, v, rest, (%VI.len5(v, e1, e2, e3, e4) : {S.S.has(D.WD.app(VI.go(U32.to_nat(_), v), rest), td, pos) == True{} : Bool}; h), VI.last(4n, pos, end, (%VI.len5(v, e1, e2, e3, e4) : {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(_), V.U.N(pos)), V.U.N(end))) == True{} : Bool}; hb)))) :
+    {_ == B.VR{A.A.from(td), v, D.WD.step(5n, pos), True{}} : B.VR}
+  {==}
+
+law VI.get.c4:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +e2: {U32.is_lt(v, 16384) == False{} : Bool}
+  for +e3: {U32.is_lt(v, 2097152) == False{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_lt(v, 268435456) == c : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.c4(td, pos, end, v, rest, h, hb, e1, e2, e3, c, ec):
+  match c:
+    case True{}:
+      VI.get.k4(td, pos, end, v, rest, h, hb, e1, e2, e3, ec)
+    case False{}:
+      VI.get.k5(td, pos, end, v, rest, h, hb, e1, e2, e3, ec)
+
+law VI.get.c3:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +e2: {U32.is_lt(v, 16384) == False{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_lt(v, 2097152) == c : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.c3(td, pos, end, v, rest, h, hb, e1, e2, c, ec):
+  match c:
+    case True{}:
+      VI.get.k3(td, pos, end, v, rest, h, hb, e1, e2, ec)
+    case False{}:
+      VI.get.c4(td, pos, end, v, rest, h, hb, e1, e2, ec, U32.is_lt(v, 268435456), {==})
+
+law VI.get.c2:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +e1: {U32.is_lt(v, 128) == False{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_lt(v, 16384) == c : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.c2(td, pos, end, v, rest, h, hb, e1, c, ec):
+  match c:
+    case True{}:
+      VI.get.k2(td, pos, end, v, rest, h, hb, e1, ec)
+    case False{}:
+      VI.get.c3(td, pos, end, v, rest, h, hb, e1, ec, U32.is_lt(v, 2097152), {==})
+
+law VI.get.c1:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_lt(v, 128) == c : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get.c1(td, pos, end, v, rest, h, hb, c, ec):
+  match c:
+    case True{}:
+      VI.get.k1(td, pos, end, v, rest, h, hb, ec)
+    case False{}:
+      VI.get.c2(td, pos, end, v, rest, h, hb, ec, U32.is_lt(v, 16384), {==})
+
+# B.var.get reads back the varint B.var.put writes.
+law VI.get:
+  for +td: A.Tr
+  for +pos: U32
+  for +end: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(D.WD.app(VI.var(v), rest), td, pos) == True{} : Bool}
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(pos)), V.U.N(end))) == True{} : Bool}
+  {B.B.var.get(A.A.from(td), pos, end) == B.VR{A.A.from(td), v, U32.add(pos, B.B.var.len(v)), True{}} : B.VR}
+
+def VI.get(td, pos, end, v, rest, h, hb):
+  VI.get.c1(td, pos, end, v, rest, h, hb, U32.is_lt(v, 128), {==})

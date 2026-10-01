@@ -136,3 +136,111 @@ id BB.xor0 a
 id BB.and255 v
   lhs U32.and(U32.and(v, 255), 255)
   rhs U32.and(v, 255)
+
+id BB.v1 v
+  lhs U32.or(0, U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255))
+  rhs U32.and(v, 127)
+
+id BB.v2f v
+  lhs U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127))
+  rhs U32.shrn(U32.and(v, 16383), 7n)
+
+id BB.v2l v
+  lhs U32.or(U32.shln(U32.shrn(U32.and(v, 16383), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255))
+  rhs U32.and(v, 16383)
+
+id BB.vfit2_1 v
+  lhs U32.shrn(U32.shrn(U32.and(v, 16383), 7n), 25n)
+  rhs 0
+
+id BB.v3f v
+  lhs U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127))
+  rhs U32.shrn(U32.and(v, 2097151), 14n)
+
+id BB.v3m1 v
+  lhs U32.or(U32.shln(U32.shrn(U32.and(v, 2097151), 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127))
+  rhs U32.shrn(U32.and(v, 2097151), 7n)
+
+id BB.v3l v
+  lhs U32.or(U32.shln(U32.shrn(U32.and(v, 2097151), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255))
+  rhs U32.and(v, 2097151)
+
+id BB.vfit3_1 v
+  lhs U32.shrn(U32.shrn(U32.and(v, 2097151), 7n), 25n)
+  rhs 0
+
+id BB.vfit3_2 v
+  lhs U32.shrn(U32.shrn(U32.and(v, 2097151), 14n), 25n)
+  rhs 0
+
+id BB.v4f v
+  lhs U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255), 127))
+  rhs U32.shrn(U32.and(v, 268435455), 21n)
+
+id BB.v4m2 v
+  lhs U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 21n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127))
+  rhs U32.shrn(U32.and(v, 268435455), 14n)
+
+id BB.v4m1 v
+  lhs U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127))
+  rhs U32.shrn(U32.and(v, 268435455), 7n)
+
+id BB.v4l v
+  lhs U32.or(U32.shln(U32.shrn(U32.and(v, 268435455), 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255))
+  rhs U32.and(v, 268435455)
+
+id BB.vfit4_1 v
+  lhs U32.shrn(U32.shrn(U32.and(v, 268435455), 7n), 25n)
+  rhs 0
+
+id BB.vfit4_2 v
+  lhs U32.shrn(U32.shrn(U32.and(v, 268435455), 14n), 25n)
+  rhs 0
+
+id BB.vfit4_3 v
+  lhs U32.shrn(U32.shrn(U32.and(v, 268435455), 21n), 25n)
+  rhs 0
+
+id BB.v5f v
+  lhs U32.or(0, U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 28n))), 255), 127))
+  rhs U32.shrn(v, 28n)
+
+id BB.v5m3 v
+  lhs U32.or(U32.shln(U32.shrn(v, 28n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 21n))), 255), 127))
+  rhs U32.shrn(v, 21n)
+
+id BB.v5m2 v
+  lhs U32.or(U32.shln(U32.shrn(v, 21n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 14n))), 255), 127))
+  rhs U32.shrn(v, 14n)
+
+id BB.v5m1 v
+  lhs U32.or(U32.shln(U32.shrn(v, 14n), 7n), U32.and(U32.and(U32.or(128, U32.and(127, U32.shrn(v, 7n))), 255), 127))
+  rhs U32.shrn(v, 7n)
+
+id BB.v5l v
+  lhs U32.or(U32.shln(U32.shrn(v, 7n), 7n), U32.and(U32.or(0, U32.and(127, U32.shrn(v, 0n))), 255))
+  rhs v
+
+id BB.vfit5_1 v
+  lhs U32.shrn(U32.shrn(v, 7n), 25n)
+  rhs 0
+
+id BB.vfit5_2 v
+  lhs U32.shrn(U32.shrn(v, 14n), 25n)
+  rhs 0
+
+id BB.vfit5_3 v
+  lhs U32.shrn(U32.shrn(v, 21n), 25n)
+  rhs 0
+
+id BB.vfit5_4 v
+  lhs U32.shrn(U32.shrn(v, 28n), 25n)
+  rhs 0
+
+id BB.vf1 x
+  lhs U32.and(128, U32.and(U32.or(128, U32.and(127, x)), 255))
+  rhs 128
+
+id BB.vf0 x
+  lhs U32.and(128, U32.and(U32.or(0, U32.and(127, x)), 255))
+  rhs 0

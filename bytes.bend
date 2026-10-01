@@ -403,10 +403,10 @@ def B.var.go(n: Nat, +end: U32, +acc: U32, +pos: U32, ok: Bool,
     case 0n Tuple{c, Tuple{a, b}}:
       VR{a, acc, pos, False{}}
     case 1n+p Tuple{False{}, Tuple{a, b}}:
-      +fits = (acc < 33554432 : U32) && (pos < end : U32)
+      +fits = U32.is_eq((acc >> 25n : U32), 0) && (pos < end : U32)
       VR{a, ((acc << 7n : U32) .|. b : U32), (pos + 1 : U32), ok && fits}
     case 1n+p Tuple{True{}, Tuple{a, b}}:
-      +fits = (acc < 33554432 : U32) && (pos < end : U32)
+      +fits = U32.is_eq((acc >> 25n : U32), 0) && (pos < end : U32)
       +next = (pos + 1 : U32)
       B.var.go(p, end, ((acc << 7n : U32) .|. (b .&. 127 : U32) : U32), next,
         ok && fits, B.var.cont(B.get(a, next)))

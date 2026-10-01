@@ -910,3 +910,17 @@ def WD.shl2(x):
   %Equal.sym(Nat, V.U.N(U32.shl(U32.shrn(x, 2n))), Nat.double(V.U.N(U32.shrn(x, 2n))), V.U.N_shl(U32.shrn(x, 2n), (%Equal.sym(Bool, V.U.bit(U32.shrn(x, 2n), 31n), V.U.bit(x, 33n), V.U.bit_shrn(x, 2n, 31n)) : {_ == False{} : Bool}; V.U.bit_beyond(x, 33n, {==})))) :
     {Nat.double(_) == Nat.double(Nat.double(V.U.N(U32.shrn(x, 2n)))) : Nat}
   {==}
+
+# Four single steps are a step of four.
+law WD.step4:
+  for +x: U32
+  {WD.step(4n, x) == U32.add(x, 4) : U32}
+
+def WD.step4(x):
+  %Equal.sym(U32, U32.add(U32.add(x, 1), 1), U32.add(x, 2), V.U.add_assoc(x, 1, 1)) :
+    {U32.add(U32.add(_, 1), 1) == U32.add(x, 4) : U32}
+  %Equal.sym(U32, U32.add(U32.add(x, 2), 1), U32.add(x, 3), V.U.add_assoc(x, 2, 1)) :
+    {U32.add(_, 1) == U32.add(x, 4) : U32}
+  %Equal.sym(U32, U32.add(U32.add(x, 3), 1), U32.add(x, 4), V.U.add_assoc(x, 3, 1)) :
+    {_ == U32.add(x, 4) : U32}
+  {==}
