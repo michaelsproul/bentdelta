@@ -719,3 +719,74 @@ def Nat.cmp_eq(a, b, e):
     case 1n+p 1n+q:
       %Nat.cmp_eq(p, q, e) : {1n+p == 1n+_ : Nat}
       {==}
+
+# x + P = a + b with b < P gives x < a.
+law Nat.lt_of_sum:
+  for +x: Nat
+  for +p: Nat
+  for +a: Nat
+  for +b: Nat
+  for e: {Nat.add(x, p) == Nat.add(a, b) : Nat}
+  for h: {Nat.cmp(b, p) == LT{} : Cmp}
+  {Nat.cmp(x, a) == LT{} : Cmp}
+
+# Adding the same on the right keeps the order.
+law Nat.cmp_add_rr:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  {Nat.cmp(Nat.add(a, c), Nat.add(b, c)) == Nat.cmp(a, b) : Cmp}
+
+def Nat.cmp_add_rr(a, b, c):
+  %Nat.add_comm(c, a) : {Nat.cmp(_, Nat.add(b, c)) == Nat.cmp(a, b) : Cmp}
+  %Nat.add_comm(c, b) : {Nat.cmp(Nat.add(c, a), _) == Nat.cmp(a, b) : Cmp}
+  Nat.cmp_add_l(c, a, b)
+
+def Nat.lt_of_sum(x, p, a, b, e, h):
+  %Nat.cmp_add_rr(x, a, p) : {_ == LT{} : Cmp}
+  %Equal.sym(Nat, Nat.add(x, p), Nat.add(a, b), e) : {Nat.cmp(_, Nat.add(a, p)) == LT{} : Cmp}
+  %Equal.sym(Cmp, Nat.cmp(Nat.add(a, b), Nat.add(a, p)), Nat.cmp(b, p),
+    Nat.cmp_add_l(a, b, p)) : {_ == LT{} : Cmp}
+  h
+
+# A split number stays below 2P when its half is below P.
+law Nat.split_lt:
+  for +b: Bool
+  for +t: Nat
+  for +p: Nat
+  for h: {Nat.cmp(t, p) == LT{} : Cmp}
+  {Nat.cmp(Nat.add(Nat.bit(b), Nat.double(t)), Nat.double(p)) == LT{} : Cmp}
+
+def Nat.split_lt(b, t, p, h):
+  %Equal.sym(Cmp, Nat.cmp(Nat.add(Nat.bit(b), Nat.double(t)), Nat.add(Nat.bit(False{}), Nat.double(p))),
+    Word.cmp.fin(b, False{}, Nat.cmp(t, p)), Nat.cmp_split(b, t, False{}, p)) :
+    {_ == LT{} : Cmp}
+  %Equal.sym(Cmp, Nat.cmp(t, p), LT{}, h) : {Word.cmp.fin(b, False{}, _) == LT{} : Cmp}
+  {==}
+
+law Cmp.eq_lt:
+  for -A: Type
+  for e: {EQ{} == LT{} : Cmp}
+  A
+
+law Cmp.gt_lt:
+  for -A: Type
+  for e: {GT{} == LT{} : Cmp}
+  A
+
+def Cmp.not_lt(c: Cmp) -> Type:
+  match c:
+    case LT{}:
+      Empty
+    case EQ{}:
+      Unit
+    case GT{}:
+      Unit
+
+def Cmp.eq_lt(A, e):
+  Empty.absurd(A, (%e : Cmp.not_lt(_)
+    Unit{}))
+
+def Cmp.gt_lt(A, e):
+  Empty.absurd(A, (%e : Cmp.not_lt(_)
+    Unit{}))
