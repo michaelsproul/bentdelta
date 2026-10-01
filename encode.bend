@@ -476,10 +476,11 @@ def wr.be32(+v: U32, r: Array<U32> & U32) -> Array<U32> & U32:
   wr.byte((v .&. 255 : U32), wr.byte(((v >> 8n : U32) .&. 255 : U32),
     wr.byte(((v >> 16n : U32) .&. 255 : U32), wr.byte((v >> 24n : U32), r))))
 
-def wr.seg(z: Bool, +cpl: U32, r: Array<U32> & U32) -> Array<U32> & U32:
+def wr.seg(z: Bool, +cpl: U32, +off: U32, r: Array<U32> & U32) ->
+  Array<U32> & U32:
   match z:
     case True{}:
-      wr.var(0, wr.var(cpl, r))
+      wr.var(off, wr.var(cpl, r))
     case False{}:
       r
 
@@ -517,28 +518,31 @@ def win.write.fin(tgt: Array<U32>, r: (Array<U32> & U32) & Em) ->
   (o, em) = r
   (o, (tgt, em))
 
-def win.write.k(out: Array<U32>, +olen: U32, +tlen: U32, +cpl: U32, +enc: U32,
-  +need: U32, +dl: U32, +il: U32, +al: U32, em: Em, r: Array<U32> & U32) ->
+def win.write.k(out: Array<U32>, +olen: U32, +tlen: U32, +cpl: U32, +off: U32,
+  +enc: U32, +need: U32, +dl: U32, +il: U32, +al: U32, em: Em,
+  r: Array<U32> & U32) ->
   (Array<U32> & U32) & (Array<U32> & Em):
   (tgt, +sum) = r
   +ind = u32.pick((0 < cpl : U32), 5, 4)
   win.write.fin(tgt, win.secs(em,
     wr.be32(sum, wr.var(al, wr.var(il, wr.var(dl, wr.byte(0, wr.var(tlen,
-      wr.var(enc, wr.seg((0 < cpl : U32), cpl,
+      wr.var(enc, wr.seg((0 < cpl : U32), cpl, off,
         wr.byte(ind, (B.B.grow(out, olen, (olen + need : U32)), olen))))))))))))
 
 # Appends the window for tgt[w0, w0 + tlen) to out (RFC 3284 section 4.2,
-# with xdelta3's Adler-32 of the target window).
+# with xdelta3's Adler-32 of the target window), copying from the source
+# segment [off, off + cpl).
 def win.write(out: Array<U32>, +olen: U32, tgt: Array<U32>, +w0: U32,
-  +tlen: U32, +cpl: U32, em: Em) -> (Array<U32> & U32) & (Array<U32> & Em):
+  +tlen: U32, +cpl: U32, +off: U32, em: Em) ->
+  (Array<U32> & U32) & (Array<U32> & Em):
   match em:
     case Em{dat, ins, adr, ca, +dl, +il, +al, slot, uoff, pt, ps, pm, pc}:
       +enc = ((((((((1 + B.B.var.len(tlen) : U32) + B.B.var.len(dl) : U32)
         + B.B.var.len(il) : U32) + B.B.var.len(al) : U32) + 4 : U32) + dl : U32)
         + il : U32) + al : U32)
-      +hlen = ((1 + u32.pick((0 < cpl : U32), (B.B.var.len(cpl) + 1 : U32), 0) : U32)
+      +hlen = ((1 + u32.pick((0 < cpl : U32), (B.B.var.len(cpl) + B.B.var.len(off) : U32), 0) : U32)
         + B.B.var.len(enc) : U32)
-      win.write.k(out, olen, tlen, cpl, enc, (hlen + enc : U32), dl, il, al,
+      win.write.k(out, olen, tlen, cpl, off, enc, (hlen + enc : U32), dl, il, al,
         Em{dat, ins, adr, ca, dl, il, al, slot, uoff, pt, ps, pm, pc},
         B.B.adler32(tgt, w0, tlen))
 
@@ -969,13 +973,21 @@ def ph.large.try(z: Bool, +K: SK, src: Array<U32>, tgt: Array<U32>,
       ph.large.u(K, src, tgt, lt, stb, spv, io, p, mm, rc, rl, lck, last, nio,
         cont, srcpos, em.uoff(em))
 
+# The source a window may copy from: the 64 MiB below where the index
+# stops (as xdelta3's decoder holds 64 MiB of source by default).
+def src.low(+K: SK) -> U32:
+  match K:
+    case SK{slen, w0, +w1, cpl, lsh, lmask, ssh, smask, cap}:
+      +want = U32.min(slen, u32.max(67108864, (w1 + 33554432 : U32)))
+      u32.pick((67108864 < want : U32), (want - 67108864 : U32), 0)
+
 def ph.large.k1(+K: SK, src: Array<U32>, tgt: Array<U32>, stb: Array<U32>,
   spv: Array<U32>, io: Array<U32>, em: Em, +p: U32, +mm: U32, +rc: U32,
   +rl: U32, +lck: U32, +last: U32, +nio: U32, +cont: U32,
   r: Array<U32> & U32) -> Bool & (Bool & Sc):
   (lt, +cand) = r
   +srcpos = (cand - 1 : U32)
-  +hit = U32.is_ne(cand, 0)
+  +hit = U32.is_ne(cand, 0) && (src.low(K) <= srcpos : U32)
   +again = U32.is_ne(srcpos, 0) && U32.is_eq(srcpos, last)
   ph.large.try(hit && Bool.not(again), K, src, tgt, lt, stb, spv, io, em, p, mm,
     rc, rl, lck, u32.pick(hit, srcpos, last), nio, cont, srcpos)
@@ -1180,6 +1192,89 @@ def em.reset(+w0: U32, em: Em) -> Em:
     case Em{dat, ins, adr, ca, dl, il, al, slot, uoff, pt, ps, pm, pc}:
       Em{dat, ins, adr, cache.clear.go(772n, ca, 0), 0, 0, 0, 0, w0, 0, 0, 0, 0}
 
+# The source segment
+# ------------------
+
+# Whether nothing of the window has been written yet (no flush of a full
+# match buffer in mid-window).
+def em.idle(em: Em) -> Bool & Em:
+  match em:
+    case Em{dat, ins, adr, ca, dl, +il, al, slot, uoff, +pt, ps, pm, pc}:
+      (U32.is_eq(il, 0) && U32.is_eq(pt, 0),
+        Em{dat, ins, adr, ca, dl, il, al, slot, uoff, pt, ps, pm, pc})
+
+def seg.scan.e(+slen: U32, +lo: U32, +hi: U32, +e: Ent, io: Array<U32>) ->
+  Array<U32> & (U32 & U32):
+  match e:
+    case Ent{+pos, +len, +val, +run}:
+      +src = Bool.not(run) && (val < slen : U32)
+      (io, (u32.pick(src && (val < lo : U32), val, lo),
+        u32.pick(src && (hi < (val + len : U32) : U32), (val + len : U32), hi)))
+
+def seg.scan.k(+slen: U32, +lo: U32, +hi: U32, r: Array<U32> & Ent) ->
+  Array<U32> & (U32 & U32):
+  (io, +e) = r
+  seg.scan.e(slen, lo, hi, e, io)
+
+# The source range the n buffered copies from the source use.
+def seg.scan(k: Nat, +i: U32, +slen: U32, r: Array<U32> & (U32 & U32)) ->
+  Array<U32> & (U32 & U32):
+  match k r:
+    case 0n r:
+      r
+    case 1n+p Tuple{io, Tuple{lo0, hi0}}:
+      +lo = {lo0 : U32}
+      +hi = {hi0 : U32}
+      seg.scan(p, (i + 1 : U32), slen, seg.scan.k(slen, lo, hi, io.get(io, i)))
+
+def seg.map.e(+slen: U32, +lo: U32, +cpl: U32, +i: U32, +e: Ent,
+  io: Array<U32>) -> Array<U32>:
+  match e:
+    case Ent{+pos, +len, +val, +run}:
+      io.put(io, i, pos, u32.pick(run, (len .|. 2147483648 : U32), len),
+        u32.pick(run, val,
+          u32.pick((val < slen : U32), (val - lo : U32), ((val - slen : U32) + cpl : U32))))
+
+def seg.map.k(+slen: U32, +lo: U32, +cpl: U32, +i: U32, r: Array<U32> & Ent) ->
+  Array<U32>:
+  (io, +e) = r
+  seg.map.e(slen, lo, cpl, i, e, io)
+
+# Moves the n buffered addresses to the segment [lo, lo + cpl).
+def seg.map(k: Nat, +i: U32, +slen: U32, +lo: U32, +cpl: U32, io: Array<U32>) ->
+  Array<U32>:
+  match k:
+    case 0n:
+      io
+    case 1n+p:
+      seg.map(p, (i + 1 : U32), slen, lo, cpl,
+        seg.map.k(slen, lo, cpl, i, io.get(io, i)))
+
+def seg.fit.k(+slen: U32, +nio: U32, +lo: U32, +hi: U32, io: Array<U32>) ->
+  Array<U32> & (U32 & U32):
+  +cpl = u32.pick((lo < hi : U32), (hi - lo : U32), 0)
+  +off = u32.pick((lo < hi : U32), lo, 0)
+  (seg.map(U32.to_nat(nio), 0, slen, off, cpl, io), (cpl, off))
+
+def seg.fit(+slen: U32, +nio: U32, r: Array<U32> & (U32 & U32)) ->
+  Array<U32> & (U32 & U32):
+  (io, lh) = r
+  (lo0, hi0) = lh
+  +lo = {lo0 : U32}
+  +hi = {hi0 : U32}
+  seg.fit.k(slen, nio, lo, hi, io)
+
+# The segment of a window whose matches are all still buffered: just the
+# source range its copies use, as xdelta3 does (so its decoder reads no
+# more of the source than that); else the whole source.
+def seg.choose(idle: Bool, +slen: U32, +nio: U32, io: Array<U32>) ->
+  Array<U32> & (U32 & U32):
+  match idle:
+    case True{}:
+      seg.fit(slen, nio, seg.scan(U32.to_nat(nio), 0, slen, (io, (slen, 0))))
+    case False{}:
+      (io, (slen, 0))
+
 def win.fin.k3(src: Array<U32>, lt: Array<U32>, stb: Array<U32>,
   spv: Array<U32>, io: Array<U32>, +lidx: U32, +cont: U32,
   r: (Array<U32> & U32) & (Array<U32> & Em)) -> ES:
@@ -1188,31 +1283,51 @@ def win.fin.k3(src: Array<U32>, lt: Array<U32>, stb: Array<U32>,
   (tgt, em) = te
   ES{src, tgt, lt, stb, spv, io, em, out, olen, lidx, cont}
 
-def win.fin.k2(+E: EK, +w0: U32, +w1: U32, src: Array<U32>, lt: Array<U32>,
-  stb: Array<U32>, spv: Array<U32>, io: Array<U32>, out: Array<U32>,
-  +olen: U32, +lidx: U32, +cont: U32, r: Array<U32> & Em) -> ES:
-  match E r:
-    case EK{+slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} Tuple{tgt, em}:
-      win.fin.k3(src, lt, stb, spv, io, lidx, cont,
-        win.write(out, olen, tgt, w0, (w1 - w0 : U32), slen, em.flush(em)))
+def win.fin.k2(+E: EK, +w0: U32, +w1: U32, +cpl: U32, +off: U32,
+  src: Array<U32>, lt: Array<U32>, stb: Array<U32>, spv: Array<U32>,
+  io: Array<U32>, out: Array<U32>, +olen: U32, +lidx: U32, +cont: U32,
+  r: Array<U32> & Em) -> ES:
+  (tgt, em) = r
+  win.fin.k3(src, lt, stb, spv, io, lidx, cont,
+    win.write(out, olen, tgt, w0, (w1 - w0 : U32), cpl, off, em.flush(em)))
 
-def win.fin.k1(+E: EK, +w0: U32, +w1: U32, src: Array<U32>, lt: Array<U32>,
-  stb: Array<U32>, spv: Array<U32>, out: Array<U32>, +olen: U32, +lidx: U32,
-  +cont: U32, r: Array<U32> & (Array<U32> & Em)) -> ES:
+def win.fin.k1(+E: EK, +w0: U32, +w1: U32, +cpl: U32, +off: U32,
+  src: Array<U32>, lt: Array<U32>, stb: Array<U32>, spv: Array<U32>,
+  out: Array<U32>, +olen: U32, +lidx: U32, +cont: U32,
+  r: Array<U32> & (Array<U32> & Em)) -> ES:
   (io, te) = r
   (tgt, em) = te
-  win.fin.k2(E, w0, w1, src, lt, stb, spv, io, out, olen, lidx, cont,
+  win.fin.k2(E, w0, w1, cpl, off, src, lt, stb, spv, io, out, olen, lidx, cont,
     em.gap(tgt, w1, em))
+
+def win.fin.seg(+E: EK, +w0: U32, +w1: U32, src: Array<U32>, tgt: Array<U32>,
+  lt: Array<U32>, stb: Array<U32>, spv: Array<U32>, em: Em, out: Array<U32>,
+  +olen: U32, +lidx: U32, +nio: U32, +cont: U32,
+  r: Array<U32> & (U32 & U32)) -> ES:
+  (io, co) = r
+  (cpl0, off0) = co
+  +cpl = {cpl0 : U32}
+  +off = {off0 : U32}
+  win.fin.k1(E, w0, w1, cpl, off, src, lt, stb, spv, out, olen, lidx, cont,
+    io.flush(io, nio, cpl, w0, tgt, em))
+
+def win.fin.k0(+E: EK, +w0: U32, +w1: U32, src: Array<U32>, tgt: Array<U32>,
+  lt: Array<U32>, stb: Array<U32>, spv: Array<U32>, io: Array<U32>,
+  out: Array<U32>, +olen: U32, +lidx: U32, +nio: U32, +cont: U32,
+  r: Bool & Em) -> ES:
+  match E r:
+    case EK{+slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} Tuple{idle, em}:
+      win.fin.seg(E, w0, w1, src, tgt, lt, stb, spv, em, out, olen, lidx, nio,
+        cont, seg.choose(idle, slen, nio, io))
 
 # Settles the window's matches, writes the rest of it as an ADD and appends
 # the window to the output.
 def win.fin(+E: EK, +w0: U32, +w1: U32, out: Array<U32>, +olen: U32,
   +lidx: U32, st: Sc) -> ES:
-  match E st:
-    case EK{+slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}
-      Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, +nio, +cont}:
-      win.fin.k1(E, w0, w1, src, lt, stb, spv, out, olen, lidx, cont,
-        io.flush(io, nio, slen, w0, tgt, em))
+  match st:
+    case Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, +nio, +cont}:
+      win.fin.k0(E, w0, w1, src, tgt, lt, stb, spv, io, out, olen, lidx, nio,
+        cont, em.idle(em))
 
 def win.scan(+E: EK, +K: SK, +w0: U32, +w1: U32, out: Array<U32>, +olen: U32,
   +lidx: U32, st: Sc) -> ES:
