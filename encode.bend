@@ -1365,6 +1365,40 @@ def io.put.if(z: Bool, io: Array<U32>, +pos: U32, +len: U32, +val: U32) ->
 # xdelta3's MATCH_TARGET: at the start of a window, the source match that
 # reached the end of the last one (or, at first, the source's start) is
 # tried as it stands.
+# Tables are allocated when first needed: a window that its MATCH_TARGET
+# try covers needs none.
+def tab.need.if(z: Bool, +d: Nat, a: Array<U32>) -> Array<U32>:
+  match z:
+    case True{}:
+      Array.new(U32, d, 0)
+    case False{}:
+      a
+
+def tab.need.k(+d: Nat, r: Array<U32> & U32) -> Array<U32>:
+  (a, +n) = r
+  tab.need.if((n < U32.shln(1, d) : U32), d, a)
+
+# a, or a new zeroed table of 2^d slots if a is smaller.
+def tab.need(+d: Nat, a: Array<U32>) -> Array<U32>:
+  tab.need.k(d, Array.size(U32, a))
+
+def tab.need.when(z: Bool, +d: Nat, a: Array<U32>) -> Array<U32>:
+  match z:
+    case True{}:
+      tab.need(d, a)
+    case False{}:
+      a
+
+def EK.lbits(+E: EK) -> Nat:
+  match E:
+    case EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}:
+      U32.to_nat((32 - lsh : U32))
+
+def EK.sbits(+E: EK) -> Nat:
+  match E:
+    case EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}:
+      U32.to_nat((32 - ssh : U32))
+
 def win.start.s(+E: EK, +K: SK, +w0: U32, +w1: U32, +at: U32, +fwd: U32,
   +ok: Bool, +p: U32, tgt: Array<U32>, stb: Array<U32>, spv: Array<U32>,
   io: Array<U32>, em: Em, out: Array<U32>, +olen: U32,
@@ -1372,7 +1406,8 @@ def win.start.s(+E: EK, +K: SK, +w0: U32, +w1: U32, +at: U32, +fwd: U32,
   (+lidx, sl) = r
   (src, lt) = sl
   win.scan(E, K, w0, w1, out, olen, lidx,
-    Sc{src, tgt, lt, stb, spv, io.put.if(ok, io, w0, fwd, at), em, p, 4, 0, 0, 0,
+    Sc{src, tgt, lt, tab.need.when((p < w1 : U32), EK.sbits(E), stb),
+      tab.need.when((p < w1 : U32), 18n, spv), io.put.if(ok, io, w0, fwd, at), em, p, 4, 0, 0, 0,
       NONE(), u32.pick(ok, 1, 0),
       u32.pick(ok && U32.is_eq(p, w1), (at + fwd : U32), NONE())})
 
@@ -1386,7 +1421,8 @@ def ix.upto(+E: EK, +w1: U32, +lidx: U32, src: Array<U32>, lt: Array<U32>) ->
       +nb = u32.pick((lidx < want : U32),
         ((((want - lidx : U32) + blk : U32) - 1 : U32) / blk : U32), 0)
       ((lidx + (nb * blk : U32) : U32),
-        ix.blocks(U32.to_nat(nb), lidx, slen, blk, U32.to_nat(lsh), lmask, (src, lt)))
+        ix.blocks(U32.to_nat(nb), lidx, slen, blk, U32.to_nat(lsh), lmask,
+          (src, tab.need(U32.to_nat((32 - lsh : U32)), lt))))
 
 def win.start.i(z: Bool, +E: EK, +w1: U32, +lidx: U32, src: Array<U32>,
   lt: Array<U32>) -> U32 & (Array<U32> & Array<U32>):
@@ -1437,7 +1473,7 @@ def win.index(+E: EK, +w1: U32, st: ES) -> ES:
         ((((want - lidx : U32) + blk : U32) - 1 : U32) / blk : U32), 0)
       win.index.fin(tgt, stb, spv, io, em, out, olen, (lidx + (nb * blk : U32) : U32),
         cont, ix.blocks(U32.to_nat(nb), lidx, slen, blk, U32.to_nat(lsh), lmask,
-          (src, lt)))
+          (src, tab.need(U32.to_nat((32 - lsh : U32)), lt))))
 
 # Encodes the window starting at w0.
 def win.enc(+E: EK, +w0: U32, st: ES) -> ES:
@@ -1488,8 +1524,7 @@ def enc.done(+slen: U32, +tlen: U32, st: ES) -> (B.Bytes & B.Bytes) & B.Bytes:
 # A task's own tables, emitter and output.
 def es.fresh(+sbits: Nat, +wb: U32, +ocap: U32, src: Array<U32>,
   tgt: Array<U32>, lt: Array<U32>, +lidx: U32, +cont: U32) -> ES:
-  ES{src, tgt, lt, Array.new(U32, sbits, 0), Array.new(U32, 18n, 0),
-    Array.new(U32, 17n, 0),
+  ES{src, tgt, lt, [0 : U32^0n], [0 : U32^0n], Array.new(U32, 17n, 0),
     Em{B.B.zeros(65536), B.B.zeros(65536), B.B.zeros(65536),
       Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
     B.B.zeros(ocap), 0, lidx, cont}
@@ -1606,8 +1641,8 @@ def enc.go(+E: EK, src: Array<U32>, tgt: Array<U32>, +lbits: Nat,
       enc.done(slen, tlen,
         enc.par.top(E, sbits, wb, u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32)),
           enc.pre(enc.depth(u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32))), E,
-            U32.min(tlen, wsz), ES{src, tgt, Array.new(U32, lbits, 0), Array.new(U32, sbits, 0),
-            Array.new(U32, 18n, 0), Array.new(U32, 17n, 0),
+            U32.min(tlen, wsz), ES{src, tgt, [0 : U32^0n], [0 : U32^0n],
+            [0 : U32^0n], Array.new(U32, 17n, 0),
             Em{B.B.zeros(65536), B.B.zeros(65536), B.B.zeros(65536),
               Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
             out, olen, 0, 0})))
