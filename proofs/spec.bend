@@ -414,13 +414,14 @@ def SP.coks(+os: List<&2, OP>, +tb: A.Tr) -> Bool:
       SP.cok(tb, o) && SP.coks(r, tb)
 
 # The bounds each half's copy needs, below E.
-def SP.bnd(+x: XC, +s: ST, +f: HF, +E: U32) -> Bool:
+# (E bounds the target, Es the source.)
+def SP.bnd(+x: XC, +s: ST, +f: HF, +E: U32, +Es: U32) -> Bool:
   Cmp.is_le(Nat.cmp(Nat.add(U32.to_nat(SP.size(f)), U32.to_nat(SP.so(s))), U32.to_nat(E)))
-    && SP.hbnd(x, s, f, E)
+    && SP.hbnd(x, s, f, Es)
 
-def SP.bnds(+hs: List<&2, HF>, +x: XC, +s: ST, +E: U32) -> Bool:
+def SP.bnds(+hs: List<&2, HF>, +x: XC, +s: ST, +E: U32, +Es: U32) -> Bool:
   match hs:
     case []:
       True{}
     case h <> r:
-      SP.bnd(x, s, h, E) && SP.bnds(r, x, SP.next(x, s, h), E)
+      SP.bnd(x, s, h, E, Es) && SP.bnds(r, x, SP.next(x, s, h), E, Es)

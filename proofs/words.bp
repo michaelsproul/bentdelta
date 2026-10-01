@@ -877,3 +877,13 @@ def WD.has_app(xs, ys, t, i, x, e):
       @rw WD.add_shift(i, x)
       WD.and_assoc(U32.is_eq(Y.BP.byt(t, i), U32.and(y, 255)), S.S.has(r, t, U32.add(i, 1)), S.S.has(ys, t, U32.add(i, x)))
 
+
+law WD.max_eq:
+  for +a: U32
+  for +b: U32
+  {U32.max(a, b) == Bool.pick(U32, U32.is_lt(a, b), b, a) : U32}
+
+def WD.max_eq(a, b):
+  match a b:
+    case U32{x} U32{y}:
+      {==}
