@@ -70,7 +70,7 @@ I/O in `io/bytes.c`).
 
 ## Performance
 
-Medians against xdelta3 3.x (`-S none`; level 3, its default), on a 32-core
+Medians against xdelta3 3.0.11 (`-S none`; level 3, its default), on a 32-core
 Linux machine:
 
 | case | encode (xdelta3 / bentdelta) | decode | delta size |
