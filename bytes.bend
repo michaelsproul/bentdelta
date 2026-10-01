@@ -231,6 +231,11 @@ def B.move(a: Array<U32>, +d: U32, +s: U32, +n: U32) -> Array<U32>:
 # Filling
 # =======
 
+# A word of four copies of byte b.
+def B.rep4(+b: U32) -> U32:
+  +x = (255 .&. b : U32)
+  (((x .|. (x << 8n : U32) : U32) .|. (x << 16n : U32) : U32) .|. (x << 24n : U32) : U32)
+
 def B.fill.bytes(n: Nat, a: Array<U32>, +d: U32, +v: U32) -> Array<U32>:
   match n:
     case 0n:
@@ -251,7 +256,7 @@ def B.fill.body(+n: U32, +d: U32, +v: U32, a: Array<U32>) -> Array<U32>:
   +done = (nw << 2n : U32)
   B.fill.bytes(U32.to_nat((n .&. 3 : U32)),
     B.fill.words(U32.to_nat(nw), a, (d >> 2n : U32),
-      ((v .&. 255 : U32) * 16843009 : U32)),
+      B.rep4(v)),
     (d + done : U32), v)
 
 # a[d, d + n) := v.
@@ -390,7 +395,7 @@ type VR is Type:
 
 def B.var.cont(r: Array<U32> & U32) -> Bool & (Array<U32> & U32):
   (a, +b) = r
-  ((b >= 128 : U32), (a, b))
+  (U32.is_ne((128 .&. b : U32), 0), (a, b))
 
 def B.var.go(n: Nat, +end: U32, +acc: U32, +pos: U32, ok: Bool,
   s: Bool & (Array<U32> & U32)) -> VR:
@@ -438,8 +443,8 @@ def B.var.put.go(+k: Nat, a: Array<U32>, +pos: U32, +v: U32) -> Array<U32>:
     case 0n:
       a
     case 1n+p:
-      +g = ((v >> Nat.mul(7n, p) : U32) .&. 127 : U32)
-      B.var.put.go(p, B.put(a, pos, (g .|. B.var.flag(p) : U32)), (pos + 1 : U32), v)
+      +g = (127 .&. (v >> Nat.mul(7n, p) : U32) : U32)
+      B.var.put.go(p, B.put(a, pos, (B.var.flag(p) .|. g : U32)), (pos + 1 : U32), v)
 
 # Writes v as a varint at pos; answers the position after it.
 def B.var.put(a: Array<U32>, +pos: U32, +v: U32) -> Array<U32> & U32:
@@ -601,7 +606,7 @@ def B.same.loop(k: Nat, +i: U32, +v: U32, +max: U32,
       B.same.loop(p, i, v, max, B.same.k(n, max, v, B.word(a, (i + n : U32))))
 
 def B.same(a: Array<U32>, +i: U32, +b: U32, +max: U32) -> Array<U32> & U32:
-  +v = ((b .&. 255 : U32) * 16843009 : U32)
+  +v = B.rep4(b)
   B.same.loop(U32.to_nat(((max >> 2n : U32) + 1 : U32)), i, v, max,
     B.same.k(0, max, v, B.word(a, i)))
 
