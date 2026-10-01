@@ -924,3 +924,42 @@ def WD.step4(x):
   %Equal.sym(U32, U32.add(U32.add(x, 3), 1), U32.add(x, 4), V.U.add_assoc(x, 3, 1)) :
     {_ == U32.add(x, 4) : U32}
   {==}
+
+law WD.and_assoc:
+  for +a: Bool
+  for +b: Bool
+  for +c: Bool
+  {Bool.and(a, Bool.and(b, c)) == Bool.and(Bool.and(a, b), c) : Bool}
+
+def WD.and_assoc(a, b, c):
+  match a:
+    case False{}:
+      {==}
+    case True{}:
+      {==}
+
+# Holding xs then ys: xs at i and ys at i + x, where x has the length of xs.
+law WD.has_app:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  for +t: A.Tr
+  for +i: U32
+  for +x: U32
+  for +e: {V.U.N(x) == S.S.len(xs) : Nat}
+  {S.S.has(WD.app(xs, ys), t, i) == Bool.and(S.S.has(xs, t, i), S.S.has(ys, t, U32.add(i, x))) : Bool}
+
+def WD.has_app(xs, ys, t, i, x, e):
+  match xs:
+    case []:
+      %Equal.sym(U32, x, 0, WD.zero_of(x, e)) :
+        {S.S.has(ys, t, i) == S.S.has(ys, t, U32.add(i, _)) : Bool}
+      %Equal.sym(U32, U32.add(i, 0), i, V.U.add_zero_r(i)) :
+        {S.S.has(ys, t, i) == S.S.has(ys, t, _) : Bool}
+      {==}
+    case y <> r:
+      %Equal.sym(Bool, S.S.has(WD.app(r, ys), t, U32.add(i, 1)), Bool.and(S.S.has(r, t, U32.add(i, 1)), S.S.has(ys, t, U32.add(U32.add(i, 1), U32.sub(x, 1)))), WD.has_app(r, ys, t, U32.add(i, 1), U32.sub(x, 1), WD.pred_N(x, S.S.len(r), e))) :
+        {Bool.and(U32.is_eq(Y.BP.byt(t, i), U32.and(y, 255)), _) == Bool.and(Bool.and(U32.is_eq(Y.BP.byt(t, i), U32.and(y, 255)), S.S.has(r, t, U32.add(i, 1))), S.S.has(ys, t, U32.add(i, x))) : Bool}
+      %Equal.sym(U32, U32.add(U32.add(i, 1), U32.sub(x, 1)), U32.add(i, x), WD.add_shift(i, x)) :
+        {Bool.and(U32.is_eq(Y.BP.byt(t, i), U32.and(y, 255)), Bool.and(S.S.has(r, t, U32.add(i, 1)), S.S.has(ys, t, _))) == Bool.and(Bool.and(U32.is_eq(Y.BP.byt(t, i), U32.and(y, 255)), S.S.has(r, t, U32.add(i, 1))), S.S.has(ys, t, U32.add(i, x))) : Bool}
+      WD.and_assoc(U32.is_eq(Y.BP.byt(t, i), U32.and(y, 255)), S.S.has(r, t, U32.add(i, 1)), S.S.has(ys, t, U32.add(i, x)))
+

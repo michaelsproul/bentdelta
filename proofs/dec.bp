@@ -1,0 +1,426 @@
+import Base
+import ../bytes.bend as B
+import ../vcdiff.bend as D
+import ./nat.bend as P
+import ./word.bend as W
+import ./u32.bend as V
+import ./array.bend as A
+import ./bytes.bend as Y
+import ./seq.bend as S
+import ./bits.bend as Z
+import ./words.bend as K
+import ./copy.bend as C
+import ./varint.bend as R
+import ./spec.bend as Q
+
+# The decoder (vcdiff.bend) on a window whose sections hold instructions
+# as proofs/spec.bend writes them: each half of an opcode, then each
+# opcode, then the instruction loop.
+#
+# Source: proofs/dec.bp (tools/bpp.py writes proofs/dec.bend from it).
+
+# The decoder's state with its arrays as trees, and no error.
+def DX.st(+ts: A.Tr, +td: A.Tr, +to: A.Tr, +tb: A.Tr, +ca: A.Tr, +opos: U32,
+  +dpos: U32, +ipos: U32, +apos: U32, +slot: U32) -> D.Dec:
+  D.Dec{A.A.from(ts), A.A.from(td), A.A.from(to), A.A.from(tb), A.A.from(ca), opos, dpos, ipos, apos, slot, 0}
+
+# Data
+# ====
+
+# Writing the bytes a tree holds is writing the list it holds.
+law DX.puts_held:
+  for +xs: List<&2, U32>
+  for +rest: List<&2, U32>
+  for +td: A.Tr
+  for +q: U32
+  for +to: A.Tr
+  for +p: U32
+  for +h: {S.S.has(K.WD.app(xs, rest), td, q) == True{} : Bool}
+  {S.S.puts(S.S.sl(S.S.len(xs), td, q), to, p) == S.S.puts(xs, to, p) : A.Tr}
+
+def DX.puts_held(xs, rest, td, q, to, p, h):
+  match xs:
+    case []:
+      {==}
+    case x <> r:
+      @simp
+      @rw V.U.is_eq(Y.BP.byt(td, q), U32.and(x, 255), P.Bool.and_l(U32.is_eq(Y.BP.byt(td, q), U32.and(x, 255)), S.S.has(K.WD.app(r, rest), td, U32.add(q, 1)), h))
+      @rw C.CP.put_mask(to, p, x)
+      @rw DX.puts_held(r, rest, td, U32.add(q, 1), Y.BP.put(to, p, x), U32.add(p, 1), R.VI.tl(td, q, x, K.WD.app(r, rest), h))
+      {==}
+
+law DX.cmp_eq_true:
+  for +c: Cmp
+  for +h: {Cmp.is_eq(c) == True{} : Bool}
+  {c == EQ{} : Cmp}
+
+def DX.cmp_eq_true(c, h):
+  match c:
+    case LT{}:
+      P.Bool.false_true({LT{} == EQ{} : Cmp}, h)
+    case EQ{}:
+      {==}
+    case GT{}:
+      P.Bool.false_true({GT{} == EQ{} : Cmp}, h)
+
+# n = len(xs) when SP.lenis says so.
+law DX.lenis:
+  for +xs: List<&2, U32>
+  for +n: U32
+  for +h: {Q.SP.lenis(xs, n) == True{} : Bool}
+  {U32.to_nat(n) == S.S.len(xs) : Nat}
+
+def DX.lenis(xs, n, h):
+  Equal.sym(Nat, S.S.len(xs), U32.to_nat(n), P.Nat.cmp_eq(S.S.len(xs), U32.to_nat(n), DX.cmp_eq_true(Nat.cmp(S.S.len(xs), U32.to_nat(n)), h)))
+
+# Halves
+# ======
+
+# ADD: the data section's next bytes, to the target.
+law DX.add:
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +ca: A.Tr
+  for +opos: U32
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +slot: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +n: U32
+  for +xs: List<&2, U32>
+  for +rest: List<&2, U32>
+  for +hd: {S.S.has(K.WD.app(xs, rest), td, dpos) == True{} : Bool}
+  for +hl: {Q.SP.lenis(xs, n) == True{} : Bool}
+  for +hdb: {U32.is_le(n, U32.sub(dend, dpos)) == True{} : Bool}
+  for +hob: {U32.is_le(n, U32.sub(oend, opos)) == True{} : Bool}
+  {D.dec.add(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, (n, DX.st(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot))) == DX.st(ts, td, S.S.puts(xs, to, opos), tb, ca, U32.add(opos, n), U32.add(dpos, n), ipos, apos, slot) : D.Dec}
+
+def DX.add(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, n, xs, rest, hd, hl, hdb, hob):
+  @unfold DX.st
+  @simp
+  @rwx hdb : {U32.is_le(n, U32.sub(dend, dpos)) == True{} : Bool}
+  @rwx hob : {U32.is_le(n, U32.sub(oend, opos)) == True{} : Bool}
+  @unfold D.u32.pick
+  @simp
+  @rw Y.BP.get_from(td, dpos)
+  @rw C.CP.bytes(U32.to_nat(n), to, opos, td, dpos)
+  @rwx DX.lenis(xs, n, hl) : {U32.to_nat(n) == S.S.len(xs) : Nat}
+  @rw DX.puts_held(xs, rest, td, dpos, to, opos, hd)
+  @unfold D.dec.add.k D.err.set D.u32.pick
+  @simp
+  {==}
+
+law DX.rep_mask:
+  for +k: Nat
+  for +b: U32
+  for +t: A.Tr
+  for +d: U32
+  {S.S.puts(C.CP.rep(k, U32.and(b, 255)), t, d) == S.S.puts(C.CP.rep(k, b), t, d) : A.Tr}
+
+def DX.rep_mask(k, b, t, d):
+  match k:
+    case 0n:
+      {==}
+    case 1n+p:
+      @simp
+      @rw C.CP.put_mask(t, d, b)
+      @rw DX.rep_mask(p, b, Y.BP.put(t, d, b), U32.add(d, 1))
+      {==}
+
+# RUN: n copies of the data section's next byte.
+law DX.run:
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +ca: A.Tr
+  for +opos: U32
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +slot: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +n: U32
+  for +b: U32
+  for +rest: List<&2, U32>
+  for +E: U32
+  for +hd: {S.S.has(b <> rest, td, dpos) == True{} : Bool}
+  for +hdb: {U32.is_lt(dpos, dend) == True{} : Bool}
+  for +hob: {U32.is_le(n, U32.sub(oend, opos)) == True{} : Bool}
+  for +hE: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(n), V.U.N(opos)), V.U.N(E))) == True{} : Bool}
+  {D.dec.run(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, (n, DX.st(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot))) == DX.st(ts, td, S.S.puts(C.CP.rep(V.U.N(n), b), to, opos), tb, ca, U32.add(opos, n), U32.add(dpos, 1), ipos, apos, slot) : D.Dec}
+
+def DX.run(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, n, b, rest, E, hd, hdb, hob, hE):
+  @unfold DX.st
+  @simp
+  @rwx hdb : {U32.is_lt(dpos, dend) == True{} : Bool}
+  @rwx hob : {U32.is_le(n, U32.sub(oend, opos)) == True{} : Bool}
+  @unfold D.u32.pick
+  @simp
+  @rw R.VI.rd(td, dpos, b, rest, hd)
+  @unfold D.dec.run.k D.err.set D.u32.pick
+  @simp
+  @rw C.CP.fill(to, opos, U32.and(b, 255), n, E, hE)
+  @rw DX.rep_mask(V.U.N(n), b, to, opos)
+  {==}
+
+law DX.is_lt:
+  for +a: Nat
+  for +b: Nat
+  for +h: {Cmp.is_lt(Nat.cmp(a, b)) == True{} : Bool}
+  {Nat.cmp(a, b) == LT{} : Cmp}
+
+def DX.is_lt(a, b, h):
+  DX.is_lt.go(Nat.cmp(a, b), h)
+
+law DX.is_lt.go:
+  for +c: Cmp
+  for +h: {Cmp.is_lt(c) == True{} : Bool}
+  {c == LT{} : Cmp}
+
+def DX.is_lt.go(c, h):
+  match c:
+    case LT{}:
+      {==}
+    case EQ{}:
+      P.Bool.false_true({EQ{} == LT{} : Cmp}, h)
+    case GT{}:
+      P.Bool.false_true({GT{} == LT{} : Cmp}, h)
+
+law DX.cput:
+  for +ca: A.Tr
+  for +slot: U32
+  for +addr: U32
+  {D.cache.put(A.A.from(ca), slot, addr) == A.A.from(Q.SP.cput(ca, slot, addr)) : Array<U32>}
+
+def DX.cput(ca, slot, addr):
+  @unfold D.cache.put Q.SP.cput
+  @rw A.A.set_from(ca, U32.add(768, slot), addr)
+  @rw A.A.set_from(A.T.set(ca, U32.add(768, slot), addr), U32.mod(addr, 768), addr)
+  {==}
+
+# A COPY once its address is known: from the source segment, or from
+# earlier in the target window (forward, so it may read its own output).
+law DX.copy_at.go:
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +ca: A.Tr
+  for +opos: U32
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +slot: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +n: U32
+  for +addr: U32
+  for +dp: Nat
+  for +E: U32
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  for +hdp: {Nat.cmp(dp, 32n) == LT{} : Cmp}
+  for +he: {Cmp.is_le(Nat.cmp(V.U.N(E), Nat.double(Nat.double(P.Nat.pow2(dp))))) == True{} : Bool}
+  for +hob: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(n), V.U.N(opos)), V.U.N(E))) == True{} : Bool}
+  for +hlt: {U32.is_lt(addr, U32.add(cpl, U32.sub(opos, wst))) == True{} : Bool}
+  for +hroom: {U32.is_le(n, U32.sub(oend, opos)) == True{} : Bool}
+  for +hseg: {Bool.or(Bool.not(U32.is_lt(addr, cpl)), U32.is_le(n, U32.sub(cpl, addr))) == True{} : Bool}
+  for +hB: {Bool.pick(Bool, U32.is_lt(addr, cpl), Cmp.is_le(Nat.cmp(Nat.add(V.U.N(n), V.U.N(U32.add(seg, addr))), V.U.N(E))), Cmp.is_lt(Nat.cmp(V.U.N(U32.add(wst, U32.sub(addr, cpl))), V.U.N(opos)))) == True{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_lt(addr, cpl) == c : Bool}
+  {D.dec.copy.at(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, n, addr, True{}, DX.st(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot)) == DX.st(ts, td, Bool.pick(A.Tr, U32.is_lt(addr, cpl), S.S.puts(S.S.sl(V.U.N(n), ts, U32.add(seg, addr)), to, opos), C.CP.mv(V.U.N(n), to, opos, U32.add(wst, U32.sub(addr, cpl)))), tb, Q.SP.cput(ca, slot, addr), U32.add(opos, n), dpos, ipos, apos, D.cache.next(slot)) : D.Dec}
+
+def DX.copy_at.go(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, n, addr, dp, E, hp, hdp, he, hob, hlt, hroom, hseg, hB, c, ec):
+  match c:
+    case True{}:
+      @unfold DX.st
+      @simp
+      @rwx hlt : {U32.is_lt(addr, U32.add(cpl, U32.sub(opos, wst))) == True{} : Bool}
+      @rwx hroom : {U32.is_le(n, U32.sub(oend, opos)) == True{} : Bool}
+      @rwx hseg : {Bool.or(Bool.not(U32.is_lt(addr, cpl)), U32.is_le(n, U32.sub(cpl, addr))) == True{} : Bool}
+      @unfold D.u32.pick
+      @simp
+      @rwx ec : {U32.is_lt(addr, cpl) == True{} : Bool}
+      @simp
+      @rw C.CP.copy(to, opos, ts, U32.add(seg, addr), n, E, hob, (%ec : {Bool.pick(Bool, _, Cmp.is_le(Nat.cmp(Nat.add(V.U.N(n), V.U.N(U32.add(seg, addr))), V.U.N(E))), Cmp.is_lt(Nat.cmp(V.U.N(U32.add(wst, U32.sub(addr, cpl))), V.U.N(opos)))) == True{} : Bool}; hB))
+      @rw DX.cput(ca, slot, addr)
+      @unfold D.dec.copy.k D.err.set D.u32.pick
+      @simp
+      {==}
+    case False{}:
+      @unfold DX.st
+      @simp
+      @rwx hlt : {U32.is_lt(addr, U32.add(cpl, U32.sub(opos, wst))) == True{} : Bool}
+      @rwx hroom : {U32.is_le(n, U32.sub(oend, opos)) == True{} : Bool}
+      @rwx hseg : {Bool.or(Bool.not(U32.is_lt(addr, cpl)), U32.is_le(n, U32.sub(cpl, addr))) == True{} : Bool}
+      @unfold D.u32.pick
+      @simp
+      @rwx ec : {U32.is_lt(addr, cpl) == False{} : Bool}
+      @simp
+      @rw C.CP.move(to, opos, U32.add(wst, U32.sub(addr, cpl)), n, dp, E, hp, hdp, he, hob, DX.is_lt(V.U.N(U32.add(wst, U32.sub(addr, cpl))), V.U.N(opos), (%ec : {Bool.pick(Bool, _, Cmp.is_le(Nat.cmp(Nat.add(V.U.N(n), V.U.N(U32.add(seg, addr))), V.U.N(E))), Cmp.is_lt(Nat.cmp(V.U.N(U32.add(wst, U32.sub(addr, cpl))), V.U.N(opos)))) == True{} : Bool}; hB)))
+      @rw DX.cput(ca, slot, addr)
+      @unfold D.dec.copy.k D.err.set D.u32.pick
+      @simp
+      {==}
+
+law DX.copy_at:
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +ca: A.Tr
+  for +opos: U32
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +slot: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +n: U32
+  for +addr: U32
+  for +dp: Nat
+  for +E: U32
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  for +hdp: {Nat.cmp(dp, 32n) == LT{} : Cmp}
+  for +he: {Cmp.is_le(Nat.cmp(V.U.N(E), Nat.double(Nat.double(P.Nat.pow2(dp))))) == True{} : Bool}
+  for +hob: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(n), V.U.N(opos)), V.U.N(E))) == True{} : Bool}
+  for +hlt: {U32.is_lt(addr, U32.add(cpl, U32.sub(opos, wst))) == True{} : Bool}
+  for +hroom: {U32.is_le(n, U32.sub(oend, opos)) == True{} : Bool}
+  for +hseg: {Bool.or(Bool.not(U32.is_lt(addr, cpl)), U32.is_le(n, U32.sub(cpl, addr))) == True{} : Bool}
+  for +hB: {Bool.pick(Bool, U32.is_lt(addr, cpl), Cmp.is_le(Nat.cmp(Nat.add(V.U.N(n), V.U.N(U32.add(seg, addr))), V.U.N(E))), Cmp.is_lt(Nat.cmp(V.U.N(U32.add(wst, U32.sub(addr, cpl))), V.U.N(opos)))) == True{} : Bool}
+  {D.dec.copy.at(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, n, addr, True{}, DX.st(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot)) == DX.st(ts, td, Bool.pick(A.Tr, U32.is_lt(addr, cpl), S.S.puts(S.S.sl(V.U.N(n), ts, U32.add(seg, addr)), to, opos), C.CP.mv(V.U.N(n), to, opos, U32.add(wst, U32.sub(addr, cpl)))), tb, Q.SP.cput(ca, slot, addr), U32.add(opos, n), dpos, ipos, apos, D.cache.next(slot)) : D.Dec}
+
+def DX.copy_at(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, n, addr, dp, E, hp, hdp, he, hob, hlt, hroom, hseg, hB):
+  DX.copy_at.go(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, n, addr, dp, E, hp, hdp, he, hob, hlt, hroom, hseg, hB, U32.is_lt(addr, cpl), {==})
+
+# COPY with its address a varint (SELF, HERE, NEAR).
+law DX.copy_v:
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +ca: A.Tr
+  for +opos: U32
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +slot: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +n: U32
+  for +m: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +hm: {U32.is_lt(m, 6) == True{} : Bool}
+  for +ha: {S.S.has(K.WD.app(R.VI.var(v), rest), td, apos) == True{} : Bool}
+  for +hab: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(B.B.var.len(v)), V.U.N(apos)), V.U.N(aend))) == True{} : Bool}
+  for +hok: {Q.SP.aok(m, v, U32.add(cpl, U32.sub(opos, wst))) == True{} : Bool}
+  {D.dec.copy(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, m, (n, DX.st(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot))) == D.dec.copy.at(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, n, Q.SP.daddr(m, v, U32.add(cpl, U32.sub(opos, wst)), ca), True{}, DX.st(ts, td, to, tb, ca, opos, dpos, ipos, U32.add(apos, B.B.var.len(v)), slot)) : D.Dec}
+
+def DX.copy_v(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, n, m, v, rest, hm, ha, hab, hok):
+  @unfold DX.st
+  @simp -D.dec.copy.at
+  @rwx hm : {U32.is_lt(m, 6) == True{} : Bool}
+  @simp -D.dec.copy.at
+  @rw R.VI.get(td, apos, aend, v, rest, ha, hab)
+  @simp -D.dec.copy.at
+  @unfold D.u32.pick
+  @rwx hm : {U32.is_lt(m, 6) == True{} : Bool}
+  @simp -D.dec.copy.at
+  @rw A.A.get_from(ca, U32.add(766, m))
+  @unfold D.dec.addr.c
+  @unfold D.dec.copy.c
+  @unfold Q.SP.daddr B.u32.pick D.u32.pick
+  @rwx hm : {U32.is_lt(m, 6) == True{} : Bool}
+  @simp -D.dec.copy.at
+  @rwx hok : {Bool.and(U32.is_lt(m, 9), Bool.or(U32.is_ne(m, 1), U32.is_le(v, U32.add(cpl, U32.sub(opos, wst))))) == True{} : Bool}
+  {==}
+
+# COPY with its address a byte (SAME).
+law DX.copy_b:
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +ca: A.Tr
+  for +opos: U32
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +slot: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +n: U32
+  for +m: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +hm: {U32.is_lt(m, 6) == False{} : Bool}
+  for +hm0: {U32.is_eq(m, 0) == False{} : Bool}
+  for +hm1: {U32.is_eq(m, 1) == False{} : Bool}
+  for +hm9: {U32.is_lt(m, 9) == True{} : Bool}
+  for +ha: {S.S.has(v <> rest, td, apos) == True{} : Bool}
+  for +hab: {U32.is_lt(apos, aend) == True{} : Bool}
+  {D.dec.copy(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, m, (n, DX.st(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot))) == D.dec.copy.at(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, n, Q.SP.daddr(m, v, U32.add(cpl, U32.sub(opos, wst)), ca), True{}, DX.st(ts, td, to, tb, ca, opos, dpos, ipos, U32.add(apos, 1), slot)) : D.Dec}
+
+def DX.copy_b(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, n, m, v, rest, hm, hm0, hm1, hm9, ha, hab):
+  @unfold DX.st
+  @simp -D.dec.copy.at
+  @rwx hm : {U32.is_lt(m, 6) == False{} : Bool}
+  @simp -D.dec.copy.at
+  @unfold B.B.byte.get
+  @rw R.VI.rd(td, apos, v, rest, ha)
+  @unfold B.B.byte.k
+  @rwx hab : {U32.is_lt(apos, aend) == True{} : Bool}
+  @simp -D.dec.copy.at
+  @unfold D.u32.pick
+  @rwx hm : {U32.is_lt(m, 6) == False{} : Bool}
+  @simp -D.dec.copy.at
+  @rw Z.BB.and255(v)
+  @rw A.A.get_from(ca, U32.add(U32.mul(U32.sub(m, 6), 256), U32.and(v, 255)))
+  @unfold D.dec.addr.c
+  @unfold D.dec.copy.c
+  @unfold Q.SP.daddr B.u32.pick D.u32.pick
+  @rwx hm : {U32.is_lt(m, 6) == False{} : Bool}
+  @rwx hm0 : {U32.is_eq(m, 0) == False{} : Bool}
+  @rwx hm1 : {U32.is_eq(m, 1) == False{} : Bool}
+  @rwx hm9 : {U32.is_lt(m, 9) == True{} : Bool}
+  @simp -D.dec.copy.at
+  @unfold U32.is_ne
+  @rwx hm1 : {Cmp.is_eq(U32.cmp(m, 1)) == False{} : Bool}
+  @simp -D.dec.copy.at
+  {==}

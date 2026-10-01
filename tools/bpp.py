@@ -1104,6 +1104,8 @@ def directive(ctx, text, goal, ind, out):
             return rewrite(ctx, goal, a, b, f"Equal.sym({show(T)}, {show(a)}, {show(b)}, {show(proof)})", T, ind, out, only)
         return rewrite(ctx, goal, b, a, show(proof), T, ind, out, only)
     if cmd == 'goal':
+        if arg == '?':
+            raise Err(f"{ctx.name}: goal is\n  {show(goal) if goal is not None else '?'}")
         return parse(arg)
     if cmd == 'simp':
         if goal is None:
