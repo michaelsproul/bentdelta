@@ -455,41 +455,66 @@ def B.low.byte(+x: U32) -> U32:
   u32.pick(U32.is_ne((x .&. 65535 : U32), 0), 1,
   u32.pick(U32.is_ne((x .&. 16777215 : U32), 0), 2, 3)))
 
-def B.fwd.k3(+n: U32, +max: U32, a: Array<U32>, r: Array<U32> & U32,
-  +x: U32) -> Bool & (U32 & (Array<U32> & Array<U32>)):
-  (b, +y) = r
-  +d = (x .^. y : U32)
+# A forward match reads each word once: a's bytes are words wa, wa + 1, ...
+# shifted down by sa bits, b's likewise; alo and blo hold the words at wa
+# and wb, and n bytes agree so far.
+def B.fwd.k2(+n: U32, +max: U32, +sa: Nat, +sb: Nat, +alo: U32, +ahi: U32,
+  +blo: U32, a: Array<U32>, r: Array<U32> & U32) ->
+  Bool & (U32 & ((Array<U32> & Array<U32>) & (U32 & U32))):
+  (b, +bhi) = r
+  +d = (B.join(alo, ahi, sa) .^. B.join(blo, bhi, sb) : U32)
   +same = U32.is_eq(d, 0)
   (same && ((n + 4 : U32) < max : U32),
-    ((n + u32.pick(same, 4, B.low.byte(d)) : U32), (a, b)))
+    ((n + u32.pick(same, 4, B.low.byte(d)) : U32), ((a, b), (ahi, bhi))))
 
-def B.fwd.k2(+j: U32, +n: U32, +max: U32, b: Array<U32>,
-  r: Array<U32> & U32) -> Bool & (U32 & (Array<U32> & Array<U32>)):
-  (a, +x) = r
-  B.fwd.k3(n, max, a, B.word(b, (j + n : U32)), x)
+def B.fwd.k1(+wb: U32, +n: U32, +max: U32, +sa: Nat, +sb: Nat, +alo: U32,
+  +blo: U32, b: Array<U32>, r: Array<U32> & U32) ->
+  Bool & (U32 & ((Array<U32> & Array<U32>) & (U32 & U32))):
+  (a, +ahi) = r
+  B.fwd.k2(n, max, sa, sb, alo, ahi, blo, a, b[(wb + 1 : U32)])
 
-# One step of a forward match: compares four bytes of a from i + n with b
-# from j + n; answers whether to go on, the new count and the arrays.
-def B.fwd.step(+i: U32, +j: U32, +n: U32, +max: U32, a: Array<U32>,
-  b: Array<U32>) -> Bool & (U32 & (Array<U32> & Array<U32>)):
-  B.fwd.k2(j, n, max, b, B.word(a, (i + n : U32)))
+# One step: compares the four bytes from words wa and wb, reading the next
+# word of each; answers whether to go on, the count, the arrays and the
+# words read.
+def B.fwd.step(+wa: U32, +wb: U32, +n: U32, +max: U32, +sa: Nat, +sb: Nat,
+  +alo: U32, +blo: U32, a: Array<U32>, b: Array<U32>) ->
+  Bool & (U32 & ((Array<U32> & Array<U32>) & (U32 & U32))):
+  B.fwd.k1(wb, n, max, sa, sb, alo, blo, b, a[(wa + 1 : U32)])
 
-def B.fwd.loop(k: Nat, +i: U32, +j: U32, +max: U32,
-  s: Bool & (U32 & (Array<U32> & Array<U32>))) ->
+def B.fwd.loop(k: Nat, +wa: U32, +wb: U32, +max: U32, +sa: Nat, +sb: Nat,
+  s: Bool & (U32 & ((Array<U32> & Array<U32>) & (U32 & U32)))) ->
   (Array<U32> & Array<U32>) & U32:
   match k s:
-    case 0n Tuple{m, Tuple{n, ab}}:
+    case 0n Tuple{m, Tuple{n, Tuple{ab, hs}}}:
       (ab, U32.min(n, max))
-    case 1n+p Tuple{False{}, Tuple{n, ab}}:
+    case 1n+p Tuple{False{}, Tuple{n, Tuple{ab, hs}}}:
       (ab, U32.min(n, max))
-    case 1n+p Tuple{True{}, Tuple{n, Tuple{a, b}}}:
-      B.fwd.loop(p, i, j, max, B.fwd.step(i, j, n, max, a, b))
+    case 1n+p Tuple{True{}, Tuple{n0, Tuple{Tuple{a, b}, Tuple{alo0, blo0}}}}:
+      +n = {n0 : U32}
+      +alo = {alo0 : U32}
+      +blo = {blo0 : U32}
+      +wa2 = (wa + 1 : U32)
+      +wb2 = (wb + 1 : U32)
+      B.fwd.loop(p, wa2, wb2, max, sa, sb,
+        B.fwd.step(wa2, wb2, n, max, sa, sb, alo, blo, a, b))
+
+def B.fwd.s2(+wa: U32, +wb: U32, +max: U32, +sa: Nat, +sb: Nat, +alo: U32,
+  a: Array<U32>, r: Array<U32> & U32) -> (Array<U32> & Array<U32>) & U32:
+  (b, +blo) = r
+  B.fwd.loop(U32.to_nat(((max >> 2n : U32) + 1 : U32)), wa, wb, max, sa, sb,
+    B.fwd.step(wa, wb, 0, max, sa, sb, alo, blo, a, b))
+
+def B.fwd.s1(+wa: U32, +wb: U32, +max: U32, +sa: Nat, +sb: Nat, b: Array<U32>,
+  r: Array<U32> & U32) -> (Array<U32> & Array<U32>) & U32:
+  (a, +alo) = r
+  B.fwd.s2(wa, wb, max, sa, sb, alo, a, b[wb])
 
 # How many bytes, up to max, a from i and b from j have in common.
 def B.fwd(a: Array<U32>, +i: U32, b: Array<U32>, +j: U32, +max: U32) ->
   (Array<U32> & Array<U32>) & U32:
-  B.fwd.loop(U32.to_nat(((max >> 2n : U32) + 1 : U32)), i, j, max,
-    B.fwd.step(i, j, 0, max, a, b))
+  +wa = (i >> 2n : U32)
+  +wb = (j >> 2n : U32)
+  B.fwd.s1(wa, wb, max, B.sh(i), B.sh(j), b, a[wa])
 
 # The same within one array.
 def B.fwd1.k3(+n: U32, +max: U32, +x: U32, r: Array<U32> & U32) ->

@@ -675,9 +675,39 @@ def sc.push.k0(+K: SK, +pos: U32, +len: U32, +val: U32, r: Bool & Sc) -> Sc:
   (full, st) = r
   sc.push.go(full, K, pos, len, val, st)
 
-# Buffers a match (flushing the buffer first when it is full).
+def sc.uoff.k(src: Array<U32>, tgt: Array<U32>, lt: Array<U32>,
+  stb: Array<U32>, spv: Array<U32>, io: Array<U32>, +p: U32, +mm: U32,
+  +rc: U32, +rl: U32, +lck: U32, +last: U32, +nio: U32, +cont: U32,
+  r: U32 & Em) -> U32 & Sc:
+  (+u, em) = r
+  (u, Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, nio, cont})
+
+def sc.uoff(st: Sc) -> U32 & Sc:
+  match st:
+    case Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, nio,
+      cont}:
+      sc.uoff.k(src, tgt, lt, stb, spv, io, p, mm, rc, rl, lck, last, nio, cont,
+        em.uoff(em))
+
+def sc.push.if(z: Bool, +K: SK, +pos: U32, +len: U32, +val: U32, st: Sc) -> Sc:
+  match z:
+    case True{}:
+      sc.push.k0(K, pos, len, val, sc.nio(K, st))
+    case False{}:
+      st
+
+def sc.push.t(+K: SK, +pos: U32, +len: U32, +val: U32, r: U32 & Sc) -> Sc:
+  (+u, st) = r
+  +d = u32.pick((pos < u : U32), (u - pos : U32), 0)
+  +run = (len >= 2147483648 : U32)
+  sc.push.if(((d + 4 : U32) <= (len .&. 2147483647 : U32) : U32), K, (pos + d : U32),
+    (len - d : U32), u32.pick(run, val, (val + d : U32)), st)
+
+# Buffers a match (flushing the buffer first when it is full). A match that
+# starts in bytes already written (after a flush in mid-window) is cut to
+# start after them, or dropped if under 4 bytes remain.
 def sc.push(+K: SK, +pos: U32, +len: U32, +val: U32, st: Sc) -> Sc:
-  sc.push.k0(K, pos, len, val, sc.nio(K, st))
+  sc.push.t(K, pos, len, val, sc.uoff(st))
 
 # Drops the buffered matches that start at or after pos: a source match
 # extended backwards covers them (xd3_iopt_erase).
@@ -924,7 +954,7 @@ def ph.large.u(+K: SK, src: Array<U32>, tgt: Array<U32>, lt: Array<U32>,
     case SK{+slen, w0, +w1, cpl, lsh, lmask, ssh, smask, cap} Tuple{u0, em}:
       +uoff = {u0 : U32}
       ph.large.k2(K, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, nio, cont,
-        srcpos, U32.min((p - uoff : U32), srcpos),
+        srcpos, u32.pick((uoff <= p : U32), U32.min((p - uoff : U32), srcpos), 0),
         B.B.fwd(src, srcpos, tgt, p, U32.min((w1 - p : U32), (slen - srcpos : U32))))
 
 def ph.large.try(z: Bool, +K: SK, src: Array<U32>, tgt: Array<U32>,
