@@ -1118,12 +1118,18 @@ class Ctx:
     def __init__(self, cur, name):
         self.cur = cur
         self.name = name
+        # The last @simp's skip set: a rewrite whose left side is not in
+        # the goal as written is tried again simp-normalized with it.
+        self.skip = None
 
 
 def rewrite(ctx, goal, old, new, eq_text, T, ind, out, only=None):
     if goal is None:
         raise Err(f"{ctx.name}: no goal tracked here (use @goal)")
     motive, n = subterms_replace(goal, old, ('hole',), only)
+    if n == 0 and ctx.skip is not None:
+        old = simp(ctx.cur, old, skip=ctx.skip)
+        motive, n = subterms_replace(goal, old, ('hole',), only)
     if n == 0:
         raise Err(f"{ctx.name}: {show(old)} is not in the goal\n  goal: {show(goal)}")
     out.append(' ' * ind + f"%{eq_text} :")
@@ -1258,6 +1264,7 @@ def directive(ctx, text, goal, ind, out):
                 skip.add(w[1:])
             elif w.startswith('+'):
                 skip.discard(w[1:])
+        ctx.skip = skip
         return simp(ctx.cur, goal, skip=skip)
     if cmd == 'rename':
         if goal is None:
