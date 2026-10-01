@@ -1383,3 +1383,22 @@ def W.and_idem_r(n, a, b):
       %Equal.sym(Word(p), Word.and(p, Word.and(p, at, bt), bt), Word.and(p, at, bt), W.and_idem_r(p, at, bt)) :
         {WCon{Bool.and(x, y), _} == WCon{Bool.and(x, y), Word.and(p, at, bt)} : Word(1n+p)}
       {==}
+
+law W.add_comm:
+  for +n: Nat
+  for +a: Word(n)
+  for +b: Word(n)
+  {Word.add(n, a, b) == Word.add(n, b, a) : Word(n)}
+
+def W.add_comm(n, a, b):
+  %W.fn_N(n, a) : {Word.add(n, _, b) == Word.add(n, b, _) : Word(n)}
+  %W.fn_N(n, b) : {Word.add(n, W.fn(n, Word.to_nat(n, a)), _) == Word.add(n, _, W.fn(n, Word.to_nat(n, a))) : Word(n)}
+  %Equal.sym(Word(n), Word.add(n, W.fn(n, Word.to_nat(n, a)), W.fn(n, Word.to_nat(n, b))),
+    W.fn(n, Nat.add(Word.to_nat(n, a), Word.to_nat(n, b))), W.add_fn(n, Word.to_nat(n, a), Word.to_nat(n, b))) :
+    {_ == Word.add(n, W.fn(n, Word.to_nat(n, b)), W.fn(n, Word.to_nat(n, a))) : Word(n)}
+  %Equal.sym(Word(n), Word.add(n, W.fn(n, Word.to_nat(n, b)), W.fn(n, Word.to_nat(n, a))),
+    W.fn(n, Nat.add(Word.to_nat(n, b), Word.to_nat(n, a))), W.add_fn(n, Word.to_nat(n, b), Word.to_nat(n, a))) :
+    {W.fn(n, Nat.add(Word.to_nat(n, a), Word.to_nat(n, b))) == _ : Word(n)}
+  %P.Nat.add_comm(Word.to_nat(n, b), Word.to_nat(n, a)) :
+    {W.fn(n, _) == W.fn(n, Nat.add(Word.to_nat(n, b), Word.to_nat(n, a))) : Word(n)}
+  {==}

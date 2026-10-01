@@ -780,3 +780,111 @@ def U.and_idem_r(x, y):
       %Equal.sym(Word(32n), Word.and(32n, Word.and(32n, a, b), b), Word.and(32n, a, b), W.W.and_idem_r(32n, a, b)) :
         {U32{_} == U32{Word.and(32n, a, b)} : U32}
       {==}
+
+law U.add_comm:
+  for +x: U32
+  for +y: U32
+  {U32.add(x, y) == U32.add(y, x) : U32}
+
+def U.add_comm(x, y):
+  match x y:
+    case U32{a} U32{b}:
+      %W.W.add_comm(32n, b, a) : {U32{_} == U32{Word.add(32n, b, a)} : U32}
+      {==}
+
+law U.add_zero_r:
+  for +x: U32
+  {U32.add(x, 0) == x : U32}
+
+def U.add_zero_r(x):
+  match x:
+    case U32{a}:
+      %Equal.sym(Word(32n), Word.add(32n, a, Word.zero(32n)), a, W.W.add_zero(32n, a)) : {U32{_} == U32{a} : U32}
+      {==}
+
+# (x + y) - x = y.
+law U.sub_add_l:
+  for +x: U32
+  for +y: U32
+  {U32.sub(U32.add(x, y), x) == y : U32}
+
+def U.sub_add_l(x, y):
+  %U.add_comm(y, x) : {U32.sub(_, x) == y : U32}
+  U.sub_add(y, x)
+
+law U.lt_trans:
+  for +a: U32
+  for +b: U32
+  for +c: U32
+  for +h1: {U32.is_lt(a, b) == True{} : Bool}
+  for +h2: {U32.is_lt(b, c) == True{} : Bool}
+  {U32.is_lt(a, c) == True{} : Bool}
+
+def U.lt_trans(a, b, c, h1, h2):
+  U.N_lt(a, c, P.Nat.lt_trans(U.N(a), U.N(b), U.N(c), U.lt_N(a, b, h1), U.lt_N(b, c, h2)))
+
+law U.gt1.m:
+  for +m: Nat
+  {Cmp.is_gt(Nat.cmp(0n, m)) == False{} : Bool}
+
+def U.gt1.m(m):
+  match m:
+    case 0n:
+      {==}
+    case 1n+k:
+      {==}
+
+law U.gt1.go:
+  for +s: U32
+  for +k: Nat
+  for +e: {U.N(s) == k : Nat}
+  for +ne: {U32.is_eq(s, 0) == False{} : Bool}
+  {Cmp.is_gt(Nat.cmp(1n, U.N(s))) == False{} : Bool}
+
+def U.gt1.go(s, k, e, ne):
+  match k:
+    case 0n:
+      P.Bool.true_false({Cmp.is_gt(Nat.cmp(1n, U.N(s))) == False{} : Bool},
+        (%U.eq_N(s, 0, e) : {U32.is_eq(_, 0) == False{} : Bool}
+          ne))
+    case 1n+m:
+      %Equal.sym(Nat, U.N(s), 1n+m, e) : {Cmp.is_gt(Nat.cmp(1n, _)) == False{} : Bool}
+      U.gt1.m(m)
+
+# 1 > s only for s = 0.
+law U.gt1_false:
+  for +s: U32
+  for +ne: {U32.is_eq(s, 0) == False{} : Bool}
+  {U32.is_gt(1, s) == False{} : Bool}
+
+def U.gt1_false(s, ne):
+  %Equal.sym(Cmp, U32.cmp(1, s), Nat.cmp(U.N(1), U.N(s)), U.cmp_nat(1, s)) : {Cmp.is_gt(_) == False{} : Bool}
+  U.gt1.go(s, U.N(s), {==}, ne)
+
+law U.big.go:
+  for +x: U32
+  for +h: {U32.is_lt(x, 134217728) == True{} : Bool}
+  for +z: Bool
+  for +ez: {U32.is_eq(U32.sub(2147483648, x), 0) == z : Bool}
+  {U32.is_eq(U32.sub(2147483648, x), 0) == False{} : Bool}
+
+def U.big.go(x, h, z, ez):
+  match z:
+    case False{}:
+      ez
+    case True{}:
+      P.Bool.false_true({U32.is_eq(U32.sub(2147483648, x), 0) == False{} : Bool},
+        (%{(%U.add_zero_r(x) : {_ == 2147483648 : U32}
+              (%U.add_comm(0, x) : {_ == 2147483648 : U32}
+                (%U.is_eq(U32.sub(2147483648, x), 0, ez) : {U32.add(_, x) == 2147483648 : U32}
+                  U.add_sub(2147483648, x)))) : {x == 2147483648 : U32}} : {U32.is_lt(_, 134217728) == True{} : Bool}
+          h))
+
+# The decoder's limit check passes for a position below 2^27.
+law U.big:
+  for +x: U32
+  for +h: {U32.is_lt(x, 134217728) == True{} : Bool}
+  {U32.is_gt(1, U32.sub(2147483648, x)) == False{} : Bool}
+
+def U.big(x, h):
+  U.gt1_false(U32.sub(2147483648, x), U.big.go(x, h, U32.is_eq(U32.sub(2147483648, x), 0), {==}))

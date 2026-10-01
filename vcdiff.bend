@@ -145,16 +145,13 @@ def cache.put(ca: Array<U32>, +slot: U32, +addr: U32) -> Array<U32>:
   c2 = ca[(768 + slot : U32)] <- addr
   c2[(addr % 768 : U32)] <- addr
 
-def cache.clear.go(n: Nat, a: Array<U32>, +i: U32) -> Array<U32>:
-  match n:
-    case 0n:
-      a
-    case 1n+p:
-      a2 = a[i] <- 0
-      cache.clear.go(p, a2, (i + 1 : U32))
-
+# Every slot to 0 (slots past 772 are never read).
 def cache.clear(ca: Array<U32>) -> Array<U32>:
-  cache.clear.go(772n, ca, 0)
+  match ca:
+    case ALeaf{v}:
+      ALeaf{0}
+    case ANode{l, r}:
+      ANode{cache.clear(l), cache.clear(r)}
 
 def cache.next(+slot: U32) -> U32:
   ((slot + 1 : U32) .&. 3 : U32)

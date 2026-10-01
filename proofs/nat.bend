@@ -1290,3 +1290,67 @@ def Nat.lt_of_add_succ(a, b, c, h):
         {Nat.cmp(a, _) == LT{} : Cmp}
       Nat.le_lt_succ(a, Nat.add(a, b), Nat.cmp_add_r(a, b))),
     h)
+
+def Nat.pred(+n: Nat) -> Nat:
+  match n:
+    case 0n:
+      0n
+    case 1n+p:
+      p
+
+law Nat.succ_inj:
+  for +x: Nat
+  for +y: Nat
+  for +e: {1n+x == 1n+y : Nat}
+  {x == y : Nat}
+
+def Nat.succ_inj(x, y, e):
+  %Equal.sym(Nat, 1n+x, 1n+y, e) : {Nat.pred(_) == y : Nat}
+  {==}
+
+law Nat.add_cancel_l:
+  for +c: Nat
+  for +a: Nat
+  for +b: Nat
+  for +e: {Nat.add(c, a) == Nat.add(c, b) : Nat}
+  {a == b : Nat}
+
+def Nat.add_cancel_l(c, a, b, e):
+  match c:
+    case 0n:
+      e
+    case 1n+k:
+      Nat.add_cancel_l(k, a, b, Nat.succ_inj(Nat.add(k, a), Nat.add(k, b), e))
+
+law Nat.add_cancel_r:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  for +e: {Nat.add(a, c) == Nat.add(b, c) : Nat}
+  {a == b : Nat}
+
+def Nat.add_cancel_r(a, b, c, e):
+  Nat.add_cancel_l(c, a, b,
+    (%Nat.add_comm(a, c) : {_ == Nat.add(c, b) : Nat}
+      (%Nat.add_comm(b, c) : {Nat.add(a, c) == _ : Nat}
+        e)))
+
+# a < 1 + (c + a).
+law Nat.lt_succ_add:
+  for +a: Nat
+  for +c: Nat
+  {Nat.cmp(a, 1n+Nat.add(c, a)) == LT{} : Cmp}
+
+def Nat.lt_succ_add(a, c):
+  Nat.le_lt_succ(a, Nat.add(c, a), Nat.le_add_l(c, a))
+
+law Nat.lt_trans:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  for +h1: {Nat.cmp(a, b) == LT{} : Cmp}
+  for +h2: {Nat.cmp(b, c) == LT{} : Cmp}
+  {Nat.cmp(a, c) == LT{} : Cmp}
+
+def Nat.lt_trans(a, b, c, h1, h2):
+  Nat.lt_le_trans(a, b, c, h1, Nat.lt_to_le(b, c, h2))
