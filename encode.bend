@@ -183,6 +183,15 @@ def ea.k(+addr: U32, +here: U32, adr: Array<U32>, +al: U32, +slot: U32,
 # Instructions
 # ============
 
+# Room for an instruction with nd data bytes: the sections grow (doubling)
+# as a window fills them.
+def em.room(+nd: U32, em: Em) -> Em:
+  match em:
+    case Em{dat, ins, adr, ca, +dl, +il, +al, slot, uoff, pt, ps, pm, pc}:
+      Em{B.B.grow(dat, dl, (dl + nd : U32)), B.B.grow(ins, il, (il + 12 : U32)),
+        B.B.grow(adr, al, (al + 6 : U32)), ca, dl, il, al, slot, uoff, pt, ps,
+        pm, pc}
+
 def em.add.k(ins: Array<U32>, adr: Array<U32>, ca: Array<U32>, +dl: U32,
   +il: U32, +al: U32, +slot: U32, +pos: U32, +size: U32, +pt: U32, +ps: U32,
   +pm: U32, +pc: U32, r: Array<U32> & Array<U32>) -> Array<U32> & Em:
@@ -190,19 +199,25 @@ def em.add.k(ins: Array<U32>, adr: Array<U32>, ca: Array<U32>, +dl: U32,
   (tgt, em.queue(1, size, 0, Em{dat, ins, adr, ca, (dl + size : U32), il, al,
     slot, (pos + size : U32), pt, ps, pm, pc}))
 
-# ADD: tgt[pos, pos + size) into the data section.
-def em.add(tgt: Array<U32>, +pos: U32, +size: U32, em: Em) -> Array<U32> & Em:
+def em.add.go(tgt: Array<U32>, +pos: U32, +size: U32, em: Em) -> Array<U32> & Em:
   match em:
     case Em{dat, ins, adr, ca, +dl, il, al, slot, uoff, pt, ps, pm, pc}:
       em.add.k(ins, adr, ca, dl, il, al, slot, pos, size, pt, ps, pm, pc,
         B.B.copy(dat, dl, tgt, pos, size))
 
-# RUN: size copies of byte b.
-def em.run(+pos: U32, +size: U32, +b: U32, em: Em) -> Em:
+# ADD: tgt[pos, pos + size) into the data section.
+def em.add(tgt: Array<U32>, +pos: U32, +size: U32, em: Em) -> Array<U32> & Em:
+  em.add.go(tgt, pos, size, em.room(size, em))
+
+def em.run.go(+pos: U32, +size: U32, +b: U32, em: Em) -> Em:
   match em:
     case Em{dat, ins, adr, ca, +dl, il, al, slot, uoff, pt, ps, pm, pc}:
       em.queue(2, size, 0, Em{B.B.put(dat, dl, b), ins, adr, ca, (dl + 1 : U32),
         il, al, slot, (pos + size : U32), pt, ps, pm, pc})
+
+# RUN: size copies of byte b.
+def em.run(+pos: U32, +size: U32, +b: U32, em: Em) -> Em:
+  em.run.go(pos, size, b, em.room(1, em))
 
 def em.copy.k(dat: Array<U32>, ins: Array<U32>, +dl: U32, +il: U32, +slot: U32,
   +pos: U32, +size: U32, +pt: U32, +ps: U32, +pm: U32, +pc: U32, ae: AE) -> Em:
@@ -231,12 +246,15 @@ def ea.r0(+addr: U32, +here: U32, adr: Array<U32>, +al: U32, +slot: U32,
   (ca, +n0) = r
   ea.r1(addr, here, adr, al, slot, n0, ca[769])
 
-# COPY: size bytes from window address addr, here being the address of pos.
-def em.copy(+pos: U32, +size: U32, +addr: U32, +here: U32, em: Em) -> Em:
+def em.copy.go(+pos: U32, +size: U32, +addr: U32, +here: U32, em: Em) -> Em:
   match em:
     case Em{dat, ins, adr, ca, dl, il, +al, +slot, uoff, pt, ps, pm, pc}:
       em.copy.k(dat, ins, dl, il, slot, pos, size, pt, ps, pm, pc,
         ea.r0(addr, here, adr, al, slot, ca[768]))
+
+# COPY: size bytes from window address addr, here being the address of pos.
+def em.copy(+pos: U32, +size: U32, +addr: U32, +here: U32, em: Em) -> Em:
+  em.copy.go(pos, size, addr, here, em.room(0, em))
 
 def em.uoff(em: Em) -> U32 & Em:
   match em:
@@ -1472,7 +1490,7 @@ def es.fresh(+sbits: Nat, +wb: U32, +ocap: U32, src: Array<U32>,
   tgt: Array<U32>, lt: Array<U32>, +lidx: U32, +cont: U32) -> ES:
   ES{src, tgt, lt, Array.new(U32, sbits, 0), Array.new(U32, 18n, 0),
     Array.new(U32, 17n, 0),
-    Em{B.B.zeros(wb), B.B.zeros((wb * 4 : U32)), B.B.zeros((wb * 2 : U32)),
+    Em{B.B.zeros(65536), B.B.zeros(65536), B.B.zeros(65536),
       Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
     B.B.zeros(ocap), 0, lidx, cont}
 
@@ -1590,7 +1608,7 @@ def enc.go(+E: EK, src: Array<U32>, tgt: Array<U32>, +lbits: Nat,
           enc.pre(enc.depth(u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32))), E,
             U32.min(tlen, wsz), ES{src, tgt, Array.new(U32, lbits, 0), Array.new(U32, sbits, 0),
             Array.new(U32, 18n, 0), Array.new(U32, 17n, 0),
-            Em{B.B.zeros(wb), B.B.zeros((wb * 4 : U32)), B.B.zeros((wb * 2 : U32)),
+            Em{B.B.zeros(65536), B.B.zeros(65536), B.B.zeros(65536),
               Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
             out, olen, 0, 0})))
 

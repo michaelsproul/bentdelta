@@ -75,9 +75,9 @@ Linux machine:
 
 | case | encode (xdelta3 / bentdelta) | decode | delta size |
 |---|---|---|---|
-| 30 MB tar, edited | 0.25 / 0.31 s | 0.12 / 0.09 s | 160366 / 161969 |
-| 12 MB, identical | 0.04 / 0.09 s | 0.05 / 0.04 s | 80 / 58 |
-| 158 MB shared object, new version | 6.48 / 4.28 s | 0.64 / 0.77 s | 12.86 / 12.35 MB |
+| 30 MB tar, edited | 0.26 / 0.30 s | 0.12 / 0.10 s | 160366 / 161969 |
+| 12 MB, identical | 0.04 / 0.08 s | 0.05 / 0.04 s | 80 / 58 |
+| 158 MB shared object, new version | 6.46 / 3.95 s | 0.69 / 0.79 s | 12.86 / 12.35 MB |
 
 Encoding includes the check (decoding the delta again and comparing).
 Targets of 8 windows (56 MiB) or more are encoded in parallel, eight tasks
