@@ -745,3 +745,91 @@ def FB.dec(k, len, tt, slen, sa, hlen, en):
       {==})))))) :
     {Done{_} == Done{S.S.sl(1n+k, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
   {==}
+
+# An empty target: everything is concrete.
+law FB.ok0:
+  for +slen: U32
+  for sa: Array<U32>
+  for +tt: A.Tr
+  {C.restore(B.Bytes{slen, sa}, Pair.snd(B.Bytes, B.Bytes, C.fallback(B.Bytes{0, A.A.from(tt)})))
+    == Done{B.B.list(B.Bytes{0, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+
+def FB.ok0(slen, sa, tt):
+  {==}
+
+law FB.ok.go:
+  for +slen: U32
+  for sa: Array<U32>
+  for +len: U32
+  for +tt: A.Tr
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +n: Nat
+  for +en: {U32.to_nat(len) == n : Nat}
+  for +z: {U32.is_eq(len, 0) == False{} : Bool}
+  {C.restore(B.Bytes{slen, sa}, Pair.snd(B.Bytes, B.Bytes, C.fallback(B.Bytes{len, A.A.from(tt)})))
+    == Done{B.B.list(B.Bytes{len, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+
+def FB.ok.go(slen, sa, len, tt, hlen, n, en, z):
+  match n:
+    case 0n:
+      P.Bool.true_false({C.restore(B.Bytes{slen, sa}, Pair.snd(B.Bytes, B.Bytes, C.fallback(B.Bytes{len, A.A.from(tt)})))
+        == Done{B.B.list(B.Bytes{len, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>},
+        (%V.U.eq_N(len, 0, en) : {U32.is_eq(_, 0) == False{} : Bool}
+          z))
+    case 1n+k:
+      %Equal.sym(B.Bytes & B.Bytes, C.fallback(B.Bytes{len, A.A.from(tt)}),
+        (B.Bytes{len, A.A.from(tt)},
+          B.Bytes{S.S.adv(F.F.wins(S.S.sl(U32.to_nat(len), tt, 0)), 5),
+            A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(U32.to_nat(len), tt, 0))), F.F.t0(len), 0))}),
+        F.F.spec1(len, tt, z)) :
+        {C.restore(B.Bytes{slen, sa}, Pair.snd(B.Bytes, B.Bytes, _))
+          == Done{B.B.list(B.Bytes{len, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+      %Equal.sym(Nat, U32.to_nat(len), 1n+k, en) :
+        {C.restore(B.Bytes{slen, sa}, B.Bytes{S.S.adv(F.F.wins(S.S.sl(_, tt, 0)), 5),
+          A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(_, tt, 0))), F.F.t0(len), 0))})
+          == Done{B.B.list(B.Bytes{len, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+      %Equal.sym(List<&2, U32>, B.B.list(B.Bytes{len, A.A.from(tt)}), S.S.sl(U32.to_nat(len), tt, 0), S.S.list(len, tt)) :
+        {C.restore(B.Bytes{slen, sa}, B.Bytes{S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5),
+          A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0))})
+          == Done{_} : Result<&1, &1, U32, List<&2, U32>>}
+      %Equal.sym(Nat, U32.to_nat(len), 1n+k, en) :
+        {C.restore(B.Bytes{slen, sa}, B.Bytes{S.S.adv(F.F.wins(S.S.sl(1n+k, tt, 0)), 5),
+          A.A.from(S.S.puts(F.F.hdr(F.F.wins(S.S.sl(1n+k, tt, 0))), F.F.t0(len), 0))})
+          == Done{S.S.sl(_, tt, 0)} : Result<&1, &1, U32, List<&2, U32>>}
+      FB.dec(k, len, tt, slen, sa, hlen, en)
+
+law FB.ok.z:
+  for +slen: U32
+  for sa: Array<U32>
+  for +len: U32
+  for +tt: A.Tr
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +z: Bool
+  for +ez: {U32.is_eq(len, 0) == z : Bool}
+  {C.restore(B.Bytes{slen, sa}, Pair.snd(B.Bytes, B.Bytes, C.fallback(B.Bytes{len, A.A.from(tt)})))
+    == Done{B.B.list(B.Bytes{len, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+
+def FB.ok.z(slen, sa, len, tt, hlen, z, ez):
+  match z:
+    case True{}:
+      %Equal.sym(U32, len, 0, V.U.is_eq(len, 0, ez)) :
+        {C.restore(B.Bytes{slen, sa}, Pair.snd(B.Bytes, B.Bytes, C.fallback(B.Bytes{_, A.A.from(tt)})))
+          == Done{B.B.list(B.Bytes{_, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+      FB.ok0(slen, sa, tt)
+    case False{}:
+      FB.ok.go(slen, sa, len, tt, hlen, U32.to_nat(len), {==}, ez)
+
+# Whatever the source, the plain encoding of a target under 2^27 bytes
+# decodes to the target.
+law FB.ok:
+  for src: B.Bytes
+  for +len: U32
+  for +tt: A.Tr
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {C.restore(src, Pair.snd(B.Bytes, B.Bytes, C.fallback(B.Bytes{len, A.A.from(tt)})))
+    == Done{B.B.list(B.Bytes{len, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+
+def FB.ok(src, len, tt, hlen):
+  match src:
+    case B.Bytes{+slen, sa}:
+      FB.ok.z(slen, sa, len, tt, hlen, U32.is_eq(len, 0), {==})

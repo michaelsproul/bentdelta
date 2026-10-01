@@ -1417,3 +1417,63 @@ def Cmp.ge_flip(c):
       {==}
     case GT{}:
       {==}
+
+# x < y gives x / 4 < (3 + y) / 4.
+law Nat.hh_lt:
+  for +x: Nat
+  for +y: Nat
+  for +h: {Nat.cmp(x, y) == LT{} : Cmp}
+  {Nat.cmp(Nat.half(Nat.half(x)), Nat.half(Nat.half(Nat.add(3n, y)))) == LT{} : Cmp}
+
+def Nat.hh_lt(x, y, h):
+  match x y:
+    case 0n 0n:
+      Cmp.eq_lt({Nat.cmp(Nat.half(Nat.half(0n)), Nat.half(Nat.half(Nat.add(3n, 0n)))) == LT{} : Cmp}, h)
+    case 0n 1n:
+      {==}
+    case 0n 2n:
+      {==}
+    case 0n 3n:
+      {==}
+    case 0n 4n+b:
+      {==}
+    case 1n 0n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(1n)), Nat.half(Nat.half(Nat.add(3n, 0n)))) == LT{} : Cmp}, h)
+    case 1n 1n:
+      Cmp.eq_lt({Nat.cmp(Nat.half(Nat.half(1n)), Nat.half(Nat.half(Nat.add(3n, 1n)))) == LT{} : Cmp}, h)
+    case 1n 2n:
+      {==}
+    case 1n 3n:
+      {==}
+    case 1n 4n+b:
+      {==}
+    case 2n 0n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(2n)), Nat.half(Nat.half(Nat.add(3n, 0n)))) == LT{} : Cmp}, h)
+    case 2n 1n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(2n)), Nat.half(Nat.half(Nat.add(3n, 1n)))) == LT{} : Cmp}, h)
+    case 2n 2n:
+      Cmp.eq_lt({Nat.cmp(Nat.half(Nat.half(2n)), Nat.half(Nat.half(Nat.add(3n, 2n)))) == LT{} : Cmp}, h)
+    case 2n 3n:
+      {==}
+    case 2n 4n+b:
+      {==}
+    case 3n 0n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(3n)), Nat.half(Nat.half(Nat.add(3n, 0n)))) == LT{} : Cmp}, h)
+    case 3n 1n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(3n)), Nat.half(Nat.half(Nat.add(3n, 1n)))) == LT{} : Cmp}, h)
+    case 3n 2n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(3n)), Nat.half(Nat.half(Nat.add(3n, 2n)))) == LT{} : Cmp}, h)
+    case 3n 3n:
+      Cmp.eq_lt({Nat.cmp(Nat.half(Nat.half(3n)), Nat.half(Nat.half(Nat.add(3n, 3n)))) == LT{} : Cmp}, h)
+    case 3n 4n+b:
+      {==}
+    case 4n+a 0n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(4n+a)), Nat.half(Nat.half(Nat.add(3n, 0n)))) == LT{} : Cmp}, h)
+    case 4n+a 1n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(4n+a)), Nat.half(Nat.half(Nat.add(3n, 1n)))) == LT{} : Cmp}, h)
+    case 4n+a 2n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(4n+a)), Nat.half(Nat.half(Nat.add(3n, 2n)))) == LT{} : Cmp}, h)
+    case 4n+a 3n:
+      Cmp.gt_lt({Nat.cmp(Nat.half(Nat.half(4n+a)), Nat.half(Nat.half(Nat.add(3n, 3n)))) == LT{} : Cmp}, h)
+    case 4n+a 4n+b:
+      Nat.hh_lt(a, b, h)

@@ -281,34 +281,20 @@ def B.eq.words(n: Nat, +i: U32, s: Bool & (Array<U32> & Array<U32>)) ->
     case 1n+p Tuple{True{}, Tuple{a, b}}:
       B.eq.words(p, (i + 1 : U32), B.eq.k(a[i], b[i]))
 
-# The bytes of the last, partial word agree.
-def B.eq.last(+mask: U32, r: Array<U32> & U32, q: Array<U32> & U32) ->
-  Bool & (Array<U32> & Array<U32>):
-  (a, +x) = r
-  (b, +y) = q
-  (U32.is_eq(((x .^. y : U32) .&. mask : U32), 0), (a, b))
-
-def B.eq.fin(+la: U32, +lb: U32, same: Bool, s: Bool & (Array<U32> & Array<U32>)) ->
+def B.eq.fin(+la: U32, +lb: U32, r: (Array<U32> & Array<U32>) & Bool) ->
   (Bytes & Bytes) & Bool:
-  (last, ab) = s
-  (aa, ba) = ab
-  ((Bytes{la, aa}, Bytes{lb, ba}), same && last && U32.is_eq(la, lb))
-
-def B.eq.tail(+la: U32, +lb: U32, +nw: U32, +mask: U32,
-  r: (Array<U32> & Array<U32>) & Bool) -> (Bytes & Bytes) & Bool:
   (ab, same) = r
   (aa, ba) = ab
-  B.eq.fin(la, lb, same, B.eq.last(mask, aa[nw], ba[nw]))
+  ((Bytes{la, aa}, Bytes{lb, ba}), same)
 
-# Whether two byte strings are the same: the same length and the same bytes
-# below it (padding is ignored). Answers both back.
+# Whether two byte strings are the same: the same length and the same words
+# holding their bytes. Padding counts, so byte strings that agree may still
+# differ here (never so for ours, whose padding is zero); a check that says
+# they agree is always right. Answers both back.
 def B.eq(a: Bytes, b: Bytes) -> (Bytes & Bytes) & Bool:
   match a b:
     case Bytes{+la, aa} Bytes{+lb, ba}:
-      +nw = (la >> 2n : U32)
-      +mask = ((1 << U32.to_nat(((la .&. 3 : U32) << 3n : U32)) : U32) - 1 : U32)
-      B.eq.tail(la, lb, nw, mask,
-        B.eq.words(U32.to_nat(nw), 0, (U32.is_eq(la, lb), (aa, ba))))
+      B.eq.fin(la, lb, B.eq.words(U32.to_nat(B.words(la)), 0, (U32.is_eq(la, lb), (aa, ba))))
 
 # Adler-32
 # ========
