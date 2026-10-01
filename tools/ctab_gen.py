@@ -384,4 +384,63 @@ def CT.dbl({ARGS}, hd, hpm, hm):
   @simp -CT.D
   CT.dbl.a({ARGS}, hd, hpm, hm, {CA}, {{==}})
 """)
+
+# ---- the decoder's table ----
+def half(t, sz, m): return t | (sz << 2) | (m << 10)
+def pair(h1, h2): return h1 | (h2 << 16)
+def entry(op):
+    if op == 0: return pair(half(2, 0, 0), 0)
+    if op < 19: return pair(half(1, op - 1, 0), 0)
+    if op < 163:
+        k = op - 19; sz = k % 16
+        return pair(half(3, 0 if sz == 0 else sz + 3, k // 16), 0)
+    if op < 235:
+        k = op - 163; r = k % 12
+        return pair(half(1, r // 3 + 1, 0), half(3, r % 3 + 4, k // 12))
+    if op < 247:
+        k = op - 235
+        return pair(half(1, k % 4 + 1, 0), half(3, 4, k // 4 + 6))
+    k = op - 247
+    return pair(half(3, 4, k), half(1, 1, 0))
+def tree(lo, n):
+    if n == 1: return f"A.TL{{{entry(lo)}}}"
+    h = n // 2
+    return f"A.TN{{{tree(lo, h)}, {tree(lo + h, h)}}}"
+W(f"""
+# The code table, as a tree.
+def CT.TT() -> A.Tr:
+  {tree(0, 256)}
+
+law CT.tt:
+  {{A.A.to(D.ct.table()) == CT.TT() : A.Tr}}
+
+def CT.tt():
+  {{==}}
+
+law CT.tab.e:
+  for +c: U32
+  for +k: Nat
+  for +ek: {{V.U.N(c) == k : Nat}}
+  for +hb: {{Cmp.is_le(Nat.cmp(k, 255n)) == True{{}} : Bool}}
+  {{A.T.word(CT.TT(), c) == D.ct.entry(c) : U32}}
+
+def CT.tab.e(c, k, ek, hb):
+  match k:""")
+for v in range(256):
+    W(f"""    case {v}n:
+      {rwlit('c', v, 'ek')}
+      {{==}}""")
+W("""    case 256n+r:
+      @absurd hb
+
+# The decoder's table holds the code table.
+law CT.tab:
+  for +c: U32
+  for +hc: {U32.is_lt(c, 256) == True{} : Bool}
+  {A.T.word(A.A.to(D.ct.table()), c) == D.ct.entry(c) : U32}
+
+def CT.tab(c, hc):
+  @rw CT.tt()
+  CT.tab.e(c, V.U.N(c), {==}, P.Nat.lt_succ_le(V.U.N(c), 255n, V.U.lt_N(c, 256, hc)))
+""")
 open(sys.argv[2], 'w').write('\n'.join(out))

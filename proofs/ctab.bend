@@ -4,6 +4,7 @@ import ../vcdiff.bend as D
 import ../encode.bend as N
 import ./nat.bend as P
 import ./u32.bend as V
+import ./array.bend as A
 import ./spec.bend as Q
 
 # The encoder's opcodes fit the code table: op.single and op.double pick
@@ -2394,3 +2395,1060 @@ law CT.dbl:
 
 def CT.dbl(pt, ps, pm, t, size, mode, hd, hpm, hm):
   CT.dbl.a(pt, ps, pm, t, size, mode, hd, hpm, hm, Bool.and(Bool.and(Bool.and(U32.is_eq(t, 1), U32.is_eq(size, 1)), U32.is_eq(pt, 3)), U32.is_eq(ps, 4)), {==})
+
+# The code table, as a tree.
+def CT.TT() -> A.Tr:
+  A.TN{A.TN{A.TN{A.TN{A.TN{A.TN{A.TN{A.TN{A.TL{2}, A.TL{1}}, A.TN{A.TL{5}, A.TL{9}}}, A.TN{A.TN{A.TL{13}, A.TL{17}}, A.TN{A.TL{21}, A.TL{25}}}}, A.TN{A.TN{A.TN{A.TL{29}, A.TL{33}}, A.TN{A.TL{37}, A.TL{41}}}, A.TN{A.TN{A.TL{45}, A.TL{49}}, A.TN{A.TL{53}, A.TL{57}}}}}, A.TN{A.TN{A.TN{A.TN{A.TL{61}, A.TL{65}}, A.TN{A.TL{69}, A.TL{3}}}, A.TN{A.TN{A.TL{19}, A.TL{23}}, A.TN{A.TL{27}, A.TL{31}}}}, A.TN{A.TN{A.TN{A.TL{35}, A.TL{39}}, A.TN{A.TL{43}, A.TL{47}}}, A.TN{A.TN{A.TL{51}, A.TL{55}}, A.TN{A.TL{59}, A.TL{63}}}}}}, A.TN{A.TN{A.TN{A.TN{A.TN{A.TL{67}, A.TL{71}}, A.TN{A.TL{75}, A.TL{1027}}}, A.TN{A.TN{A.TL{1043}, A.TL{1047}}, A.TN{A.TL{1051}, A.TL{1055}}}}, A.TN{A.TN{A.TN{A.TL{1059}, A.TL{1063}}, A.TN{A.TL{1067}, A.TL{1071}}}, A.TN{A.TN{A.TL{1075}, A.TL{1079}}, A.TN{A.TL{1083}, A.TL{1087}}}}}, A.TN{A.TN{A.TN{A.TN{A.TL{1091}, A.TL{1095}}, A.TN{A.TL{1099}, A.TL{2051}}}, A.TN{A.TN{A.TL{2067}, A.TL{2071}}, A.TN{A.TL{2075}, A.TL{2079}}}}, A.TN{A.TN{A.TN{A.TL{2083}, A.TL{2087}}, A.TN{A.TL{2091}, A.TL{2095}}}, A.TN{A.TN{A.TL{2099}, A.TL{2103}}, A.TN{A.TL{2107}, A.TL{2111}}}}}}}, A.TN{A.TN{A.TN{A.TN{A.TN{A.TN{A.TL{2115}, A.TL{2119}}, A.TN{A.TL{2123}, A.TL{3075}}}, A.TN{A.TN{A.TL{3091}, A.TL{3095}}, A.TN{A.TL{3099}, A.TL{3103}}}}, A.TN{A.TN{A.TN{A.TL{3107}, A.TL{3111}}, A.TN{A.TL{3115}, A.TL{3119}}}, A.TN{A.TN{A.TL{3123}, A.TL{3127}}, A.TN{A.TL{3131}, A.TL{3135}}}}}, A.TN{A.TN{A.TN{A.TN{A.TL{3139}, A.TL{3143}}, A.TN{A.TL{3147}, A.TL{4099}}}, A.TN{A.TN{A.TL{4115}, A.TL{4119}}, A.TN{A.TL{4123}, A.TL{4127}}}}, A.TN{A.TN{A.TN{A.TL{4131}, A.TL{4135}}, A.TN{A.TL{4139}, A.TL{4143}}}, A.TN{A.TN{A.TL{4147}, A.TL{4151}}, A.TN{A.TL{4155}, A.TL{4159}}}}}}, A.TN{A.TN{A.TN{A.TN{A.TN{A.TL{4163}, A.TL{4167}}, A.TN{A.TL{4171}, A.TL{5123}}}, A.TN{A.TN{A.TL{5139}, A.TL{5143}}, A.TN{A.TL{5147}, A.TL{5151}}}}, A.TN{A.TN{A.TN{A.TL{5155}, A.TL{5159}}, A.TN{A.TL{5163}, A.TL{5167}}}, A.TN{A.TN{A.TL{5171}, A.TL{5175}}, A.TN{A.TL{5179}, A.TL{5183}}}}}, A.TN{A.TN{A.TN{A.TN{A.TL{5187}, A.TL{5191}}, A.TN{A.TL{5195}, A.TL{6147}}}, A.TN{A.TN{A.TL{6163}, A.TL{6167}}, A.TN{A.TL{6171}, A.TL{6175}}}}, A.TN{A.TN{A.TN{A.TL{6179}, A.TL{6183}}, A.TN{A.TL{6187}, A.TL{6191}}}, A.TN{A.TN{A.TL{6195}, A.TL{6199}}, A.TN{A.TL{6203}, A.TL{6207}}}}}}}}, A.TN{A.TN{A.TN{A.TN{A.TN{A.TN{A.TN{A.TL{6211}, A.TL{6215}}, A.TN{A.TL{6219}, A.TL{7171}}}, A.TN{A.TN{A.TL{7187}, A.TL{7191}}, A.TN{A.TL{7195}, A.TL{7199}}}}, A.TN{A.TN{A.TN{A.TL{7203}, A.TL{7207}}, A.TN{A.TL{7211}, A.TL{7215}}}, A.TN{A.TN{A.TL{7219}, A.TL{7223}}, A.TN{A.TL{7227}, A.TL{7231}}}}}, A.TN{A.TN{A.TN{A.TN{A.TL{7235}, A.TL{7239}}, A.TN{A.TL{7243}, A.TL{8195}}}, A.TN{A.TN{A.TL{8211}, A.TL{8215}}, A.TN{A.TL{8219}, A.TL{8223}}}}, A.TN{A.TN{A.TN{A.TL{8227}, A.TL{8231}}, A.TN{A.TL{8235}, A.TL{8239}}}, A.TN{A.TN{A.TL{8243}, A.TL{8247}}, A.TN{A.TL{8251}, A.TL{8255}}}}}}, A.TN{A.TN{A.TN{A.TN{A.TN{A.TL{8259}, A.TL{8263}}, A.TN{A.TL{8267}, A.TL{1245189}}}, A.TN{A.TN{A.TL{1507333}, A.TL{1769477}}, A.TN{A.TL{1245193}, A.TL{1507337}}}}, A.TN{A.TN{A.TN{A.TL{1769481}, A.TL{1245197}}, A.TN{A.TL{1507341}, A.TL{1769485}}}, A.TN{A.TN{A.TL{1245201}, A.TL{1507345}}, A.TN{A.TL{1769489}, A.TL{68354053}}}}}, A.TN{A.TN{A.TN{A.TN{A.TL{68616197}, A.TL{68878341}}, A.TN{A.TL{68354057}, A.TL{68616201}}}, A.TN{A.TN{A.TL{68878345}, A.TL{68354061}}, A.TN{A.TL{68616205}, A.TL{68878349}}}}, A.TN{A.TN{A.TN{A.TL{68354065}, A.TL{68616209}}, A.TN{A.TL{68878353}, A.TL{135462917}}}, A.TN{A.TN{A.TL{135725061}, A.TL{135987205}}, A.TN{A.TL{135462921}, A.TL{135725065}}}}}}}, A.TN{A.TN{A.TN{A.TN{A.TN{A.TN{A.TL{135987209}, A.TL{135462925}}, A.TN{A.TL{135725069}, A.TL{135987213}}}, A.TN{A.TN{A.TL{135462929}, A.TL{135725073}}, A.TN{A.TL{135987217}, A.TL{202571781}}}}, A.TN{A.TN{A.TN{A.TL{202833925}, A.TL{203096069}}, A.TN{A.TL{202571785}, A.TL{202833929}}}, A.TN{A.TN{A.TL{203096073}, A.TL{202571789}}, A.TN{A.TL{202833933}, A.TL{203096077}}}}}, A.TN{A.TN{A.TN{A.TN{A.TL{202571793}, A.TL{202833937}}, A.TN{A.TL{203096081}, A.TL{269680645}}}, A.TN{A.TN{A.TL{269942789}, A.TL{270204933}}, A.TN{A.TL{269680649}, A.TL{269942793}}}}, A.TN{A.TN{A.TN{A.TL{270204937}, A.TL{269680653}}, A.TN{A.TL{269942797}, A.TL{270204941}}}, A.TN{A.TN{A.TL{269680657}, A.TL{269942801}}, A.TN{A.TL{270204945}, A.TL{336789509}}}}}}, A.TN{A.TN{A.TN{A.TN{A.TN{A.TL{337051653}, A.TL{337313797}}, A.TN{A.TL{336789513}, A.TL{337051657}}}, A.TN{A.TN{A.TL{337313801}, A.TL{336789517}}, A.TN{A.TL{337051661}, A.TL{337313805}}}}, A.TN{A.TN{A.TN{A.TL{336789521}, A.TL{337051665}}, A.TN{A.TL{337313809}, A.TL{403898373}}}, A.TN{A.TN{A.TL{403898377}, A.TL{403898381}}, A.TN{A.TL{403898385}, A.TL{471007237}}}}}, A.TN{A.TN{A.TN{A.TN{A.TL{471007241}, A.TL{471007245}}, A.TN{A.TL{471007249}, A.TL{538116101}}}, A.TN{A.TN{A.TL{538116105}, A.TL{538116109}}, A.TN{A.TL{538116113}, A.TL{327699}}}}, A.TN{A.TN{A.TN{A.TL{328723}, A.TL{329747}}, A.TN{A.TL{330771}, A.TL{331795}}}, A.TN{A.TN{A.TL{332819}, A.TL{333843}}, A.TN{A.TL{334867}, A.TL{335891}}}}}}}}}
+
+law CT.tt:
+  {A.A.to(D.ct.table()) == CT.TT() : A.Tr}
+
+def CT.tt():
+  {==}
+
+law CT.tab.e:
+  for +c: U32
+  for +k: Nat
+  for +ek: {V.U.N(c) == k : Nat}
+  for +hb: {Cmp.is_le(Nat.cmp(k, 255n)) == True{} : Bool}
+  {A.T.word(CT.TT(), c) == D.ct.entry(c) : U32}
+
+def CT.tab.e(c, k, ek, hb):
+  match k:
+    case 0n:
+      %Equal.sym(U32, c, 0, V.U.eq_N(c, 0, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 1n:
+      %Equal.sym(U32, c, 1, V.U.eq_N(c, 1, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 2n:
+      %Equal.sym(U32, c, 2, V.U.eq_N(c, 2, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 3n:
+      %Equal.sym(U32, c, 3, V.U.eq_N(c, 3, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 4n:
+      %Equal.sym(U32, c, 4, V.U.eq_N(c, 4, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 5n:
+      %Equal.sym(U32, c, 5, V.U.eq_N(c, 5, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 6n:
+      %Equal.sym(U32, c, 6, V.U.eq_N(c, 6, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 7n:
+      %Equal.sym(U32, c, 7, V.U.eq_N(c, 7, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 8n:
+      %Equal.sym(U32, c, 8, V.U.eq_N(c, 8, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 9n:
+      %Equal.sym(U32, c, 9, V.U.eq_N(c, 9, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 10n:
+      %Equal.sym(U32, c, 10, V.U.eq_N(c, 10, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 11n:
+      %Equal.sym(U32, c, 11, V.U.eq_N(c, 11, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 12n:
+      %Equal.sym(U32, c, 12, V.U.eq_N(c, 12, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 13n:
+      %Equal.sym(U32, c, 13, V.U.eq_N(c, 13, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 14n:
+      %Equal.sym(U32, c, 14, V.U.eq_N(c, 14, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 15n:
+      %Equal.sym(U32, c, 15, V.U.eq_N(c, 15, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 16n:
+      %Equal.sym(U32, c, 16, V.U.eq_N(c, 16, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 17n:
+      %Equal.sym(U32, c, 17, V.U.eq_N(c, 17, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 18n:
+      %Equal.sym(U32, c, 18, V.U.eq_N(c, 18, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 19n:
+      %Equal.sym(U32, c, 19, V.U.eq_N(c, 19, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 20n:
+      %Equal.sym(U32, c, 20, V.U.eq_N(c, 20, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 21n:
+      %Equal.sym(U32, c, 21, V.U.eq_N(c, 21, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 22n:
+      %Equal.sym(U32, c, 22, V.U.eq_N(c, 22, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 23n:
+      %Equal.sym(U32, c, 23, V.U.eq_N(c, 23, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 24n:
+      %Equal.sym(U32, c, 24, V.U.eq_N(c, 24, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 25n:
+      %Equal.sym(U32, c, 25, V.U.eq_N(c, 25, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 26n:
+      %Equal.sym(U32, c, 26, V.U.eq_N(c, 26, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 27n:
+      %Equal.sym(U32, c, 27, V.U.eq_N(c, 27, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 28n:
+      %Equal.sym(U32, c, 28, V.U.eq_N(c, 28, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 29n:
+      %Equal.sym(U32, c, 29, V.U.eq_N(c, 29, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 30n:
+      %Equal.sym(U32, c, 30, V.U.eq_N(c, 30, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 31n:
+      %Equal.sym(U32, c, 31, V.U.eq_N(c, 31, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 32n:
+      %Equal.sym(U32, c, 32, V.U.eq_N(c, 32, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 33n:
+      %Equal.sym(U32, c, 33, V.U.eq_N(c, 33, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 34n:
+      %Equal.sym(U32, c, 34, V.U.eq_N(c, 34, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 35n:
+      %Equal.sym(U32, c, 35, V.U.eq_N(c, 35, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 36n:
+      %Equal.sym(U32, c, 36, V.U.eq_N(c, 36, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 37n:
+      %Equal.sym(U32, c, 37, V.U.eq_N(c, 37, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 38n:
+      %Equal.sym(U32, c, 38, V.U.eq_N(c, 38, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 39n:
+      %Equal.sym(U32, c, 39, V.U.eq_N(c, 39, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 40n:
+      %Equal.sym(U32, c, 40, V.U.eq_N(c, 40, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 41n:
+      %Equal.sym(U32, c, 41, V.U.eq_N(c, 41, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 42n:
+      %Equal.sym(U32, c, 42, V.U.eq_N(c, 42, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 43n:
+      %Equal.sym(U32, c, 43, V.U.eq_N(c, 43, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 44n:
+      %Equal.sym(U32, c, 44, V.U.eq_N(c, 44, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 45n:
+      %Equal.sym(U32, c, 45, V.U.eq_N(c, 45, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 46n:
+      %Equal.sym(U32, c, 46, V.U.eq_N(c, 46, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 47n:
+      %Equal.sym(U32, c, 47, V.U.eq_N(c, 47, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 48n:
+      %Equal.sym(U32, c, 48, V.U.eq_N(c, 48, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 49n:
+      %Equal.sym(U32, c, 49, V.U.eq_N(c, 49, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 50n:
+      %Equal.sym(U32, c, 50, V.U.eq_N(c, 50, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 51n:
+      %Equal.sym(U32, c, 51, V.U.eq_N(c, 51, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 52n:
+      %Equal.sym(U32, c, 52, V.U.eq_N(c, 52, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 53n:
+      %Equal.sym(U32, c, 53, V.U.eq_N(c, 53, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 54n:
+      %Equal.sym(U32, c, 54, V.U.eq_N(c, 54, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 55n:
+      %Equal.sym(U32, c, 55, V.U.eq_N(c, 55, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 56n:
+      %Equal.sym(U32, c, 56, V.U.eq_N(c, 56, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 57n:
+      %Equal.sym(U32, c, 57, V.U.eq_N(c, 57, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 58n:
+      %Equal.sym(U32, c, 58, V.U.eq_N(c, 58, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 59n:
+      %Equal.sym(U32, c, 59, V.U.eq_N(c, 59, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 60n:
+      %Equal.sym(U32, c, 60, V.U.eq_N(c, 60, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 61n:
+      %Equal.sym(U32, c, 61, V.U.eq_N(c, 61, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 62n:
+      %Equal.sym(U32, c, 62, V.U.eq_N(c, 62, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 63n:
+      %Equal.sym(U32, c, 63, V.U.eq_N(c, 63, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 64n:
+      %Equal.sym(U32, c, 64, V.U.eq_N(c, 64, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 65n:
+      %Equal.sym(U32, c, 65, V.U.eq_N(c, 65, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 66n:
+      %Equal.sym(U32, c, 66, V.U.eq_N(c, 66, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 67n:
+      %Equal.sym(U32, c, 67, V.U.eq_N(c, 67, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 68n:
+      %Equal.sym(U32, c, 68, V.U.eq_N(c, 68, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 69n:
+      %Equal.sym(U32, c, 69, V.U.eq_N(c, 69, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 70n:
+      %Equal.sym(U32, c, 70, V.U.eq_N(c, 70, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 71n:
+      %Equal.sym(U32, c, 71, V.U.eq_N(c, 71, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 72n:
+      %Equal.sym(U32, c, 72, V.U.eq_N(c, 72, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 73n:
+      %Equal.sym(U32, c, 73, V.U.eq_N(c, 73, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 74n:
+      %Equal.sym(U32, c, 74, V.U.eq_N(c, 74, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 75n:
+      %Equal.sym(U32, c, 75, V.U.eq_N(c, 75, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 76n:
+      %Equal.sym(U32, c, 76, V.U.eq_N(c, 76, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 77n:
+      %Equal.sym(U32, c, 77, V.U.eq_N(c, 77, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 78n:
+      %Equal.sym(U32, c, 78, V.U.eq_N(c, 78, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 79n:
+      %Equal.sym(U32, c, 79, V.U.eq_N(c, 79, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 80n:
+      %Equal.sym(U32, c, 80, V.U.eq_N(c, 80, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 81n:
+      %Equal.sym(U32, c, 81, V.U.eq_N(c, 81, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 82n:
+      %Equal.sym(U32, c, 82, V.U.eq_N(c, 82, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 83n:
+      %Equal.sym(U32, c, 83, V.U.eq_N(c, 83, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 84n:
+      %Equal.sym(U32, c, 84, V.U.eq_N(c, 84, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 85n:
+      %Equal.sym(U32, c, 85, V.U.eq_N(c, 85, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 86n:
+      %Equal.sym(U32, c, 86, V.U.eq_N(c, 86, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 87n:
+      %Equal.sym(U32, c, 87, V.U.eq_N(c, 87, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 88n:
+      %Equal.sym(U32, c, 88, V.U.eq_N(c, 88, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 89n:
+      %Equal.sym(U32, c, 89, V.U.eq_N(c, 89, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 90n:
+      %Equal.sym(U32, c, 90, V.U.eq_N(c, 90, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 91n:
+      %Equal.sym(U32, c, 91, V.U.eq_N(c, 91, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 92n:
+      %Equal.sym(U32, c, 92, V.U.eq_N(c, 92, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 93n:
+      %Equal.sym(U32, c, 93, V.U.eq_N(c, 93, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 94n:
+      %Equal.sym(U32, c, 94, V.U.eq_N(c, 94, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 95n:
+      %Equal.sym(U32, c, 95, V.U.eq_N(c, 95, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 96n:
+      %Equal.sym(U32, c, 96, V.U.eq_N(c, 96, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 97n:
+      %Equal.sym(U32, c, 97, V.U.eq_N(c, 97, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 98n:
+      %Equal.sym(U32, c, 98, V.U.eq_N(c, 98, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 99n:
+      %Equal.sym(U32, c, 99, V.U.eq_N(c, 99, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 100n:
+      %Equal.sym(U32, c, 100, V.U.eq_N(c, 100, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 101n:
+      %Equal.sym(U32, c, 101, V.U.eq_N(c, 101, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 102n:
+      %Equal.sym(U32, c, 102, V.U.eq_N(c, 102, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 103n:
+      %Equal.sym(U32, c, 103, V.U.eq_N(c, 103, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 104n:
+      %Equal.sym(U32, c, 104, V.U.eq_N(c, 104, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 105n:
+      %Equal.sym(U32, c, 105, V.U.eq_N(c, 105, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 106n:
+      %Equal.sym(U32, c, 106, V.U.eq_N(c, 106, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 107n:
+      %Equal.sym(U32, c, 107, V.U.eq_N(c, 107, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 108n:
+      %Equal.sym(U32, c, 108, V.U.eq_N(c, 108, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 109n:
+      %Equal.sym(U32, c, 109, V.U.eq_N(c, 109, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 110n:
+      %Equal.sym(U32, c, 110, V.U.eq_N(c, 110, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 111n:
+      %Equal.sym(U32, c, 111, V.U.eq_N(c, 111, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 112n:
+      %Equal.sym(U32, c, 112, V.U.eq_N(c, 112, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 113n:
+      %Equal.sym(U32, c, 113, V.U.eq_N(c, 113, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 114n:
+      %Equal.sym(U32, c, 114, V.U.eq_N(c, 114, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 115n:
+      %Equal.sym(U32, c, 115, V.U.eq_N(c, 115, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 116n:
+      %Equal.sym(U32, c, 116, V.U.eq_N(c, 116, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 117n:
+      %Equal.sym(U32, c, 117, V.U.eq_N(c, 117, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 118n:
+      %Equal.sym(U32, c, 118, V.U.eq_N(c, 118, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 119n:
+      %Equal.sym(U32, c, 119, V.U.eq_N(c, 119, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 120n:
+      %Equal.sym(U32, c, 120, V.U.eq_N(c, 120, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 121n:
+      %Equal.sym(U32, c, 121, V.U.eq_N(c, 121, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 122n:
+      %Equal.sym(U32, c, 122, V.U.eq_N(c, 122, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 123n:
+      %Equal.sym(U32, c, 123, V.U.eq_N(c, 123, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 124n:
+      %Equal.sym(U32, c, 124, V.U.eq_N(c, 124, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 125n:
+      %Equal.sym(U32, c, 125, V.U.eq_N(c, 125, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 126n:
+      %Equal.sym(U32, c, 126, V.U.eq_N(c, 126, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 127n:
+      %Equal.sym(U32, c, 127, V.U.eq_N(c, 127, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 128n:
+      %Equal.sym(U32, c, 128, V.U.eq_N(c, 128, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 129n:
+      %Equal.sym(U32, c, 129, V.U.eq_N(c, 129, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 130n:
+      %Equal.sym(U32, c, 130, V.U.eq_N(c, 130, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 131n:
+      %Equal.sym(U32, c, 131, V.U.eq_N(c, 131, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 132n:
+      %Equal.sym(U32, c, 132, V.U.eq_N(c, 132, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 133n:
+      %Equal.sym(U32, c, 133, V.U.eq_N(c, 133, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 134n:
+      %Equal.sym(U32, c, 134, V.U.eq_N(c, 134, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 135n:
+      %Equal.sym(U32, c, 135, V.U.eq_N(c, 135, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 136n:
+      %Equal.sym(U32, c, 136, V.U.eq_N(c, 136, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 137n:
+      %Equal.sym(U32, c, 137, V.U.eq_N(c, 137, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 138n:
+      %Equal.sym(U32, c, 138, V.U.eq_N(c, 138, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 139n:
+      %Equal.sym(U32, c, 139, V.U.eq_N(c, 139, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 140n:
+      %Equal.sym(U32, c, 140, V.U.eq_N(c, 140, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 141n:
+      %Equal.sym(U32, c, 141, V.U.eq_N(c, 141, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 142n:
+      %Equal.sym(U32, c, 142, V.U.eq_N(c, 142, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 143n:
+      %Equal.sym(U32, c, 143, V.U.eq_N(c, 143, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 144n:
+      %Equal.sym(U32, c, 144, V.U.eq_N(c, 144, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 145n:
+      %Equal.sym(U32, c, 145, V.U.eq_N(c, 145, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 146n:
+      %Equal.sym(U32, c, 146, V.U.eq_N(c, 146, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 147n:
+      %Equal.sym(U32, c, 147, V.U.eq_N(c, 147, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 148n:
+      %Equal.sym(U32, c, 148, V.U.eq_N(c, 148, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 149n:
+      %Equal.sym(U32, c, 149, V.U.eq_N(c, 149, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 150n:
+      %Equal.sym(U32, c, 150, V.U.eq_N(c, 150, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 151n:
+      %Equal.sym(U32, c, 151, V.U.eq_N(c, 151, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 152n:
+      %Equal.sym(U32, c, 152, V.U.eq_N(c, 152, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 153n:
+      %Equal.sym(U32, c, 153, V.U.eq_N(c, 153, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 154n:
+      %Equal.sym(U32, c, 154, V.U.eq_N(c, 154, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 155n:
+      %Equal.sym(U32, c, 155, V.U.eq_N(c, 155, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 156n:
+      %Equal.sym(U32, c, 156, V.U.eq_N(c, 156, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 157n:
+      %Equal.sym(U32, c, 157, V.U.eq_N(c, 157, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 158n:
+      %Equal.sym(U32, c, 158, V.U.eq_N(c, 158, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 159n:
+      %Equal.sym(U32, c, 159, V.U.eq_N(c, 159, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 160n:
+      %Equal.sym(U32, c, 160, V.U.eq_N(c, 160, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 161n:
+      %Equal.sym(U32, c, 161, V.U.eq_N(c, 161, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 162n:
+      %Equal.sym(U32, c, 162, V.U.eq_N(c, 162, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 163n:
+      %Equal.sym(U32, c, 163, V.U.eq_N(c, 163, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 164n:
+      %Equal.sym(U32, c, 164, V.U.eq_N(c, 164, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 165n:
+      %Equal.sym(U32, c, 165, V.U.eq_N(c, 165, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 166n:
+      %Equal.sym(U32, c, 166, V.U.eq_N(c, 166, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 167n:
+      %Equal.sym(U32, c, 167, V.U.eq_N(c, 167, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 168n:
+      %Equal.sym(U32, c, 168, V.U.eq_N(c, 168, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 169n:
+      %Equal.sym(U32, c, 169, V.U.eq_N(c, 169, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 170n:
+      %Equal.sym(U32, c, 170, V.U.eq_N(c, 170, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 171n:
+      %Equal.sym(U32, c, 171, V.U.eq_N(c, 171, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 172n:
+      %Equal.sym(U32, c, 172, V.U.eq_N(c, 172, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 173n:
+      %Equal.sym(U32, c, 173, V.U.eq_N(c, 173, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 174n:
+      %Equal.sym(U32, c, 174, V.U.eq_N(c, 174, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 175n:
+      %Equal.sym(U32, c, 175, V.U.eq_N(c, 175, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 176n:
+      %Equal.sym(U32, c, 176, V.U.eq_N(c, 176, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 177n:
+      %Equal.sym(U32, c, 177, V.U.eq_N(c, 177, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 178n:
+      %Equal.sym(U32, c, 178, V.U.eq_N(c, 178, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 179n:
+      %Equal.sym(U32, c, 179, V.U.eq_N(c, 179, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 180n:
+      %Equal.sym(U32, c, 180, V.U.eq_N(c, 180, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 181n:
+      %Equal.sym(U32, c, 181, V.U.eq_N(c, 181, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 182n:
+      %Equal.sym(U32, c, 182, V.U.eq_N(c, 182, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 183n:
+      %Equal.sym(U32, c, 183, V.U.eq_N(c, 183, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 184n:
+      %Equal.sym(U32, c, 184, V.U.eq_N(c, 184, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 185n:
+      %Equal.sym(U32, c, 185, V.U.eq_N(c, 185, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 186n:
+      %Equal.sym(U32, c, 186, V.U.eq_N(c, 186, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 187n:
+      %Equal.sym(U32, c, 187, V.U.eq_N(c, 187, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 188n:
+      %Equal.sym(U32, c, 188, V.U.eq_N(c, 188, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 189n:
+      %Equal.sym(U32, c, 189, V.U.eq_N(c, 189, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 190n:
+      %Equal.sym(U32, c, 190, V.U.eq_N(c, 190, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 191n:
+      %Equal.sym(U32, c, 191, V.U.eq_N(c, 191, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 192n:
+      %Equal.sym(U32, c, 192, V.U.eq_N(c, 192, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 193n:
+      %Equal.sym(U32, c, 193, V.U.eq_N(c, 193, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 194n:
+      %Equal.sym(U32, c, 194, V.U.eq_N(c, 194, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 195n:
+      %Equal.sym(U32, c, 195, V.U.eq_N(c, 195, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 196n:
+      %Equal.sym(U32, c, 196, V.U.eq_N(c, 196, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 197n:
+      %Equal.sym(U32, c, 197, V.U.eq_N(c, 197, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 198n:
+      %Equal.sym(U32, c, 198, V.U.eq_N(c, 198, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 199n:
+      %Equal.sym(U32, c, 199, V.U.eq_N(c, 199, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 200n:
+      %Equal.sym(U32, c, 200, V.U.eq_N(c, 200, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 201n:
+      %Equal.sym(U32, c, 201, V.U.eq_N(c, 201, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 202n:
+      %Equal.sym(U32, c, 202, V.U.eq_N(c, 202, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 203n:
+      %Equal.sym(U32, c, 203, V.U.eq_N(c, 203, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 204n:
+      %Equal.sym(U32, c, 204, V.U.eq_N(c, 204, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 205n:
+      %Equal.sym(U32, c, 205, V.U.eq_N(c, 205, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 206n:
+      %Equal.sym(U32, c, 206, V.U.eq_N(c, 206, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 207n:
+      %Equal.sym(U32, c, 207, V.U.eq_N(c, 207, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 208n:
+      %Equal.sym(U32, c, 208, V.U.eq_N(c, 208, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 209n:
+      %Equal.sym(U32, c, 209, V.U.eq_N(c, 209, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 210n:
+      %Equal.sym(U32, c, 210, V.U.eq_N(c, 210, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 211n:
+      %Equal.sym(U32, c, 211, V.U.eq_N(c, 211, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 212n:
+      %Equal.sym(U32, c, 212, V.U.eq_N(c, 212, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 213n:
+      %Equal.sym(U32, c, 213, V.U.eq_N(c, 213, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 214n:
+      %Equal.sym(U32, c, 214, V.U.eq_N(c, 214, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 215n:
+      %Equal.sym(U32, c, 215, V.U.eq_N(c, 215, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 216n:
+      %Equal.sym(U32, c, 216, V.U.eq_N(c, 216, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 217n:
+      %Equal.sym(U32, c, 217, V.U.eq_N(c, 217, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 218n:
+      %Equal.sym(U32, c, 218, V.U.eq_N(c, 218, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 219n:
+      %Equal.sym(U32, c, 219, V.U.eq_N(c, 219, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 220n:
+      %Equal.sym(U32, c, 220, V.U.eq_N(c, 220, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 221n:
+      %Equal.sym(U32, c, 221, V.U.eq_N(c, 221, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 222n:
+      %Equal.sym(U32, c, 222, V.U.eq_N(c, 222, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 223n:
+      %Equal.sym(U32, c, 223, V.U.eq_N(c, 223, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 224n:
+      %Equal.sym(U32, c, 224, V.U.eq_N(c, 224, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 225n:
+      %Equal.sym(U32, c, 225, V.U.eq_N(c, 225, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 226n:
+      %Equal.sym(U32, c, 226, V.U.eq_N(c, 226, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 227n:
+      %Equal.sym(U32, c, 227, V.U.eq_N(c, 227, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 228n:
+      %Equal.sym(U32, c, 228, V.U.eq_N(c, 228, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 229n:
+      %Equal.sym(U32, c, 229, V.U.eq_N(c, 229, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 230n:
+      %Equal.sym(U32, c, 230, V.U.eq_N(c, 230, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 231n:
+      %Equal.sym(U32, c, 231, V.U.eq_N(c, 231, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 232n:
+      %Equal.sym(U32, c, 232, V.U.eq_N(c, 232, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 233n:
+      %Equal.sym(U32, c, 233, V.U.eq_N(c, 233, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 234n:
+      %Equal.sym(U32, c, 234, V.U.eq_N(c, 234, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 235n:
+      %Equal.sym(U32, c, 235, V.U.eq_N(c, 235, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 236n:
+      %Equal.sym(U32, c, 236, V.U.eq_N(c, 236, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 237n:
+      %Equal.sym(U32, c, 237, V.U.eq_N(c, 237, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 238n:
+      %Equal.sym(U32, c, 238, V.U.eq_N(c, 238, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 239n:
+      %Equal.sym(U32, c, 239, V.U.eq_N(c, 239, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 240n:
+      %Equal.sym(U32, c, 240, V.U.eq_N(c, 240, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 241n:
+      %Equal.sym(U32, c, 241, V.U.eq_N(c, 241, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 242n:
+      %Equal.sym(U32, c, 242, V.U.eq_N(c, 242, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 243n:
+      %Equal.sym(U32, c, 243, V.U.eq_N(c, 243, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 244n:
+      %Equal.sym(U32, c, 244, V.U.eq_N(c, 244, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 245n:
+      %Equal.sym(U32, c, 245, V.U.eq_N(c, 245, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 246n:
+      %Equal.sym(U32, c, 246, V.U.eq_N(c, 246, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 247n:
+      %Equal.sym(U32, c, 247, V.U.eq_N(c, 247, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 248n:
+      %Equal.sym(U32, c, 248, V.U.eq_N(c, 248, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 249n:
+      %Equal.sym(U32, c, 249, V.U.eq_N(c, 249, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 250n:
+      %Equal.sym(U32, c, 250, V.U.eq_N(c, 250, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 251n:
+      %Equal.sym(U32, c, 251, V.U.eq_N(c, 251, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 252n:
+      %Equal.sym(U32, c, 252, V.U.eq_N(c, 252, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 253n:
+      %Equal.sym(U32, c, 253, V.U.eq_N(c, 253, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 254n:
+      %Equal.sym(U32, c, 254, V.U.eq_N(c, 254, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 255n:
+      %Equal.sym(U32, c, 255, V.U.eq_N(c, 255, ek)) :
+        {A.T.word(CT.TT(), _) == D.ct.entry(_) : U32}
+      {==}
+    case 256n+r:
+      P.Bool.false_true({A.T.word(CT.TT(), c) == D.ct.entry(c) : U32}, hb)
+
+# The decoder's table holds the code table.
+law CT.tab:
+  for +c: U32
+  for +hc: {U32.is_lt(c, 256) == True{} : Bool}
+  {A.T.word(A.A.to(D.ct.table()), c) == D.ct.entry(c) : U32}
+
+def CT.tab(c, hc):
+  %Equal.sym(A.Tr, A.A.to(D.ct.table()), CT.TT(), CT.tt()) :
+    {A.T.word(_, c) == D.ct.entry(c) : U32}
+  CT.tab.e(c, V.U.N(c), {==}, P.Nat.lt_succ_le(V.U.N(c), 255n, V.U.lt_N(c, 256, hc)))
