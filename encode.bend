@@ -1,5 +1,6 @@
 import Base
 import ./bytes.bend as B
+import ./vcdiff.bend as V
 
 # VCDIFF (RFC 3284) delta encoding, after xdelta3's default ("fast",
 # level 3) string matcher: a rolling hash over 9 bytes of the source every
@@ -53,7 +54,7 @@ def op.double(+pt: U32, +ps: U32, +pm: U32, +t: U32, +size: U32, +mode: U32) ->
   +copy_add = U32.is_eq(t, 1) && U32.is_eq(size, 1) && U32.is_eq(pt, 3)
     && U32.is_eq(ps, 4)
   +add_copy = U32.is_eq(t, 3) && (4 <= size : U32) && (size <= 18 : U32)
-    && U32.is_eq(pt, 1) && (ps <= 4 : U32)
+    && U32.is_eq(pt, 1) && (1 <= ps : U32) && (ps <= 4 : U32)
   +ac1 = add_copy && (size <= 6 : U32) && (mode <= 5 : U32)
   +ac2 = add_copy && U32.is_eq(size, 4) && (mode >= 6 : U32)
   u32.pick(copy_add, (247 + pm : U32),
@@ -177,8 +178,7 @@ def ea.k(+addr: U32, +here: U32, adr: Array<U32>, +al: U32, +slot: U32,
   +m5 = u32.pick(t5, 5, m4)
   +same = (b5 >= 128 : U32) && U32.is_eq(sm, addr)
   +r768 = (addr % 768 : U32)
-  ea.put(same, b5, m5, r768, adr, al,
-    (ca[(768 + slot : U32)] <- addr)[r768] <- addr)
+  ea.put(same, b5, m5, r768, adr, al, V.cache.put(ca, slot, addr))
 
 # Instructions
 # ============
@@ -290,12 +290,29 @@ def em.inst.k(+run: Bool, +pos: U32, +size: U32, +val: U32, +here: U32,
   (tgt, em) = r
   (tgt, em.inst.go(run, pos, size, val, here, em))
 
+def em.inst.if(z: Bool, tgt: Array<U32>, +run: Bool, +pos: U32, +size: U32,
+  +val: U32, +cpl: U32, +w0: U32, em: Em) -> Array<U32> & Em:
+  match z:
+    case True{}:
+      em.inst.k(run, pos, size, val, (cpl + (pos - w0 : U32) : U32),
+        em.gap(tgt, pos, em))
+    case False{}:
+      (tgt, em)
+
+def em.inst.cut(tgt: Array<U32>, +run: Bool, +pos: U32, +size: U32,
+  +val: U32, +cpl: U32, +w0: U32, r: U32 & Em) -> Array<U32> & Em:
+  (+u, em) = r
+  +d = u32.pick((pos < u : U32), (u - pos : U32), 0)
+  em.inst.if((d < size : U32), tgt, run, (pos + d : U32), (size - d : U32),
+    u32.pick(run, val, (val + d : U32)), cpl, w0, em)
+
 # A matched instruction at pos: a RUN of byte val, or a COPY from window
-# address val. cpl and w0 place pos in the window's address space.
+# address val. cpl and w0 place pos in the window's address space. The part
+# of it before the bytes already written is cut off (nothing is written if
+# nothing is left).
 def em.inst(tgt: Array<U32>, +run: Bool, +pos: U32, +size: U32, +val: U32,
   +cpl: U32, +w0: U32, em: Em) -> Array<U32> & Em:
-  em.inst.k(run, pos, size, val, (cpl + (pos - w0 : U32) : U32),
-    em.gap(tgt, pos, em))
+  em.inst.cut(tgt, run, pos, size, val, cpl, w0, em.uoff(em))
 
 # Instruction buffer
 # ==================
@@ -381,8 +398,8 @@ def ent.trim(+r1: Ent, +r2: Ent) -> EE:
       +c1 = (ns > l1 : U32)
       +c2 = (ns > l2 : U32)
       +l1n = u32.pick(c1, l1, u32.pick(c2, (l1 - over : U32), (l1 - a1b : U32)))
-      +adj = u32.pick(c1, over, u32.pick(c2, 0, ((p1 + l1n : U32) - p2 : U32)))
-      EE{Ent{p1, l1n, v1, u1}, Ent{(p2 + adj : U32), (l2 - adj : U32),
+      +adj = U32.min(l2, u32.pick(c1, over, u32.pick(c2, 0, ((p1 + l1n : U32) - p2 : U32))))
+      EE{Ent{p1, U32.min(l1, l1n), v1, u1}, Ent{(p2 + adj : U32), (l2 - adj : U32),
         u32.pick(u2, v2, (v2 + adj : U32)), u2}}
 
 def fs.emit(tgt: Array<U32>, +e: Ent, +cpl: U32, +w0: U32, em: Em) ->
@@ -888,8 +905,7 @@ def ph.run.k(+K: SK, src: Array<U32>, lt: Array<U32>, stb: Array<U32>,
   spv: Array<U32>, io: Array<U32>, em: Em, +p: U32, +mm: U32, +rc: U32,
   +lck: U32, +last: U32, +nio: U32, +cont: U32, r: Array<U32> & U32) ->
   Bool & (Bool & Sc):
-  (tgt, +n) = r
-  +L = (4 + n : U32)
+  (tgt, +L) = r
   ph.run.if((mm <= L : U32) && (8 <= L : U32), K, L,
     Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, L, lck, last, nio, cont})
 
@@ -900,7 +916,7 @@ def ph.run.go(z: Bool, +K: SK, st: Sc) -> Bool & (Bool & Sc):
     case True{} SK{slen, w0, +w1, cpl, lsh, lmask, ssh, smask, cap}
       Sc{src, tgt, lt, stb, spv, io, em, +p, mm, +rc, rl, lck, last, nio, cont}:
       ph.run.k(K, src, lt, stb, spv, io, em, p, mm, rc, lck, last, nio, cont,
-        B.B.same(tgt, (p + 4 : U32), rc, (w1 - (p + 4 : U32) : U32)))
+        B.B.same(tgt, p, rc, (w1 - p : U32)))
 
 def sc.rl(st: Sc) -> U32 & Sc:
   match st:
@@ -1001,6 +1017,11 @@ def src.low(+K: SK) -> U32:
       +want = U32.min(slen, u32.max(67108864, (w1 + 33554432 : U32)))
       u32.pick((67108864 < want : U32), (want - 67108864 : U32), 0)
 
+def SK.slen(+K: SK) -> U32:
+  match K:
+    case SK{slen, w0, w1, cpl, lsh, lmask, ssh, smask, cap}:
+      slen
+
 def ph.large.k1(+K: SK, src: Array<U32>, tgt: Array<U32>, stb: Array<U32>,
   spv: Array<U32>, io: Array<U32>, em: Em, +p: U32, +mm: U32, +rc: U32,
   +rl: U32, +lck: U32, +last: U32, +nio: U32, +cont: U32,
@@ -1008,6 +1029,7 @@ def ph.large.k1(+K: SK, src: Array<U32>, tgt: Array<U32>, stb: Array<U32>,
   (lt, +cand) = r
   +srcpos = (cand - 1 : U32)
   +hit = U32.is_ne(cand, 0) && (src.low(K) <= srcpos : U32)
+    && (srcpos < SK.slen(K) : U32)
   +again = U32.is_ne(srcpos, 0) && U32.is_eq(srcpos, last)
   ph.large.try(hit && Bool.not(again), K, src, tgt, lt, stb, spv, io, em, p, mm,
     rc, rl, lck, u32.pick(hit, srcpos, last), nio, cont, srcpos)
@@ -1198,19 +1220,11 @@ type ES is Type:
     spv: Array<U32>, io: Array<U32>, em: Em, out: Array<U32>, olen: U32,
     lidx: U32, cont: U32}
 
-def cache.clear.go(n: Nat, a: Array<U32>, +i: U32) -> Array<U32>:
-  match n:
-    case 0n:
-      a
-    case 1n+p:
-      a2 = a[i] <- 0
-      cache.clear.go(p, a2, (i + 1 : U32))
-
 # A fresh emitter for a window starting at w0 (xd3_init_cache).
 def em.reset(+w0: U32, em: Em) -> Em:
   match em:
     case Em{dat, ins, adr, ca, dl, il, al, slot, uoff, pt, ps, pm, pc}:
-      Em{dat, ins, adr, cache.clear.go(772n, ca, 0), 0, 0, 0, 0, w0, 0, 0, 0, 0}
+      Em{dat, ins, adr, V.cache.clear(ca), 0, 0, 0, 0, w0, 0, 0, 0, 0}
 
 # The source segment
 # ------------------
@@ -1633,12 +1647,13 @@ def enc.pre(+k: Nat, +E: EK, +w1: U32, st: ES) -> ES:
 def enc.par.top(+E: EK, +sbits: Nat, +wb: U32, +nw: U32, st: ES) -> ES:
   enc.par(enc.depth(nw), E, sbits, wb, 0, nw, enc.top.sp(enc.depth(nw), E, sbits, wb, nw, st))
 
-def enc.go(+E: EK, src: Array<U32>, tgt: Array<U32>, +lbits: Nat,
-  +sbits: Nat, +wb: U32, r: Array<U32> & U32) -> (B.Bytes & B.Bytes) & B.Bytes:
+def enc.go(+E: EK, +rslen: U32, src: Array<U32>, tgt: Array<U32>,
+  +lbits: Nat, +sbits: Nat, +wb: U32, r: Array<U32> & U32) ->
+  (B.Bytes & B.Bytes) & B.Bytes:
   match E r:
-    case EK{+slen, +tlen, +wsz, blk, lsh, lmask, ssh, smask, cap} Tuple{out, ol}:
+    case EK{slen, +tlen, +wsz, blk, lsh, lmask, ssh, smask, cap} Tuple{out, ol}:
       +olen = {ol : U32}
-      enc.done(slen, tlen,
+      enc.done(rslen, tlen,
         enc.par.top(E, sbits, wb, u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32)),
           enc.pre(enc.depth(u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32))), E,
             U32.min(tlen, wsz), ES{src, tgt, [0 : U32^0n], [0 : U32^0n],
@@ -1647,15 +1662,18 @@ def enc.go(+E: EK, src: Array<U32>, tgt: Array<U32>, +lbits: Nat,
               Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
             out, olen, 0, 0})))
 
-# A delta that turns src into tgt. Answers both inputs back.
+# A delta that turns src into tgt. Answers both inputs back. Matches use
+# the source up to 2^32 - 2^24 bytes, so that window addresses (the source
+# segment, then the target window) fit a U32.
 def encode(src: B.Bytes, tgt: B.Bytes) -> (B.Bytes & B.Bytes) & B.Bytes:
   match src tgt:
-    case B.Bytes{+slen, sa} B.Bytes{+tlen, ta}:
+    case B.Bytes{+rslen, sa} B.Bytes{+tlen, ta}:
+      +slen = U32.min(rslen, 4278190080)
       +E = EK.mk(slen, tlen)
       +lb = U32.from_nat(B.B.depth(u32.max(slen, 16384)))
       +lbits = u32.pick((slen <= 67108864 : U32), u32.max(3, (lb - 3 : U32)), 23)
       +sbits = U32.min(23, U32.from_nat(B.B.depth(u32.max(tlen, 16384))))
-      enc.go(E, sa, ta, U32.to_nat(lbits), U32.to_nat(sbits),
+      enc.go(E, rslen, sa, ta, U32.to_nat(lbits), U32.to_nat(sbits),
         U32.min(8388608, u32.max(tlen, 64)),
         wr.byte(0, wr.byte(0, wr.byte(196, wr.byte(195, wr.byte(214,
           (B.B.zeros(u32.max((tlen >> 3n : U32), 4096)), 0)))))))
