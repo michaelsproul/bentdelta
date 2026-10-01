@@ -1,0 +1,897 @@
+import Base
+import ../bytes.bend as B
+import ../vcdiff.bend as D
+import ../encode.bend as N
+import ./nat.bend as P
+import ./word.bend as W
+import ./u32.bend as V
+import ./array.bend as A
+import ./bytes.bend as Y
+import ./seq.bend as S
+import ./words.bend as K
+import ./copy.bend as C
+import ./spec.bend as Q
+import ./bits.bend as Z
+import ./match.bend as MT_
+import ./emit.bend as EM_
+import ./settle.bend as SE_
+import ./segm.bend as SG_
+
+# The scan
+import ./scan.bend as SC_
+import ./wstart.bend as WS_
+import ./wwrite.bend as WW_
+import ./wfin.bend as WF_
+import ./einst.bend as EI_
+import ./adler.bend as H
+import ./varint.bend as R
+import ./dwin.bend as J
+
+# A window's facts
+# ================
+#
+# The window win.enc writes: its bytes appended to the output, and what
+# makes it a window the decoder rebuilds the target with (SP.wok).
+#
+# Source: proofs/wspec.bp (tools/bpp.py writes proofs/wspec.bend from it).
+
+law WP.cmpeq:
+  for +c: Cmp
+  for +h: {Cmp.is_eq(c) == True{} : Bool}
+  {c == EQ{} : Cmp}
+
+def WP.cmpeq(c, h):
+  match c:
+    case LT{}:
+      P.Bool.false_true({LT{} == EQ{} : Cmp}, h)
+    case EQ{}:
+      {==}
+    case GT{}:
+      P.Bool.false_true({GT{} == EQ{} : Cmp}, h)
+
+law WP.lenis:
+  for +xs: List<&2, U32>
+  for +n: U32
+  for +h: {Q.SP.lenis(xs, n) == True{} : Bool}
+  {S.S.len(xs) == V.U.N(n) : Nat}
+
+def WP.lenis(xs, n, h):
+  P.Nat.cmp_eq(S.S.len(xs), V.U.N(n), WP.cmpeq(Nat.cmp(S.S.len(xs), V.U.N(n)), h))
+
+law WP.segb.go:
+  for +cpl: U32
+  for +off: U32
+  for +z: Bool
+  for +ez: {U32.is_lt(0, cpl) == z : Bool}
+  {Bool.pick(List<&2, U32>, z, K.WD.app(R.VI.var(cpl), R.VI.var(off)), []) == WW_.WW.sb(z, cpl, off) : List<&2, U32>}
+
+def WP.segb.go(cpl, off, z, ez):
+  match z:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+law WP.segb:
+  for +cpl: U32
+  for +off: U32
+  {Q.SP.segb(cpl, off) == WW_.WW.sb(U32.is_lt(0, cpl), cpl, off) : List<&2, U32>}
+
+def WP.segb(cpl, off):
+  WP.segb.go(cpl, off, U32.is_lt(0, cpl), {==})
+
+law WP.len_app2:
+  for +H: List<&2, U32>
+  for +X: List<&2, U32>
+  for +Y: List<&2, U32>
+  for +h: {S.S.len(X) == S.S.len(Y) : Nat}
+  {S.S.len(K.WD.app(H, X)) == S.S.len(K.WD.app(H, Y)) : Nat}
+
+def WP.len_app2(H, X, Y, h):
+  @rw K.WD.len_app(H, X)
+  @rw K.WD.len_app(H, Y)
+  @rwx h : {S.S.len(X) == S.S.len(Y) : Nat}
+  {==}
+
+# The window's bytes are as long as what win.write writes.
+law WP.wblen:
+  for +tlen: U32
+  for +cpl: U32
+  for +off: U32
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +ops: List<&2, Q.OP>
+  for +sum: U32
+  for +l1: {Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl) == True{} : Bool}
+  for +l2: {Q.SP.lenis(Q.SP.insl(ops), il) == True{} : Bool}
+  for +l3: {Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al) == True{} : Bool}
+  {S.S.len(Q.SP.wb(Q.AW{cpl, off, tlen, dl, il, al, ops, sum})) == S.S.len(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], K.WD.app(WW_.WW.sb(U32.is_lt(0, cpl), cpl, off), K.WD.app(R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)), K.WD.app(R.VI.var(tlen), K.WD.app(0 <> [], K.WD.app(R.VI.var(dl), K.WD.app(R.VI.var(il), K.WD.app(R.VI.var(al), K.WD.app(U32.shrn(sum, 24n) <> [], K.WD.app(U32.and(U32.shrn(sum, 16n), 255) <> [], K.WD.app(U32.and(U32.shrn(sum, 8n), 255) <> [], U32.and(sum, 255) <> []))))))))))), K.WD.app(S.S.sl(V.U.N(dl), td, 0), K.WD.app(S.S.sl(V.U.N(il), ti, 0), S.S.sl(V.U.N(al), ta, 0))))) : Nat}
+
+def WP.wblen(tlen, cpl, off, td, ti, ta, dl, il, al, ops, sum, l1, l2, l3):
+  @rw WW_.WW.wb_eq(tlen, cpl, off, dl, il, al, ops, sum)
+  @rw WP.segb(cpl, off)
+  WP.len_app2(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], K.WD.app(WW_.WW.sb(U32.is_lt(0, cpl), cpl, off), K.WD.app(R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)), K.WD.app(R.VI.var(tlen), K.WD.app(0 <> [], K.WD.app(R.VI.var(dl), K.WD.app(R.VI.var(il), K.WD.app(R.VI.var(al), K.WD.app(U32.shrn(sum, 24n) <> [], K.WD.app(U32.and(U32.shrn(sum, 16n), 255) <> [], K.WD.app(U32.and(U32.shrn(sum, 8n), 255) <> [], U32.and(sum, 255) <> []))))))))))), K.WD.app(Q.SP.datl(Q.SP.halves(ops)), K.WD.app(Q.SP.insl(ops), Q.SP.adrl(Q.SP.halves(ops)))), K.WD.app(S.S.sl(V.U.N(dl), td, 0), K.WD.app(S.S.sl(V.U.N(il), ti, 0), S.S.sl(V.U.N(al), ta, 0))), WP.len3(dl, il, al, td, ti, ta, ops, l1, l2, l3))
+
+law WP.len3:
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +ops: List<&2, Q.OP>
+  for +l1: {Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl) == True{} : Bool}
+  for +l2: {Q.SP.lenis(Q.SP.insl(ops), il) == True{} : Bool}
+  for +l3: {Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al) == True{} : Bool}
+  {S.S.len(K.WD.app(Q.SP.datl(Q.SP.halves(ops)), K.WD.app(Q.SP.insl(ops), Q.SP.adrl(Q.SP.halves(ops))))) == S.S.len(K.WD.app(S.S.sl(V.U.N(dl), td, 0), K.WD.app(S.S.sl(V.U.N(il), ti, 0), S.S.sl(V.U.N(al), ta, 0)))) : Nat}
+
+def WP.len3(dl, il, al, td, ti, ta, ops, l1, l2, l3):
+  @rw K.WD.len_app(Q.SP.datl(Q.SP.halves(ops)), K.WD.app(Q.SP.insl(ops), Q.SP.adrl(Q.SP.halves(ops))))
+  @rw K.WD.len_app(Q.SP.insl(ops), Q.SP.adrl(Q.SP.halves(ops)))
+  @rw K.WD.len_app(S.S.sl(V.U.N(dl), td, 0), K.WD.app(S.S.sl(V.U.N(il), ti, 0), S.S.sl(V.U.N(al), ta, 0)))
+  @rw K.WD.len_app(S.S.sl(V.U.N(il), ti, 0), S.S.sl(V.U.N(al), ta, 0))
+  @rw WP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl, l1)
+  @rw WP.lenis(Q.SP.insl(ops), il, l2)
+  @rw WP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al, l3)
+  @rw S.S.len_sl(V.U.N(dl), td, 0)
+  @rw S.S.len_sl(V.U.N(il), ti, 0)
+  @rw S.S.len_sl(V.U.N(al), ta, 0)
+  {==}
+
+# The window
+# ----------
+
+# A window, from the emitter's state and ghost at its end.
+def WP.aw(+cpl: U32, +off: U32, +tlen: U32, +tt: A.Tr, +w0: U32, +e: EM_.ET, +g: EM_.EG) -> Q.AW:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      Q.AW{cpl, off, tlen, dl, il, al, ops, H.AD.T(tt, w0, tlen)}
+
+# The emitter's sections hold the window's sections.
+def WP.secs(+e: EM_.ET, +g: EM_.EG) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      Bool.and(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))))
+
+# win.write appends the window's bytes.
+law WP.wout:
+  for +to: A.Tr
+  for +od: Nat
+  for +OUT: List<&2, U32>
+  for +olen: U32
+  for +tt: A.Tr
+  for +w0: U32
+  for +tlen: U32
+  for +cpl: U32
+  for +off: U32
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +Eo: U32
+  for +hpf: {A.T.pf(od, to) == True{} : Bool}
+  for +hod: {Nat.cmp(od, 32n) == LT{} : Cmp}
+  for +hO: {S.S.has(OUT, to, 0) == True{} : Bool}
+  for +hOl: {S.S.len(OUT) == V.U.N(olen) : Nat}
+  for +hs: {WP.secs(e, g) == True{} : Bool}
+  for +hb: {WS_.WS.hbv(olen, tt, w0, tlen, cpl, off, e, Eo) == True{} : Bool}
+  for +hEo: {U32.is_lt(Eo, 2147483648) == True{} : Bool}
+  {S.S.has(K.WD.app(OUT, Q.SP.wb(WP.aw(cpl, off, tlen, tt, w0, e, g))), WS_.WS.wto(to, olen, tt, w0, tlen, cpl, off, e), 0) == True{} : Bool}
+
+def WP.wout(to, od, OUT, olen, tt, w0, tlen, cpl, off, e, g, Eo, hpf, hod, hO, hOl, hs, hb, hEo):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      WW_.WW.out(to, od, OUT, olen, tlen, cpl, off, td, ti, ta, dl, il, al, ops, H.AD.T(tt, w0, tlen), Eo, hpf, hod, hO, hOl, P.Bool.and_l(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl), P.Bool.and_l(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs)), P.Bool.and_r(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl), P.Bool.and_l(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs)), P.Bool.and_l(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il), P.Bool.and_l(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al)), P.Bool.and_r(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs))), P.Bool.and_r(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il), P.Bool.and_l(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al)), P.Bool.and_r(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs))), P.Bool.and_l(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al), P.Bool.and_r(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al)), P.Bool.and_r(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs))), P.Bool.and_r(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al), P.Bool.and_r(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al)), P.Bool.and_r(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs))), hb, hEo)
+
+# ... as long as where win.write leaves the output.
+law WP.wlen:
+  for +to: A.Tr
+  for +od: Nat
+  for +OUT: List<&2, U32>
+  for +olen: U32
+  for +tt: A.Tr
+  for +w0: U32
+  for +tlen: U32
+  for +cpl: U32
+  for +off: U32
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +Eo: U32
+  for +hpf: {A.T.pf(od, to) == True{} : Bool}
+  for +hod: {Nat.cmp(od, 32n) == LT{} : Cmp}
+  for +hO: {S.S.has(OUT, to, 0) == True{} : Bool}
+  for +hOl: {S.S.len(OUT) == V.U.N(olen) : Nat}
+  for +hs: {WP.secs(e, g) == True{} : Bool}
+  for +hb: {WS_.WS.hbv(olen, tt, w0, tlen, cpl, off, e, Eo) == True{} : Bool}
+  for +hEo: {U32.is_lt(Eo, 2147483648) == True{} : Bool}
+  {S.S.len(K.WD.app(OUT, Q.SP.wb(WP.aw(cpl, off, tlen, tt, w0, e, g)))) == V.U.N(WS_.WS.wol(olen, tt, w0, tlen, cpl, off, e)) : Nat}
+
+def WP.wlen(to, od, OUT, olen, tt, w0, tlen, cpl, off, e, g, Eo, hpf, hod, hO, hOl, hs, hb, hEo):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      @goal {S.S.len(K.WD.app(OUT, Q.SP.wb(Q.AW{cpl, off, tlen, dl, il, al, ops, H.AD.T(tt, w0, tlen)}))) == V.U.N(WS_.WS.wol(olen, tt, w0, tlen, cpl, off, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc})) : Nat}
+      @rw K.WD.len_app(OUT, Q.SP.wb(Q.AW{cpl, off, tlen, dl, il, al, ops, H.AD.T(tt, w0, tlen)}))
+      @rwx hOl : {S.S.len(OUT) == V.U.N(olen) : Nat}
+      @rw WP.wblen(tlen, cpl, off, td, ti, ta, dl, il, al, ops, H.AD.T(tt, w0, tlen), P.Bool.and_r(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl), P.Bool.and_l(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs)), P.Bool.and_r(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il), P.Bool.and_l(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al)), P.Bool.and_r(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs))), P.Bool.and_r(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al), P.Bool.and_r(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al)), P.Bool.and_r(Bool.and(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl)), Bool.and(Bool.and(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il)), Bool.and(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al))), hs))))
+      @rw- WW_.WW.p15_eq(tlen, cpl, off, td, ti, ta, dl, il, al, H.AD.T(tt, w0, tlen))
+      Equal.sym(Nat, V.U.N(WS_.WS.wol(olen, tt, w0, tlen, cpl, off, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc})), Nat.add(V.U.N(olen), S.S.len(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], WW_.WW.sb(U32.is_lt(0, cpl), cpl, off)), R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), R.VI.var(tlen)), 0 <> []), R.VI.var(dl)), R.VI.var(il)), R.VI.var(al)), U32.shrn(H.AD.T(tt, w0, tlen), 24n) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 16n), 255) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 8n), 255) <> []), U32.and(H.AD.T(tt, w0, tlen), 255) <> []), S.S.sl(V.U.N(dl), td, 0)), S.S.sl(V.U.N(il), ti, 0)), S.S.sl(V.U.N(al), ta, 0)))), WW_.WW.w.h15(olen, tlen, cpl, off, td, ti, ta, dl, il, al, H.AD.T(tt, w0, tlen), Eo, hb))
+
+# ... and where it leaves it is where the decoder finds the next window.
+law WP.wnd:
+  for +olen: U32
+  for +tt: A.Tr
+  for +w0: U32
+  for +tlen: U32
+  for +cpl: U32
+  for +off: U32
+  for +e: EM_.ET
+  for +g: EM_.EG
+  {WS_.WS.wol(olen, tt, w0, tlen, cpl, off, e) == Q.SP.wnd(olen, WP.aw(cpl, off, tlen, tt, w0, e, g)) : U32}
+
+def WP.wnd(olen, tt, w0, tlen, cpl, off, e, g):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      WW_.WW.fin_pos(olen, tlen, cpl, off, dl, il, al, ops, H.AD.T(tt, w0, tlen))
+
+law WP.wokd:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +cpl: U32
+  for +off: U32
+  for +w0: U32
+  for +w1: U32
+  for +Et: U32
+  for +Es: U32
+  for +BIG: U32
+  for +S: U32
+  for +hF: {EI_.EI.F(e, g, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +huo: {EM_.EM.uo(e) == w1 : U32}
+  for +haw: {Bool.or(Bool.not(U32.is_lt(0, cpl)), Bool.and(U32.is_le(cpl, S), U32.is_le(off, U32.sub(S, cpl)))) == True{} : Bool}
+  for +h5: {U32.is_le(w0, 2147483648) == True{} : Bool}
+  for +h6: {U32.is_le(U32.sub(w1, w0), U32.sub(2147483648, w0)) == True{} : Bool}
+  {Q.SP.wok(WP.aw(cpl, off, U32.sub(w1, w0), tt, w0, e, g), ts, tt, S, w0, A.A.to(D.ct.table()), Et, Es) == True{} : Bool}
+
+def WP.wokd(e, g, ts, tt, cpl, off, w0, w1, Et, Es, BIG, S, hF, huo, haw, h5, h6):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      @unfold WP.aw Q.SP.wok Q.SP.wx EI_.EI.F
+      @simp -Q.SP.lenis -Q.SP.datl -Q.SP.insl -Q.SP.adrl -Q.SP.halves -Q.SP.coks -Q.SP.vhs -Q.SP.doks -Q.SP.bnds -Q.SP.so -Q.SP.run -Q.SP.s0 -U32.is_lt -U32.is_le -U32.is_eq -U32.sub -U32.add -A.A.to -D.ct.table -H.AD.T -S.S.has -A.T.pf -V.U.N -EM_.EM.k5
+      @rw SC_.SC.addsub(w0, w1)
+      @rwx P.Bool.and_r(S.S.has(Q.SP.datl(Q.SP.halves(ops)), td, 0), Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl), WP.F0_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}, hF)) : {Q.SP.lenis(Q.SP.datl(Q.SP.halves(ops)), dl) == True{} : Bool}
+      @rwx P.Bool.and_r(S.S.has(Q.SP.insl(ops), ti, 0), Q.SP.lenis(Q.SP.insl(ops), il), WP.F1_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}, hF)) : {Q.SP.lenis(Q.SP.insl(ops), il) == True{} : Bool}
+      @rwx P.Bool.and_r(S.S.has(Q.SP.adrl(Q.SP.halves(ops)), ta, 0), Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al), WP.F2_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}, hF)) : {Q.SP.lenis(Q.SP.adrl(Q.SP.halves(ops)), al) == True{} : Bool}
+      @rwx haw : {Bool.or(Bool.not(U32.is_lt(0, cpl)), Bool.and(U32.is_le(cpl, S), U32.is_le(off, U32.sub(S, cpl)))) == True{} : Bool}
+      @rwx h5 : {U32.is_le(w0, 2147483648) == True{} : Bool}
+      @rwx h6 : {U32.is_le(U32.sub(w1, w0), U32.sub(2147483648, w0)) == True{} : Bool}
+      @rwx P.Bool.and_r(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table())), P.Bool.and_r(Q.SP.bnds(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0), Et, Es), Bool.and(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table()))), P.Bool.and_r(Q.SP.vhs(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0)), Bool.and(Q.SP.bnds(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0), Et, Es), Bool.and(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table())))), WP.F3_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}, hF)))) : {Q.SP.coks(ops, A.A.to(D.ct.table())) == True{} : Bool}
+      @rwx P.Bool.and_l(Q.SP.vhs(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0)), Bool.and(Q.SP.bnds(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0), Et, Es), Bool.and(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table())))), WP.F3_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}, hF)) : {Q.SP.vhs(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0)) == True{} : Bool}
+      @rwx P.Bool.and_l(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table())), P.Bool.and_r(Q.SP.bnds(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0), Et, Es), Bool.and(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table()))), P.Bool.and_r(Q.SP.vhs(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0)), Bool.and(Q.SP.bnds(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0), Et, Es), Bool.and(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table())))), WP.F3_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}, hF)))) : {Q.SP.doks(Q.SP.halves(ops)) == True{} : Bool}
+      @rwx P.Bool.and_l(Q.SP.bnds(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0), Et, Es), Bool.and(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table()))), P.Bool.and_r(Q.SP.vhs(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0)), Bool.and(Q.SP.bnds(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0), Et, Es), Bool.and(Q.SP.doks(Q.SP.halves(ops)), Q.SP.coks(ops, A.A.to(D.ct.table())))), WP.F3_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}, hF))) : {Q.SP.bnds(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0), Et, Es) == True{} : Bool}
+      @rwx (%huo : {U32.is_eq(Q.SP.so(Q.SP.run(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0))), _) == True{} : Bool}; (%Equal.sym(U32, uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0))), V.U.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0))), WP.F10_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIG}, hF))) : {U32.is_eq(Q.SP.so(Q.SP.run(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0))), _) == True{} : Bool}; V.U.is_eq_refl(Q.SP.so(Q.SP.run(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0)))))) : {U32.is_eq(Q.SP.so(Q.SP.run(Q.SP.halves(ops), Q.XC{ts, tt, Q.SP.wseg(cpl, off), cpl, w0, w1}, Q.SP.s0(w0))), w1) == True{} : Bool}
+      @rwx V.U.is_eq_refl(H.AD.T(tt, w0, U32.sub(w1, w0))) : {U32.is_eq(H.AD.T(tt, w0, U32.sub(w1, w0)), H.AD.T(tt, w0, U32.sub(w1, w0))) == True{} : Bool}
+      {==}
+
+# The end-of-window facts, one at a time.
+
+def WP.F0(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops))
+
+law WP.F0_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F0(e, g, w) == True{} : Bool}
+
+def WP.F0_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h)
+
+def WP.F1(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops)
+
+law WP.F1_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F1(e, g, w) == True{} : Bool}
+
+def WP.F1_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h))
+
+def WP.F2(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops))
+
+law WP.F2_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F2(e, g, w) == True{} : Bool}
+
+def WP.F2_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h)))
+
+def WP.F3(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      EM_.EM.V(Q.SP.halves(ops), ops, w)
+
+law WP.F3_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F3(e, g, w) == True{} : Bool}
+
+def WP.F3_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h))))
+
+def WP.F4(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      A.T.pf(dd, td)
+
+law WP.F4_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F4(e, g, w) == True{} : Bool}
+
+def WP.F4_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h)))))
+
+def WP.F5(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      Cmp.is_lt(Nat.cmp(dd, 32n))
+
+law WP.F5_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F5(e, g, w) == True{} : Bool}
+
+def WP.F5_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h))))))
+
+def WP.F6(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      A.T.pf(di, ti)
+
+law WP.F6_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F6(e, g, w) == True{} : Bool}
+
+def WP.F6_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h)))))))
+
+def WP.F7(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      Cmp.is_lt(Nat.cmp(di, 32n))
+
+law WP.F7_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F7(e, g, w) == True{} : Bool}
+
+def WP.F7_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))), P.Bool.and_r(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h))))))))
+
+def WP.F8(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      A.T.pf(da, ta)
+
+law WP.F8_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F8(e, g, w) == True{} : Bool}
+
+def WP.F8_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))), P.Bool.and_r(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h)))))))))
+
+def WP.F9(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      Cmp.is_lt(Nat.cmp(da, 32n))
+
+law WP.F9_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F9(e, g, w) == True{} : Bool}
+
+def WP.F9_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))), P.Bool.and_r(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))), P.Bool.and_r(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h))))))))))
+
+def WP.F10(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w))))
+
+law WP.F10_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F10(e, g, w) == True{} : Bool}
+
+def WP.F10_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))), P.Bool.and_r(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))), P.Bool.and_r(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h)))))))))))
+
+def WP.F11(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))
+
+law WP.F11_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F11(e, g, w) == True{} : Bool}
+
+def WP.F11_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))), P.Bool.and_r(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))), P.Bool.and_r(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))), P.Bool.and_r(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h))))))))))))
+
+def WP.F12(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n)))
+
+law WP.F12_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F12(e, g, w) == True{} : Bool}
+
+def WP.F12_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_l(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), P.Bool.and_r(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))), P.Bool.and_r(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))), P.Bool.and_r(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))), P.Bool.and_r(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h)))))))))))))
+
+def WP.F13(+e: EM_.ET, +g: EM_.EG, +w: EM_.EW) -> Bool:
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))
+
+law WP.F13_ok:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EI_.EI.F(e, g, w) == True{} : Bool}
+  {WP.F13(e, g, w) == True{} : Bool}
+
+def WP.F13_ok(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Bool.and_r(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), P.Bool.and_r(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))), P.Bool.and_r(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))), P.Bool.and_r(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))), P.Bool.and_r(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))), P.Bool.and_r(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w))))))))))))))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, Q.SP.halves(ops)), Bool.and(EM_.EM.V(Q.SP.halves(ops), ops, w), Bool.and(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Bool.and(U32.is_eq(uoff, Q.SP.so(Q.SP.run(Q.SP.halves(ops), EM_.EM.x(w), EM_.EM.s0(w)))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(dl), V.U.N(U32.sub(uoff, EM_.EM.w0(w))))), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(il), Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))), 6n))), Cmp.is_le(Nat.cmp(V.U.N(al), EM_.EM.k5(V.U.N(U32.sub(uoff, EM_.EM.w0(w)))))))))))))))))), h)))))))))))))
+
+# The window's end, for this window
+# ---------------------------------
+
+# The emitter's ghost at the window's end.
+def WP.g3(+E: N.EK, +w0: U32, +w1: U32, +tt: A.Tr, +e: EM_.ET, +st: SC_.ST) -> EM_.EG:
+  match E e st:
+    case N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}:
+      EI_.EI.gfl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))))
+
+law WP.Fwin:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {EI_.EI.F(WS_.WS.e3(E, w0, w1, tt, e, st), WP.g3(E, w0, w1, tt, e, st), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(WS_.WS.cc(E, st), WS_.WS.co(E, st)), WS_.WS.cc(E, st), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}) == True{} : Bool}
+
+def WP.Fwin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  match E e st:
+    case N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}:
+      WF_.WF.em_F(EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, HB, nio, SG_.SG.cT(True{}, slen, nio, tio), WS_.WS.einv0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, he, P.Bool.and_l(U32.is_le(w0, w1), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(w1), V.U.N(Et))), Bool.and(U32.is_lt(BIGe, 2147483648), Cmp.is_le(Nat.cmp(Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(w1, w0))))), 16n), V.U.N(BIGe))))), hwok)), {==}, hwok, P.Nat.le_trans(Nat.add(V.U.N(SG_.SG.cC(True{}, slen, nio, tio)), V.U.N(U32.sub(w1, w0))), Nat.add(V.U.N(slen), V.U.N(U32.sub(w1, w0))), V.U.N(HB), MT_.MT.add_le(V.U.N(SG_.SG.cC(True{}, slen, nio, tio)), V.U.N(slen), V.U.N(U32.sub(w1, w0)), V.U.N(U32.sub(w1, w0)), V.U.le_N(SG_.SG.cC(True{}, slen, nio, tio), slen, SG_.SG.cC_le(True{}, ts, tt, slen, w0, w1, nio, tio, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI))), C.CP.le_refl(V.U.N(U32.sub(w1, w0)))), hH), SG_.SG.choose_oks(True{}, ts, tt, slen, w0, w1, Es, HB, nio, tio, SC_.SC.dep(tio), SC_.SC.Iv.pf(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), SC_.SC.ltc(Nat.cmp(SC_.SC.dep(tio), 32n), SC_.SC.Iv.lt(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI)), SC_.SC.Iv.cap(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), hH, hEs, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI)))
+
+law WP.uowin:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {EM_.EM.uo(WS_.WS.e3(E, w0, w1, tt, e, st)) == w1 : U32}
+
+def WP.uowin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  match E e st:
+    case N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}:
+      WF_.WF.em_uo(EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, HB, nio, SG_.SG.cT(True{}, slen, nio, tio), WS_.WS.einv0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, he, P.Bool.and_l(U32.is_le(w0, w1), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(w1), V.U.N(Et))), Bool.and(U32.is_lt(BIGe, 2147483648), Cmp.is_le(Nat.cmp(Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(w1, w0))))), 16n), V.U.N(BIGe))))), hwok)), {==}, hwok, P.Nat.le_trans(Nat.add(V.U.N(SG_.SG.cC(True{}, slen, nio, tio)), V.U.N(U32.sub(w1, w0))), Nat.add(V.U.N(slen), V.U.N(U32.sub(w1, w0))), V.U.N(HB), MT_.MT.add_le(V.U.N(SG_.SG.cC(True{}, slen, nio, tio)), V.U.N(slen), V.U.N(U32.sub(w1, w0)), V.U.N(U32.sub(w1, w0)), V.U.le_N(SG_.SG.cC(True{}, slen, nio, tio), slen, SG_.SG.cC_le(True{}, ts, tt, slen, w0, w1, nio, tio, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI))), C.CP.le_refl(V.U.N(U32.sub(w1, w0)))), hH), SG_.SG.choose_oks(True{}, ts, tt, slen, w0, w1, Es, HB, nio, tio, SC_.SC.dep(tio), SC_.SC.Iv.pf(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), SC_.SC.ltc(Nat.cmp(SC_.SC.dep(tio), 32n), SC_.SC.Iv.lt(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI)), SC_.SC.Iv.cap(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), hH, hEs, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI)))
+
+law WP.awwin:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +st: SC_.ST
+  for +S: U32
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hS: {U32.is_le(WS_.WS.slen(E), S) == True{} : Bool}
+  {Bool.or(Bool.not(U32.is_lt(0, WS_.WS.cc(E, st))), Bool.and(U32.is_le(WS_.WS.cc(E, st), S), U32.is_le(WS_.WS.co(E, st), U32.sub(S, WS_.WS.cc(E, st))))) == True{} : Bool}
+
+def WP.awwin(E, w0, w1, ts, tt, st, S, hI, hS):
+  match E st:
+    case N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}:
+      SG_.SG.choose_aw(True{}, ts, tt, slen, w0, w1, nio, tio, S, hS, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI))
+
+# The next window's emitter
+# -------------------------
+
+def WP.gdi(+g: EM_.EG) -> Nat:
+  match g:
+    case EM_.EG{ops, ph, dd, di, da}:
+      di
+
+law WP.gqs_di:
+  for +sg: Bool
+  for +ops: List<&2, Q.OP>
+  for +ph: Q.HF
+  for +h: Q.HF
+  for +pc: U32
+  for +dd: Nat
+  for +di: Nat
+  for +da: Nat
+  {WP.gdi(EM_.EM.gqs(sg, ops, ph, h, pc, dd, di, da)) == di : Nat}
+
+def WP.gqs_di(sg, ops, ph, h, pc, dd, di, da):
+  match sg:
+    case True{}:
+      {==}
+    case False{}:
+      {==}
+
+# The flush keeps the instruction section's depth.
+law WP.gfl_di:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  {WP.gdi(EI_.EI.gfl(e, g)) == WP.gdi(g) : Nat}
+
+def WP.gfl_di(e, g):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      WP.gqs_di(U32.is_ne(pt, 0), ops, ph, Q.HN{}, pc, dd, di, da)
+
+# Room for an instruction: 6 bytes at least.
+law WP.cap6:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +h: {EM_.EM.inv(e, g, w) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(WP.gdi(g)))) == True{} : Bool}
+
+def WP.cap6(e, g, w, h):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      P.Nat.le_trans(6n, Nat.add(V.U.N(il), 6n), EM_.EM.cap(di), P.Nat.le_add_l(V.U.N(il), 6n), P.Bool.and_r(Cmp.is_lt(Nat.cmp(da, 32n)), Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 6n), EM_.EM.cap(di))), P.Bool.and_r(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 6n), EM_.EM.cap(di)))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 6n), EM_.EM.cap(di))))), P.Bool.and_r(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 6n), EM_.EM.cap(di)))))), P.Bool.and_r(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 6n), EM_.EM.cap(di))))))), P.Bool.and_r(A.T.pf(dd, td), Bool.and(Cmp.is_lt(Nat.cmp(dd, 32n)), Bool.and(A.T.pf(di, ti), Bool.and(Cmp.is_lt(Nat.cmp(di, 32n)), Bool.and(A.T.pf(da, ta), Bool.and(Cmp.is_lt(Nat.cmp(da, 32n)), Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 6n), EM_.EM.cap(di)))))))), P.Bool.and_l(EM_.EM.P(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}), Bool.and(EM_.EM.R(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph), w), EM_.EM.D(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph)), P.Bool.and_r(EM_.EM.V(EM_.EM.hs(ops, ph), ops, w), Bool.and(EM_.EM.P(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}), Bool.and(EM_.EM.R(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph), w), EM_.EM.D(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph))), P.Bool.and_r(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph)), Bool.and(EM_.EM.V(EM_.EM.hs(ops, ph), ops, w), Bool.and(EM_.EM.P(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}), Bool.and(EM_.EM.R(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph), w), EM_.EM.D(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph)))), P.Bool.and_r(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph)), Bool.and(EM_.EM.V(EM_.EM.hs(ops, ph), ops, w), Bool.and(EM_.EM.P(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}), Bool.and(EM_.EM.R(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph), w), EM_.EM.D(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph))))), P.Bool.and_r(EM_.EM.S1(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph)), Bool.and(EM_.EM.S2(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops), Bool.and(EM_.EM.S3(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph)), Bool.and(EM_.EM.V(EM_.EM.hs(ops, ph), ops, w), Bool.and(EM_.EM.P(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}), Bool.and(EM_.EM.R(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EM.hs(ops, ph), w), EM_.EM.D(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph)))))), h))))))))))))
+
+# The flush leaves the cache.
+law WP.tc_flk:
+  for +td: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +r: EM_.TI
+  {EM_.EM.tc(EM_.EM.flk(td, ta, tc, dl, al, slot, uoff, r)) == tc : A.Tr}
+
+def WP.tc_flk(td, ta, tc, dl, al, slot, uoff, r):
+  match r:
+    case EM_.TI{ti, il}:
+      {==}
+
+law WP.tc_fl:
+  for +e: EM_.ET
+  {EM_.EM.tc(EM_.EM.fl(e)) == EM_.EM.tc(e) : A.Tr}
+
+def WP.tc_fl(e):
+  match e:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}:
+      WP.tc_flk(td, ta, tc, dl, al, slot, uoff, EM_.EM.sg(pt, ps, pc, ti, il))
+
+# The next window's emitter has its shapes, from the end-of-window facts.
+law WP.eok_next:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for +hF: {EI_.EI.F(e, g, w) == True{} : Bool}
+  for +h6: {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(WP.gdi(g)))) == True{} : Bool}
+  for +htc: {A.T.pf(10n, EM_.EM.tc(e)) == True{} : Bool}
+  {WS_.WS.eok(WS_.WS.ez(e)) == True{} : Bool}
+
+def WP.eok_next(e, g, w, hF, h6, htc):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      SC_.SC.and_tt(Bool.and(A.T.pf(SC_.SC.dep(td), td), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(td), 32n)), Bool.and(A.T.pf(SC_.SC.dep(ti), ti), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ti), 32n)), Bool.and(A.T.pf(SC_.SC.dep(ta), ta), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ta), 32n)), Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(SC_.SC.dep(ti)))))))))), A.T.pf(10n, tc), SC_.SC.and_tt(A.T.pf(SC_.SC.dep(td), td), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(td), 32n)), Bool.and(A.T.pf(SC_.SC.dep(ti), ti), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ti), 32n)), Bool.and(A.T.pf(SC_.SC.dep(ta), ta), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ta), 32n)), Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(SC_.SC.dep(ti))))))))), (%Equal.sym(Nat, SC_.SC.dep(td), dd, SC_.SC.dep_pf(dd, td, WP.F4_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF))) : {A.T.pf(_, td) == True{} : Bool}; WP.F4_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF)), SC_.SC.and_tt(Cmp.is_lt(Nat.cmp(SC_.SC.dep(td), 32n)), Bool.and(A.T.pf(SC_.SC.dep(ti), ti), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ti), 32n)), Bool.and(A.T.pf(SC_.SC.dep(ta), ta), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ta), 32n)), Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(SC_.SC.dep(ti)))))))), (%Equal.sym(Nat, SC_.SC.dep(td), dd, SC_.SC.dep_pf(dd, td, WP.F4_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF))) : {Cmp.is_lt(Nat.cmp(_, 32n)) == True{} : Bool}; WP.F5_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF)), SC_.SC.and_tt(A.T.pf(SC_.SC.dep(ti), ti), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ti), 32n)), Bool.and(A.T.pf(SC_.SC.dep(ta), ta), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ta), 32n)), Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(SC_.SC.dep(ti))))))), (%Equal.sym(Nat, SC_.SC.dep(ti), di, SC_.SC.dep_pf(di, ti, WP.F6_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF))) : {A.T.pf(_, ti) == True{} : Bool}; WP.F6_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF)), SC_.SC.and_tt(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ti), 32n)), Bool.and(A.T.pf(SC_.SC.dep(ta), ta), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ta), 32n)), Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(SC_.SC.dep(ti)))))), (%Equal.sym(Nat, SC_.SC.dep(ti), di, SC_.SC.dep_pf(di, ti, WP.F6_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF))) : {Cmp.is_lt(Nat.cmp(_, 32n)) == True{} : Bool}; WP.F7_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF)), SC_.SC.and_tt(A.T.pf(SC_.SC.dep(ta), ta), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ta), 32n)), Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(SC_.SC.dep(ti))))), (%Equal.sym(Nat, SC_.SC.dep(ta), da, SC_.SC.dep_pf(da, ta, WP.F8_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF))) : {A.T.pf(_, ta) == True{} : Bool}; WP.F8_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF)), SC_.SC.and_tt(Cmp.is_lt(Nat.cmp(SC_.SC.dep(ta), 32n)), Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(SC_.SC.dep(ti)))), (%Equal.sym(Nat, SC_.SC.dep(ta), da, SC_.SC.dep_pf(da, ta, WP.F8_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF))) : {Cmp.is_lt(Nat.cmp(_, 32n)) == True{} : Bool}; WP.F9_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF)), (%Equal.sym(Nat, SC_.SC.dep(ti), di, SC_.SC.dep_pf(di, ti, WP.F6_ok(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, w, hF))) : {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(_))) == True{} : Bool}; h6))))))), htc)
+
+law WP.cap6win:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(WP.gdi(WP.g3(E, w0, w1, tt, e, st))))) == True{} : Bool}
+
+def WP.cap6win(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  match E e st:
+    case N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}:
+      (%Equal.sym(Nat, WP.gdi(EI_.EI.gfl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))))), WP.gdi(EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))))), WP.gfl_di(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))))) : {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(_))) == True{} : Bool};
+        WP.cap6(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}, WF_.WF.inv_of(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, EI_.EI.gap(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, w1, SE_.SE.flush_J(EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, HB, nio, SG_.SG.cT(True{}, slen, nio, tio), WS_.WS.einv0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, he, P.Bool.and_l(U32.is_le(w0, w1), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(w1), V.U.N(Et))), Bool.and(U32.is_lt(BIGe, 2147483648), Cmp.is_le(Nat.cmp(Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(w1, w0))))), 16n), V.U.N(BIGe))))), hwok)), {==}, hwok, P.Nat.le_trans(Nat.add(V.U.N(SG_.SG.cC(True{}, slen, nio, tio)), V.U.N(U32.sub(w1, w0))), Nat.add(V.U.N(slen), V.U.N(U32.sub(w1, w0))), V.U.N(HB), MT_.MT.add_le(V.U.N(SG_.SG.cC(True{}, slen, nio, tio)), V.U.N(slen), V.U.N(U32.sub(w1, w0)), V.U.N(U32.sub(w1, w0)), V.U.le_N(SG_.SG.cC(True{}, slen, nio, tio), slen, SG_.SG.cC_le(True{}, ts, tt, slen, w0, w1, nio, tio, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI))), C.CP.le_refl(V.U.N(U32.sub(w1, w0)))), hH), SG_.SG.choose_oks(True{}, ts, tt, slen, w0, w1, Es, HB, nio, tio, SC_.SC.dep(tio), SC_.SC.Iv.pf(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), SC_.SC.ltc(Nat.cmp(SC_.SC.dep(tio), 32n), SC_.SC.Iv.lt(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI)), SC_.SC.Iv.cap(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), hH, hEs, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI))), hwok, C.CP.le_refl(V.U.N(w1))))))
+
+law WP.tcwin:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {A.T.pf(10n, EM_.EM.tc(WS_.WS.e3(E, w0, w1, tt, e, st))) == True{} : Bool}
+
+def WP.tcwin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  match E e st:
+    case N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}:
+      (%Equal.sym(A.Tr, EM_.EM.tc(EM_.EM.fl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))))), EM_.EM.tc(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))))), WP.tc_fl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))))) : {A.T.pf(10n, _) == True{} : Bool};
+        WP.tcJ(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)})))), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}, EI_.EI.gap(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, SG_.SG.cC(True{}, slen, nio, tio), w0, SG_.SG.cT(True{}, slen, nio, tio), tt, (U32.is_ne(nio, 0), SE_.FT{EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), SE_.SE.ent(SG_.SG.cT(True{}, slen, nio, tio), 0), 1, U32.is_ne(nio, 0)}))), ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, w1, SE_.SE.flush_J(EM_.EM.reset(w0, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), WS_.WS.g0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, HB, nio, SG_.SG.cT(True{}, slen, nio, tio), WS_.WS.einv0(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1, Et, Es, BIGe, he, P.Bool.and_l(U32.is_le(w0, w1), Bool.and(Cmp.is_le(Nat.cmp(V.U.N(w1), V.U.N(Et))), Bool.and(U32.is_lt(BIGe, 2147483648), Cmp.is_le(Nat.cmp(Nat.add(Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(w1, w0))))), 16n), V.U.N(BIGe))))), hwok)), {==}, hwok, P.Nat.le_trans(Nat.add(V.U.N(SG_.SG.cC(True{}, slen, nio, tio)), V.U.N(U32.sub(w1, w0))), Nat.add(V.U.N(slen), V.U.N(U32.sub(w1, w0))), V.U.N(HB), MT_.MT.add_le(V.U.N(SG_.SG.cC(True{}, slen, nio, tio)), V.U.N(slen), V.U.N(U32.sub(w1, w0)), V.U.N(U32.sub(w1, w0)), V.U.le_N(SG_.SG.cC(True{}, slen, nio, tio), slen, SG_.SG.cC_le(True{}, ts, tt, slen, w0, w1, nio, tio, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI))), C.CP.le_refl(V.U.N(U32.sub(w1, w0)))), hH), SG_.SG.choose_oks(True{}, ts, tt, slen, w0, w1, Es, HB, nio, tio, SC_.SC.dep(tio), SC_.SC.Iv.pf(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), SC_.SC.ltc(Nat.cmp(SC_.SC.dep(tio), 32n), SC_.SC.Iv.lt(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI)), SC_.SC.Iv.cap(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), hH, hEs, SC_.SC.Iv.ok(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI))), hwok, C.CP.le_refl(V.U.N(w1)))))
+
+law WP.tcJ:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +w: EM_.EW
+  for hJ: EI_.EI.J(e, g, w)
+  {A.T.pf(10n, EM_.EM.tc(e)) == True{} : Bool}
+
+def WP.tcJ(e, g, w, hJ):
+  match hJ:
+    case Tuple{hinv, hc}:
+      (%Equal.sym(A.Tr, EM_.EM.tc(e), Q.SP.sc(Q.SP.run(EM_.EM.ghs(g), EM_.EM.x(w), EM_.EM.s0(w))), hc) : {A.T.pf(10n, _) == True{} : Bool};
+        J.DW.pf_ca(EM_.EM.ghs(g), EM_.EM.x(w), EM_.EM.s0(w), 10n, A.T.pf_new(10n, 0)))
+
+# The next window's buffer and output
+# -----------------------------------
+
+law WP.pf_map:
+  for +k: Nat
+  for +i: U32
+  for +slen: U32
+  for +lo: U32
+  for +cpl: U32
+  for +t: A.Tr
+  for +d: Nat
+  for +hp: {A.T.pf(d, t) == True{} : Bool}
+  {A.T.pf(d, SG_.SG.map(k, i, slen, lo, cpl, t)) == True{} : Bool}
+
+def WP.pf_map(k, i, slen, lo, cpl, t, d, hp):
+  match k:
+    case 0n:
+      hp
+    case 1n+q:
+      WP.pf_map(q, U32.add(i, 1), slen, lo, cpl, SG_.SG.mput(slen, lo, cpl, i, SE_.SE.ent(t, i), t), d, SG_.SG.pf_mput(slen, lo, cpl, i, SE_.SE.ent(t, i), t, d, hp))
+
+law WP.pf_cT:
+  for +slen: U32
+  for +nio: U32
+  for +t: A.Tr
+  for +d: Nat
+  for +hp: {A.T.pf(d, t) == True{} : Bool}
+  {A.T.pf(d, SG_.SG.cT(True{}, slen, nio, t)) == True{} : Bool}
+
+def WP.pf_cT(slen, nio, t, d, hp):
+  WP.pf_map(V.U.N(nio), 0, slen, N.u32.pick(U32.is_lt(SG_.SG.slo(V.U.N(nio), 0, slen, t, slen), SG_.SG.shi(V.U.N(nio), 0, slen, t, 0)), SG_.SG.slo(V.U.N(nio), 0, slen, t, slen), 0), N.u32.pick(U32.is_lt(SG_.SG.slo(V.U.N(nio), 0, slen, t, slen), SG_.SG.shi(V.U.N(nio), 0, slen, t, 0)), U32.sub(SG_.SG.shi(V.U.N(nio), 0, slen, t, 0), SG_.SG.slo(V.U.N(nio), 0, slen, t, slen)), 0), t, d, hp)
+
+# The buffer's shape: a perfect tree, below 2^32 words, with room for one
+# match.
+def WP.bok(+t: A.Tr) -> Bool:
+  Bool.and(A.T.pf(SC_.SC.dep(t), t), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(t), 32n)), Cmp.is_le(Nat.cmp(3n, P.Nat.pow2(SC_.SC.dep(t))))))
+
+law WP.bok_cT:
+  for +slen: U32
+  for +nio: U32
+  for +t: A.Tr
+  for +h: {WP.bok(t) == True{} : Bool}
+  {WP.bok(SG_.SG.cT(True{}, slen, nio, t)) == True{} : Bool}
+
+def WP.bok_cT(slen, nio, t, h):
+  @unfold WP.bok
+  @rw SC_.SC.dep_pf(SC_.SC.dep(t), SG_.SG.cT(True{}, slen, nio, t), WP.pf_cT(slen, nio, t, SC_.SC.dep(t), P.Bool.and_l(A.T.pf(SC_.SC.dep(t), t), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(t), 32n)), Cmp.is_le(Nat.cmp(3n, P.Nat.pow2(SC_.SC.dep(t))))), h)))
+  @rwx WP.pf_cT(slen, nio, t, SC_.SC.dep(t), P.Bool.and_l(A.T.pf(SC_.SC.dep(t), t), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(t), 32n)), Cmp.is_le(Nat.cmp(3n, P.Nat.pow2(SC_.SC.dep(t))))), h)) : {A.T.pf(SC_.SC.dep(t), SG_.SG.cT(True{}, slen, nio, t)) == True{} : Bool}
+  P.Bool.and_r(A.T.pf(SC_.SC.dep(t), t), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(t), 32n)), Cmp.is_le(Nat.cmp(3n, P.Nat.pow2(SC_.SC.dep(t))))), h)
+
+law WP.ltT:
+  for +c: Cmp
+  for +h: {c == LT{} : Cmp}
+  {Cmp.is_lt(c) == True{} : Bool}
+
+def WP.ltT(c, h):
+  @rwx h : {c == LT{} : Cmp}
+  {==}
+
+# The output's shape after the write.
+def WP.ook(+t: A.Tr) -> Bool:
+  Bool.and(A.T.pf(SC_.SC.dep(t), t), Cmp.is_lt(Nat.cmp(SC_.SC.dep(t), 32n)))
+
+law WP.ook_next:
+  for +to: A.Tr
+  for +olen: U32
+  for +tt: A.Tr
+  for +w0: U32
+  for +tlen: U32
+  for +cpl: U32
+  for +off: U32
+  for +e: EM_.ET
+  for +h: {WP.ook(to) == True{} : Bool}
+  {WP.ook(WS_.WS.wto(to, olen, tt, w0, tlen, cpl, off, e)) == True{} : Bool}
+
+def WP.ook_next(to, olen, tt, w0, tlen, cpl, off, e, h):
+  match e:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}:
+      WP.ook_puts(to, olen, tt, w0, tlen, cpl, off, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, SC_.SC.dep(to), P.Bool.and_l(A.T.pf(SC_.SC.dep(to), to), Cmp.is_lt(Nat.cmp(SC_.SC.dep(to), 32n)), h), SC_.SC.ltc(Nat.cmp(SC_.SC.dep(to), 32n), P.Bool.and_r(A.T.pf(SC_.SC.dep(to), to), Cmp.is_lt(Nat.cmp(SC_.SC.dep(to), 32n)), h)))
+
+law WP.ook_puts:
+  for +to: A.Tr
+  for +olen: U32
+  for +tt: A.Tr
+  for +w0: U32
+  for +tlen: U32
+  for +cpl: U32
+  for +off: U32
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +pc: U32
+  for +od: Nat
+  for +hpf: {A.T.pf(od, to) == True{} : Bool}
+  for +hod: {Nat.cmp(od, 32n) == LT{} : Cmp}
+  {WP.ook(S.S.puts(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], WW_.WW.sb(U32.is_lt(0, cpl), cpl, off)), R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), R.VI.var(tlen)), 0 <> []), R.VI.var(dl)), R.VI.var(il)), R.VI.var(al)), U32.shrn(H.AD.T(tt, w0, tlen), 24n) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 16n), 255) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 8n), 255) <> []), U32.and(H.AD.T(tt, w0, tlen), 255) <> []), S.S.sl(V.U.N(dl), td, 0)), S.S.sl(V.U.N(il), ti, 0)), S.S.sl(V.U.N(al), ta, 0)), EM_.GR.t(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)))), olen)) == True{} : Bool}
+
+def WP.ook_puts(to, olen, tt, w0, tlen, cpl, off, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, od, hpf, hod):
+  @unfold WP.ook
+  (%Equal.sym(Nat, SC_.SC.dep(S.S.puts(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], WW_.WW.sb(U32.is_lt(0, cpl), cpl, off)), R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), R.VI.var(tlen)), 0 <> []), R.VI.var(dl)), R.VI.var(il)), R.VI.var(al)), U32.shrn(H.AD.T(tt, w0, tlen), 24n) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 16n), 255) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 8n), 255) <> []), U32.and(H.AD.T(tt, w0, tlen), 255) <> []), S.S.sl(V.U.N(dl), td, 0)), S.S.sl(V.U.N(il), ti, 0)), S.S.sl(V.U.N(al), ta, 0)), EM_.GR.t(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)))), olen)), EM_.GR.d(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od), SC_.SC.dep_pf(EM_.GR.d(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od), S.S.puts(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], WW_.WW.sb(U32.is_lt(0, cpl), cpl, off)), R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), R.VI.var(tlen)), 0 <> []), R.VI.var(dl)), R.VI.var(il)), R.VI.var(al)), U32.shrn(H.AD.T(tt, w0, tlen), 24n) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 16n), 255) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 8n), 255) <> []), U32.and(H.AD.T(tt, w0, tlen), 255) <> []), S.S.sl(V.U.N(dl), td, 0)), S.S.sl(V.U.N(il), ti, 0)), S.S.sl(V.U.N(al), ta, 0)), EM_.GR.t(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)))), olen), S.S.pf_puts(EM_.GR.d(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od), K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], WW_.WW.sb(U32.is_lt(0, cpl), cpl, off)), R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), R.VI.var(tlen)), 0 <> []), R.VI.var(dl)), R.VI.var(il)), R.VI.var(al)), U32.shrn(H.AD.T(tt, w0, tlen), 24n) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 16n), 255) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 8n), 255) <> []), U32.and(H.AD.T(tt, w0, tlen), 255) <> []), S.S.sl(V.U.N(dl), td, 0)), S.S.sl(V.U.N(il), ti, 0)), S.S.sl(V.U.N(al), ta, 0)), EM_.GR.t(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)))), olen, EM_.GR.pf(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od, hpf)))) : {Bool.and(A.T.pf(_, S.S.puts(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], WW_.WW.sb(U32.is_lt(0, cpl), cpl, off)), R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), R.VI.var(tlen)), 0 <> []), R.VI.var(dl)), R.VI.var(il)), R.VI.var(al)), U32.shrn(H.AD.T(tt, w0, tlen), 24n) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 16n), 255) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 8n), 255) <> []), U32.and(H.AD.T(tt, w0, tlen), 255) <> []), S.S.sl(V.U.N(dl), td, 0)), S.S.sl(V.U.N(il), ti, 0)), S.S.sl(V.U.N(al), ta, 0)), EM_.GR.t(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)))), olen)), Cmp.is_lt(Nat.cmp(_, 32n))) == True{} : Bool};
+    SC_.SC.and_tt(A.T.pf(EM_.GR.d(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od), S.S.puts(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], WW_.WW.sb(U32.is_lt(0, cpl), cpl, off)), R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), R.VI.var(tlen)), 0 <> []), R.VI.var(dl)), R.VI.var(il)), R.VI.var(al)), U32.shrn(H.AD.T(tt, w0, tlen), 24n) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 16n), 255) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 8n), 255) <> []), U32.and(H.AD.T(tt, w0, tlen), 255) <> []), S.S.sl(V.U.N(dl), td, 0)), S.S.sl(V.U.N(il), ti, 0)), S.S.sl(V.U.N(al), ta, 0)), EM_.GR.t(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)))), olen)), Cmp.is_lt(Nat.cmp(EM_.GR.d(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od), 32n)), S.S.pf_puts(EM_.GR.d(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od), K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(K.WD.app(N.u32.pick(U32.is_lt(0, cpl), 5, 4) <> [], WW_.WW.sb(U32.is_lt(0, cpl), cpl, off)), R.VI.var(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), R.VI.var(tlen)), 0 <> []), R.VI.var(dl)), R.VI.var(il)), R.VI.var(al)), U32.shrn(H.AD.T(tt, w0, tlen), 24n) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 16n), 255) <> []), U32.and(U32.shrn(H.AD.T(tt, w0, tlen), 8n), 255) <> []), U32.and(H.AD.T(tt, w0, tlen), 255) <> []), S.S.sl(V.U.N(dl), td, 0)), S.S.sl(V.U.N(il), ti, 0)), S.S.sl(V.U.N(al), ta, 0)), EM_.GR.t(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al)))), olen, EM_.GR.pf(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od, hpf)), WP.ltT(Nat.cmp(EM_.GR.d(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od), 32n), EM_.GR.lt(to, olen, U32.add(olen, U32.add(U32.add(U32.add(1, N.u32.pick(U32.is_lt(0, cpl), U32.add(B.B.var.len(cpl), B.B.var.len(off)), 0)), B.B.var.len(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(U32.add(1, B.B.var.len(tlen)), B.B.var.len(dl)), B.B.var.len(il)), B.B.var.len(al)), 4), dl), il), al))), od, hod))))
+
+# Between windows
+# ---------------
+
+# The state between windows: the emitter's sections, the buffer and the
+# output have their shapes.
+def WP.esok(+s: WS_.EST) -> Bool:
+  match s:
+    case WS_.EST{tl, tb, tv, tio, e, to, olen, lidx, cont}:
+      Bool.and(WS_.WS.eok(e), Bool.and(WP.bok(tio), WP.ook(to)))
+
+law WP.esok_fin:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +to: A.Tr
+  for +olen: U32
+  for +lidx: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  for +hook: {WP.ook(to) == True{} : Bool}
+  {WP.esok(WS_.WS.fin(E, w0, w1, tt, e, st, to, olen, lidx)) == True{} : Bool}
+
+def WP.esok_fin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, to, olen, lidx, he, hI, hwok, hH, hEs, hook):
+  match E st:
+    case N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}:
+      SC_.SC.and_tt(WS_.WS.eok(WS_.WS.ez(WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}))), Bool.and(WP.bok(SG_.SG.cT(True{}, slen, nio, tio)), WP.ook(WS_.WS.wto(to, olen, tt, w0, U32.sub(w1, w0), SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio), WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont})))),
+        WP.eok_next(WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WP.g3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}, WP.Fwin(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), WP.cap6win(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), WP.tcwin(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs)),
+        SC_.SC.and_tt(WP.bok(SG_.SG.cT(True{}, slen, nio, tio)), WP.ook(WS_.WS.wto(to, olen, tt, w0, U32.sub(w1, w0), SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio), WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}))),
+          WP.bok_cT(slen, nio, tio, SC_.SC.and_tt(A.T.pf(SC_.SC.dep(tio), tio), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(tio), 32n)), Cmp.is_le(Nat.cmp(3n, P.Nat.pow2(SC_.SC.dep(tio))))), SC_.SC.Iv.pf(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), SC_.SC.and_tt(Cmp.is_lt(Nat.cmp(SC_.SC.dep(tio), 32n)), Cmp.is_le(Nat.cmp(3n, P.Nat.pow2(SC_.SC.dep(tio)))), SC_.SC.Iv.lt(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), SC_.SC.Iv.c3(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI)))),
+          WP.ook_next(to, olen, tt, w0, U32.sub(w1, w0), SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio), WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), hook)))
