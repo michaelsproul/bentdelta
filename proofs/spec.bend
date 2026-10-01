@@ -192,7 +192,7 @@ def SP.cput(+c: A.Tr, +slot: U32, +addr: U32) -> A.Tr:
 # The address a COPY's value v names in mode m, here being the address of
 # the bytes it writes (dec.copy.v and dec.addr.c).
 def SP.daddr(+m: U32, +v: U32, +here: U32, +c: A.Tr) -> U32:
-  +idx = B.u32.pick((m < 6 : U32), (766 + m : U32), (((m - 6 : U32) * 256 : U32) + (v .&. 255 : U32) : U32))
+  +idx = B.u32.pick((m < 6 : U32), (766 + m : U32), (((m - 6 : U32) << 8n : U32) .|. (v .&. 255 : U32) : U32))
   +w = A.T.word(c, idx)
   B.u32.pick(U32.is_eq(m, 0), v, B.u32.pick(U32.is_eq(m, 1), (here - v : U32), B.u32.pick((m < 6 : U32), (w + v : U32), w)))
 

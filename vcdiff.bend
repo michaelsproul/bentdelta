@@ -293,7 +293,7 @@ def dec.copy.v(+wc: WinC, +n: U32, +mode: U32, +here: U32, src: Array<U32>,
   match v:
     case B.VR{del, +val, +apos, vok}:
       +idx = u32.pick((mode < 6 : U32), (766 + mode : U32),
-        (((mode - 6 : U32) * 256 : U32) + (val .&. 255 : U32) : U32))
+        (((mode - 6 : U32) << 8n : U32) .|. (val .&. 255 : U32) : U32))
       dec.copy.c(wc, n, src, del, out, tab, opos, dpos, ipos, apos, slot, err,
         dec.addr.c(mode, here, val, vok, ca[idx]))
 

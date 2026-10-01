@@ -460,7 +460,7 @@ def DX.copy_b(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, o
   @rwx hm : {U32.is_lt(m, 6) == False{} : Bool}
   @simp -D.dec.copy.at
   @rw Z.BB.and255(v)
-  @rw A.A.get_from(ca, U32.add(U32.mul(U32.sub(m, 6), 256), U32.and(v, 255)))
+  @rw A.A.get_from(ca, U32.or(U32.shln(U32.sub(m, 6), 8n), U32.and(v, 255)))
   @unfold D.dec.addr.c
   @unfold D.dec.copy.c
   @unfold Q.SP.daddr B.u32.pick D.u32.pick
