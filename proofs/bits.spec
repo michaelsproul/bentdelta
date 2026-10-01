@@ -249,3 +249,8 @@ id BB.be32 v
   # A big-endian word read back.
   lhs U32.or(U32.shln(U32.or(U32.shln(U32.or(U32.shln(U32.and(U32.shrn(v, 24n), 255), 8n), U32.and(U32.and(U32.shrn(v, 16n), 255), 255)), 8n), U32.and(U32.and(U32.shrn(v, 8n), 255), 255)), 8n), U32.and(U32.and(v, 255), 255))
   rhs v
+
+id BB.sh24 w
+  # The top byte of a word, shifted down, is already a byte.
+  lhs U32.shrn(w, 24n)
+  rhs Y.BP.ext(w, 24n)

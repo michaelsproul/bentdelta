@@ -887,3 +887,81 @@ def WD.max_eq(a, b):
   match a b:
     case U32{x} U32{y}:
       {==}
+
+# Lists are equal when their heads and tails are.
+law WD.cons_inj_h:
+  for +x: U32
+  for +xs: List<&2, U32>
+  for +y: U32
+  for +ys: List<&2, U32>
+  for +e: {x <> xs == y <> ys : List<&2, U32>}
+  {x == y : U32}
+
+def WD.cons_inj_h(x, xs, y, ys, e):
+  Equal.cong(List<&2, U32>, U32, l => WD.hd(l), x <> xs, y <> ys, e)
+
+law WD.cons_inj_t:
+  for +x: U32
+  for +xs: List<&2, U32>
+  for +y: U32
+  for +ys: List<&2, U32>
+  for +e: {x <> xs == y <> ys : List<&2, U32>}
+  {xs == ys : List<&2, U32>}
+
+def WD.cons_inj_t(x, xs, y, ys, e):
+  Equal.cong(List<&2, U32>, List<&2, U32>, l => WD.tl(l), x <> xs, y <> ys, e)
+
+def WD.hd(+l: List<&2, U32>) -> U32:
+  match l:
+    case []:
+      0
+    case x <> r:
+      x
+
+def WD.tl(+l: List<&2, U32>) -> List<&2, U32>:
+  match l:
+    case []:
+      []
+    case x <> r:
+      r
+
+# Equal byte ranges have equal sub-ranges: the first k bytes, and the rest.
+law WD.sl_pre:
+  for +k: Nat
+  for +m: Nat
+  for +t1: A.Tr
+  for +t2: A.Tr
+  for +i: U32
+  for +e: {S.S.sl(Nat.add(k, m), t1, i) == S.S.sl(Nat.add(k, m), t2, i) : List<&2, U32>}
+  {S.S.sl(k, t1, i) == S.S.sl(k, t2, i) : List<&2, U32>}
+
+def WD.sl_pre(k, m, t1, t2, i, e):
+  match k:
+    case 0n:
+      {==}
+    case 1n+p:
+      @simp
+      @rw WD.cons_inj_h(Y.BP.byt(t1, i), S.S.sl(Nat.add(p, m), t1, U32.add(i, 1)), Y.BP.byt(t2, i), S.S.sl(Nat.add(p, m), t2, U32.add(i, 1)), e)
+      @rw WD.sl_pre(p, m, t1, t2, U32.add(i, 1), WD.cons_inj_t(Y.BP.byt(t1, i), S.S.sl(Nat.add(p, m), t1, U32.add(i, 1)), Y.BP.byt(t2, i), S.S.sl(Nat.add(p, m), t2, U32.add(i, 1)), e))
+      {==}
+
+law WD.sl_suf:
+  for +k: Nat
+  for +m: Nat
+  for +t1: A.Tr
+  for +t2: A.Tr
+  for +i: U32
+  for +x: U32
+  for +ex: {V.U.N(x) == k : Nat}
+  for +e: {S.S.sl(Nat.add(k, m), t1, i) == S.S.sl(Nat.add(k, m), t2, i) : List<&2, U32>}
+  {S.S.sl(m, t1, U32.add(i, x)) == S.S.sl(m, t2, U32.add(i, x)) : List<&2, U32>}
+
+def WD.sl_suf(k, m, t1, t2, i, x, ex, e):
+  match k:
+    case 0n:
+      @rwx WD.zero_of(x, ex) : {x == 0 : U32}
+      @rw V.U.add_zero_r(i)
+      e
+    case 1n+p:
+      @rw- WD.add_shift(i, x)
+      WD.sl_suf(p, m, t1, t2, U32.add(i, 1), U32.sub(x, 1), WD.pred_N(x, p, ex), WD.cons_inj_t(Y.BP.byt(t1, i), S.S.sl(Nat.add(p, m), t1, U32.add(i, 1)), Y.BP.byt(t2, i), S.S.sl(Nat.add(p, m), t2, U32.add(i, 1)), e))

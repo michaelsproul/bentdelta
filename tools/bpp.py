@@ -922,6 +922,16 @@ def fold(e):
     """Constant folding of U32 operations on literals."""
     if e[0] != 'call' or not isinstance(e[1], str):
         return None
+    if e[1] == 'Nat.cmp' and len(e[2]) == 2:
+        a, b = nat_lit(e[2][0]), nat_lit(e[2][1])
+        if a is not None and b is not None:
+            return ('ctor', 'LT' if a < b else 'EQ' if a == b else 'GT', ())
+        return None
+    if e[1] in ('Nat.double', 'P.Nat.half') and len(e[2]) == 1:
+        a = nat_lit(e[2][0])
+        if a is not None:
+            return ('lit', f"{a * 2 if e[1] == 'Nat.double' else a // 2}n")
+        return None
     if e[1] in ('Nat.mul', 'Nat.add', 'Nat.sub') and len(e[2]) == 2:
         a, b = nat_lit(e[2][0]), nat_lit(e[2][1])
         if a is not None and b is not None:
@@ -1344,6 +1354,7 @@ def process(path, text):
 
 
 def main():
+    sys.setrecursionlimit(100000)
     src = sys.argv[1]
     dst = sys.argv[2] if len(sys.argv) > 2 else re.sub(r'\.bp$', '.bend', src)
     text = open(src).read()
