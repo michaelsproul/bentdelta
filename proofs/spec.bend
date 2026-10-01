@@ -9,6 +9,7 @@ import ./seq.bend as S
 import ./words.bend as K
 import ./copy.bend as C
 import ./varint.bend as R
+import ./adler.bend as H
 
 # What a window of a delta says: its instructions (each half of an opcode
 # of the code table), the bytes they put in the window's three sections,
@@ -482,3 +483,87 @@ def SP.wx(+ts: A.Tr, +tt: A.Tr, +w: AW, +opos: U32) -> XC:
 # The cache at the start of a window: every slot 0.
 def SP.c0() -> A.Tr:
   A.T.new(10n, 0)
+
+# A window's state at its start: at opos, with the cache cleared.
+def SP.s0(+opos: U32) -> ST:
+  ST{opos, A.T.new(10n, 0), 0}
+
+# Where a window starting at pos ends.
+def SP.wnd(+pos: U32, +w: AW) -> U32:
+  match w:
+    case AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      B.u32.pick((0 < cpl : U32),
+        (((((pos + 1 : U32) + B.B.var.len(cpl) : U32) + B.B.var.len(off) : U32) + B.B.var.len(SP.enc(tlen, dl, il, al)) : U32) + SP.enc(tlen, dl, il, al) : U32),
+        (((pos + 1 : U32) + B.B.var.len(SP.enc(tlen, dl, il, al)) : U32) + SP.enc(tlen, dl, il, al) : U32))
+
+# What makes a window at opos rebuild tt's bytes [opos, opos + tlen): its
+# section lengths, its copy segment inside the source (of slen bytes), its
+# target inside 2^31 bytes, its opcodes in the code table tb, its halves
+# rebuilding the target (inside the bounds E of the target and Es of the
+# source), and its checksum.
+def SP.wok(+w: AW, +ts: A.Tr, +tt: A.Tr, +slen: U32, +opos: U32, +tb: A.Tr, +E: U32, +Es: U32) -> Bool:
+  match w:
+    case AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      Bool.and(SP.lenis(SP.datl(SP.halves(ops)), dl),
+      Bool.and(SP.lenis(SP.insl(ops), il),
+      Bool.and(SP.lenis(SP.adrl(SP.halves(ops)), al),
+      Bool.and(Bool.or(Bool.not((0 < cpl : U32)), Bool.and((cpl <= slen : U32), (off <= (slen - cpl : U32) : U32))),
+      Bool.and((opos <= 2147483648 : U32),
+      Bool.and((tlen <= (2147483648 - opos : U32) : U32),
+      Bool.and(SP.coks(ops, tb),
+      Bool.and(SP.vhs(SP.halves(ops), SP.wx(ts, tt, AW{cpl, off, tlen, dl, il, al, ops, sum}, opos), SP.s0(opos)),
+      Bool.and(SP.doks(SP.halves(ops)),
+      Bool.and(SP.bnds(SP.halves(ops), SP.wx(ts, tt, AW{cpl, off, tlen, dl, il, al, ops, sum}, opos), SP.s0(opos), E, Es),
+      Bool.and(U32.is_eq(SP.so(SP.run(SP.halves(ops), SP.wx(ts, tt, AW{cpl, off, tlen, dl, il, al, ops, sum}, opos), SP.s0(opos))), (opos + tlen : U32)),
+        U32.is_eq(sum, H.AD.T(tt, opos, tlen)))))))))))))
+
+def SP.wtl(+w: AW) -> U32:
+  match w:
+    case AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      tlen
+
+def SP.wops(+w: AW) -> List<&2, OP>:
+  match w:
+    case AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      ops
+
+# A delta's windows
+# =================
+
+def SP.wbs(+ws: List<&2, AW>) -> List<&2, U32>:
+  match ws:
+    case []:
+      []
+    case w <> r:
+      K.WD.app(SP.wb(w), SP.wbs(r))
+
+def SP.wsok(+ws: List<&2, AW>, +ts: A.Tr, +tt: A.Tr, +slen: U32, +opos: U32, +tb: A.Tr, +E: U32, +Es: U32) -> Bool:
+  match ws:
+    case []:
+      True{}
+    case w <> r:
+      Bool.and(SP.wok(w, ts, tt, slen, opos, tb, E, Es), SP.wsok(r, ts, tt, slen, (opos + SP.wtl(w) : U32), tb, E, Es))
+
+# Where the windows end in the target.
+def SP.wop(+ws: List<&2, AW>, +opos: U32) -> U32:
+  match ws:
+    case []:
+      opos
+    case w <> r:
+      SP.wop(r, (opos + SP.wtl(w) : U32))
+
+# The target after the windows.
+def SP.wto(+ws: List<&2, AW>, +ts: A.Tr, +tt: A.Tr, +to: A.Tr, +opos: U32) -> A.Tr:
+  match ws:
+    case []:
+      to
+    case w <> r:
+      SP.wto(r, ts, tt, SP.outs(SP.halves(SP.wops(w)), SP.wx(ts, tt, w, opos), to, SP.s0(opos)), (opos + SP.wtl(w) : U32))
+
+# The cache after the windows.
+def SP.wca(+ws: List<&2, AW>, +ts: A.Tr, +tt: A.Tr, +ca: A.Tr, +opos: U32) -> A.Tr:
+  match ws:
+    case []:
+      ca
+    case w <> r:
+      SP.wca(r, ts, tt, SP.sc(SP.run(SP.halves(SP.wops(w)), SP.wx(ts, tt, w, opos), SP.s0(opos))), (opos + SP.wtl(w) : U32))

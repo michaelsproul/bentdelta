@@ -12,6 +12,7 @@ of each def and writes those lines for it. In a def body:
   @rwx- E : {a == b : T}  b into a
   @goal G            restates the goal (to a form it is convertible with)
   @show              writes the goal as a comment
+  @rassoc F L        right-nests F everywhere, by L: F(F(x, y), z) == F(x, F(y, z))
   @ac                puts the U32 sums of the goal in a normal form (right
                      nested, terms sorted, literals first and added up), by
                      associativity and commutativity
@@ -1278,6 +1279,40 @@ def directive(ctx, text, goal, ind, out):
             ps, body = def_body(ctx.cur, name)
             goal = unfold(goal, name, ps, body)
         return goal
+    if cmd == 'rassoc':
+        if goal is None:
+            raise Err(f"{ctx.name}: no goal tracked here (use @goal)")
+        f, lname = arg.split()
+
+        def r_f(t):
+            if t[0] == 'call' and t[1] == f and len(t[2]) == 2:
+                a, b = t[2]
+                if isinstance(a, tuple) and a and a[0] == 'call' and a[1] == f and len(a[2]) == 2:
+                    x, y = a[2]
+                    return t, ('call', f, (x, ('call', f, (y, b)))), ('call', lname, (x, y, b))
+            return None
+
+        def find(e):
+            if not isinstance(e, tuple) or not e:
+                return None
+            r = r_f(e) if e[0] == 'call' else None
+            if r is not None:
+                return r
+            for x in e:
+                if isinstance(x, tuple):
+                    r = find(x)
+                    if r is not None:
+                        return r
+            return None
+        for _ in range(2000):
+            r = find(goal)
+            if r is None:
+                return goal
+            old, new, pf = r
+            _, _, T = instance(ctx.cur, pf)
+            goal = rewrite(ctx, goal, old, new, f"Equal.sym({show(T)}, {show(old)}, {show(new)}, {show(pf)})", T, ind, out)
+            goal = simp(ctx.cur, goal, skip=set(NOSIMP) | {'A.T.new'})
+        raise Err(f"{ctx.name}: @rassoc did not finish")
     if cmd == 'ac':
         if goal is None:
             raise Err(f"{ctx.name}: no goal tracked here (use @goal)")
