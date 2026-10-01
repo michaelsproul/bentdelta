@@ -1556,6 +1556,28 @@ def enc.done(+slen: U32, +tlen: U32, st: ES) -> (B.Bytes & B.Bytes) & B.Bytes:
 # differs at a task's first window: it tries the source at the window's own
 # offset.
 
+# w + k * d, by k additions (the window positions, as the window loop makes
+# them).
+def adv(k: Nat, +w: U32, +d: U32) -> U32:
+  match k:
+    case 0n:
+      w
+    case 1n+q:
+      adv(q, (w + d : U32), d)
+
+# How many windows of wsz bytes, from w on, it takes to reach tlen (one at
+# least): one, and more while w is short of tlen.
+def wn.go(k: Nat, +w: U32, +tlen: U32, +wsz: U32) -> U32:
+  match k:
+    case 0n:
+      1
+    case 1n+q:
+      u32.pick((w < tlen : U32), (wn.go(q, (w + wsz : U32), tlen, wsz) + 1 : U32), 1)
+
+# The windows of a target of tlen bytes.
+def wn(+tlen: U32, +wsz: U32) -> U32:
+  wn.go(512n, wsz, tlen, wsz)
+
 # A task's own tables, emitter and output.
 def es.fresh(+sbits: Nat, +wb: U32, +ocap: U32, src: Array<U32>,
   tgt: Array<U32>, lt: Array<U32>, +lidx: U32, +cont: U32) -> ES:
@@ -1598,7 +1620,7 @@ def es.split(+E: EK, +sbits: Nat, +wb: U32, +w0: U32, +nw: U32, st: ES) ->
       ES{src, tgt, lt, stb, spv, io, em, out, olen, lidx, cont}:
       +nl = (nw >> 1n : U32)
       +nr = (nw - nl : U32)
-      es.split.k(sbits, wb, (w0 + (nl * wsz : U32) : U32),
+      es.split.k(sbits, wb, adv(U32.to_nat(nl), w0, wsz),
         u32.max(((nr * wsz : U32) >> 3n : U32), 4096), Array.clone(U32, src),
         Array.clone(U32, tgt), Array.clone(U32, lt), stb, spv, io, em, out, olen,
         lidx, cont)
@@ -1626,14 +1648,14 @@ def enc.par(+k: Nat, +E: EK, +sbits: Nat, +wb: U32, +w0: U32, +nw: U32,
       (sl, sr) = sp
       +nl = (nw >> 1n : U32)
       +nr = (nw - nl : U32)
-      +wm = (w0 + (nl * EK.wsz(E) : U32) : U32)
+      +wm = adv(U32.to_nat(nl), w0, EK.wsz(E))
       l r = enc.leaf(E, w0, nl, sl) enc.leaf(E, wm, nr, sr)
       es.join(l, r)
     case 2n+q:
       (sl, sr) = sp
       +nl = (nw >> 1n : U32)
       +nr = (nw - nl : U32)
-      +wm = (w0 + (nl * EK.wsz(E) : U32) : U32)
+      +wm = adv(U32.to_nat(nl), w0, EK.wsz(E))
       l r = enc.par(1n+q, E, sbits, wb, w0, nl, es.split(E, sbits, wb, w0, nl, sl)) enc.par(1n+q, E, sbits, wb, wm, nr, es.split(E, sbits, wb, wm, nr, sr))
       es.join(l, r)
 
@@ -1675,8 +1697,8 @@ def enc.go(+E: EK, +rslen: U32, src: Array<U32>, tgt: Array<U32>,
     case EK{slen, +tlen, +wsz, blk, lsh, lmask, ssh, smask, cap} Tuple{out, ol}:
       +olen = {ol : U32}
       enc.done(rslen, tlen,
-        enc.par.top(E, sbits, wb, u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32)),
-          enc.pre(enc.depth(u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32))), E,
+        enc.par.top(E, sbits, wb, wn(tlen, wsz),
+          enc.pre(enc.depth(wn(tlen, wsz)), E,
             U32.min(tlen, wsz), ES{src, tgt, [0 : U32^0n], [0 : U32^0n],
             [0 : U32^0n], Array.new(U32, 17n, 0),
             Em{B.B.zeros(65536), B.B.zeros(65536), B.B.zeros(65536),
