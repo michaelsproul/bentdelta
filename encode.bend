@@ -331,14 +331,26 @@ def em.inst(tgt: Array<U32>, +run: Bool, +pos: U32, +size: U32, +val: U32,
 # that overlapping ones can be settled before they are written, as in
 # xdelta3's iopt buffer.
 
+# Where the n-th buffered match starts: 3n, as (n << 1) + n.
+def io.at(+n: U32) -> U32:
+  ((n << 1n : U32) + n : U32)
+
+# Its bytes: 12n.
+def io.bytes(+n: U32) -> U32:
+  (io.at(n) << 2n : U32)
+
 def io.put(io: Array<U32>, +n: U32, +pos: U32, +len: U32, +val: U32) ->
   Array<U32>:
-  +at = (n * 3 : U32)
+  +at = io.at(n)
   ((io[at] <- pos)[(at + 1 : U32)] <- len)[(at + 2 : U32)] <- val
+
+# Whether a buffered length marks a RUN (its top bit).
+def ent.run(+len: U32) -> Bool:
+  U32.is_ne((len .&. 2147483648 : U32), 0)
 
 def ent.k2(+pos: U32, +len: U32, r: Array<U32> & U32) -> Array<U32> & Ent:
   (io, +val) = r
-  (io, Ent{pos, (len .&. 2147483647 : U32), val, (len >= 2147483648 : U32)})
+  (io, Ent{pos, (len .&. 2147483647 : U32), val, ent.run(len)})
 
 def ent.k1(+at: U32, +pos: U32, r: Array<U32> & U32) -> Array<U32> & Ent:
   (io, +len) = r
@@ -353,7 +365,7 @@ type Ent is Data:
   Ent{pos: U32, len: U32, val: U32, run: Bool}
 
 def io.get(io: Array<U32>, +n: U32) -> Array<U32> & Ent:
-  +at = (n * 3 : U32)
+  +at = io.at(n)
   ent.k0(at, io[at])
 
 # Settling overlaps
@@ -701,7 +713,7 @@ def sc.push.go(full: Bool, +K: SK, +pos: U32, +len: U32, +val: U32, st: Sc) ->
     case True{} Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last,
       +nio, cont}:
       Sc{src, tgt, lt, stb, spv,
-        io.put(B.B.grow(io, (nio * 12 : U32), ((nio + 1 : U32) * 12 : U32)), nio,
+        io.put(B.B.grow(io, io.bytes(nio), io.bytes((nio + 1 : U32))), nio,
           pos, len, val),
         em, p, mm, rc, rl, lck, last, (nio + 1 : U32), cont}
 
@@ -712,7 +724,7 @@ def sc.nio.k(src: Array<U32>, tgt: Array<U32>, lt: Array<U32>,
   +rl: U32, +lck: U32, +last: U32, +nio: U32, +cont: U32,
   r: Array<U32> & U32) -> Bool & Sc:
   (io, +size) = r
-  ((((nio * 3 : U32) + 3 : U32) > size : U32),
+  (((io.at(nio) + 3 : U32) > size : U32),
     Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, nio, cont})
 
 def sc.nio(+K: SK, st: Sc) -> Bool & Sc:
@@ -749,7 +761,7 @@ def sc.push.if(z: Bool, +K: SK, +pos: U32, +len: U32, +val: U32, st: Sc) -> Sc:
 def sc.push.t(+K: SK, +pos: U32, +len: U32, +val: U32, r: U32 & Sc) -> Sc:
   (+u, st) = r
   +d = u32.pick((pos < u : U32), (u - pos : U32), 0)
-  +run = (len >= 2147483648 : U32)
+  +run = ent.run(len)
   sc.push.if(((d + 4 : U32) <= (len .&. 2147483647 : U32) : U32), K, (pos + d : U32),
     (len - d : U32), u32.pick(run, val, (val + d : U32)), st)
 
@@ -775,7 +787,7 @@ def er.loop(k: Nat, +pos: U32, s: Bool & (U32 & Array<U32>)) ->
       r
     case 1n+p Tuple{True{}, Tuple{n0, io}}:
       +n = {n0 : U32}
-      er.loop(p, pos, er.k(pos, n, io[((n - 1 : U32) * 3 : U32)]))
+      er.loop(p, pos, er.k(pos, n, io[io.at((n - 1 : U32))]))
 
 def sc.erase.k(src: Array<U32>, tgt: Array<U32>, lt: Array<U32>,
   stb: Array<U32>, spv: Array<U32>, em: Em, +p: U32, +mm: U32, +rc: U32,
@@ -865,7 +877,7 @@ def sc.rs.k1(src: Array<U32>, tgt: Array<U32>, lt: Array<U32>,
   +nio: U32, +cont: U32, r: Array<U32> & U32) -> Bool & Sc:
   (io, +q) = r
   sc.rs.k2(src, tgt, lt, stb, spv, em, p, w1, last, nio, cont, q,
-    io[((((nio - 1 : U32) * 3 : U32)) + 1 : U32)])
+    io[(io.at((nio - 1 : U32)) + 1 : U32)])
 
 # Starts afresh at p: recomputes the minimum match from the last buffered
 # match, the run and the large checksum (xdelta3's restartloop).
@@ -874,7 +886,7 @@ def sc.restart(+K: SK, st: Sc) -> Bool & Sc:
     case SK{slen, w0, +w1, cpl, lsh, lmask, ssh, smask, cap}
       Sc{src, tgt, lt, stb, spv, io, em, +p, mm, rc, rl, lck, +last, +nio, cont}:
       sc.rs.k1(src, tgt, lt, stb, spv, em, p, w1, last, nio, cont,
-        io[((nio - 1 : U32) * 3 : U32)])
+        io[io.at((nio - 1 : U32))])
 
 def sc.lazy.go(z: Bool, +K: SK, +L: U32, st: Sc) -> Bool & Sc:
   match z st:

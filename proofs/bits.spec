@@ -264,3 +264,21 @@ id BB.split8 r
   # A word from its bits above 8 and its low byte.
   lhs U32.or(U32.shln(U32.shrn(r, 8n), 8n), U32.and(r, 255))
   rhs r
+
+id BB.runl1 w
+  # A RUN's length, marked and read back.
+  lhs U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483647)
+  rhs U32.and(w, 2147483647)
+
+id BB.runf1 w
+  lhs U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483648)
+  rhs 2147483648
+
+id BB.runl0 w
+  # A COPY's length, read back.
+  lhs U32.and(U32.and(w, 2147483647), 2147483647)
+  rhs U32.and(w, 2147483647)
+
+id BB.runf0 w
+  lhs U32.and(U32.and(w, 2147483647), 2147483648)
+  rhs 0

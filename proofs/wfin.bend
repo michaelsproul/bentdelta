@@ -1,0 +1,292 @@
+import Base
+import ../bytes.bend as B
+import ../vcdiff.bend as D
+import ../encode.bend as N
+import ./nat.bend as P
+import ./word.bend as W
+import ./u32.bend as V
+import ./array.bend as A
+import ./bytes.bend as Y
+import ./seq.bend as S
+import ./words.bend as K
+import ./copy.bend as C
+import ./varint.bend as R
+import ./spec.bend as Q
+import ./sem.bend as M
+import ./adler.bend as H
+import ./emit.bend as EM_
+import ./einst.bend as EI_
+import ./settle.bend as SE_
+import ./segm.bend as SG_
+import ./wwrite.bend as WW_
+
+# A window's end
+# ==============
+#
+# win.fin: the buffered matches settled and written, the rest of the window
+# as an ADD, the pending instruction, and the window appended to the output.
+
+# The gap to w1 is within bounds for the emitter's mirror.
+law WF.gapb.k:
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +pc: U32
+  for +ops: List<&2, Q.OP>
+  for +ph: Q.HF
+  for +dd: Nat
+  for +di: Nat
+  for +da: Nat
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hinv: {EM_.EM.inv(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(U32.sub(w1, uoff)), V.U.N(uoff)), V.U.N(w1))) == True{} : Bool}
+
+def WF.gapb.k(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, ts, tt, seg, cpl, w0, w1, E, Es, BIG, hinv):
+  %Equal.sym(Nat, Nat.add(V.U.N(U32.sub(w1, uoff)), V.U.N(uoff)), V.U.N(w1), V.U.sub_nat(w1, uoff, EM_.EM.R.hi(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, EM_.EM.hs(ops, ph), Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG, EM_.EM.inv.r(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG, hinv)))) :
+    {Cmp.is_le(Nat.cmp(_, V.U.N(w1))) == True{} : Bool}
+  C.CP.le_refl(V.U.N(w1))
+
+law WF.gapd.k:
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +pc: U32
+  for +ops: List<&2, Q.OP>
+  for +ph: Q.HF
+  for +dd: Nat
+  for +di: Nat
+  for +da: Nat
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hinv: {EM_.EM.inv(EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM_.EG{ops, ph, dd, di, da}, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(U32.sub(w1, uoff)), V.U.N(dl)), V.U.N(w1))) == True{} : Bool}
+
+def WF.gapd.k(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, ts, tt, seg, cpl, w0, w1, E, Es, BIG, hinv):
+  P.Nat.le_trans(Nat.add(V.U.N(U32.sub(w1, uoff)), V.U.N(dl)), Nat.add(V.U.N(U32.sub(w1, uoff)), V.U.N(uoff)), V.U.N(w1),
+    EI_.EI.lea(V.U.N(U32.sub(w1, uoff)), V.U.N(dl), V.U.N(uoff), P.Nat.le_trans(V.U.N(dl), V.U.N(U32.sub(uoff, w0)), V.U.N(uoff), EM_.EM.R.dl(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, EM_.EM.hs(ops, ph), Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG, EM_.EM.inv.r(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG, hinv)), EM_.EM.sub_le(uoff, w0, EM_.EM.R.lo(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, EM_.EM.hs(ops, ph), Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG, EM_.EM.inv.r(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG, hinv))))),
+    WF.gapb.k(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, ts, tt, seg, cpl, w0, w1, E, Es, BIG, hinv))
+
+# em.gap to the window's end is its mirror.
+law WF.gap_code:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hinv: {EM_.EM.inv(e, g, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  {N.em.gap(A.A.from(tt), w1, EM_.EM.em(e)) == (A.A.from(tt), EM_.EM.em(EM_.EM.gap(tt, w1, e))) : Array<U32> & N.Em}
+
+def WF.gap_code(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, hinv):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      EM_.EM.gap_code(tt, w1, EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, w1, WF.gapd.k(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, ts, tt, seg, cpl, w0, w1, E, Es, BIG, hinv), WF.gapb.k(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, ts, tt, seg, cpl, w0, w1, E, Es, BIG, hinv))
+
+law WF.uo_le:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hinv: {EM_.EM.inv(e, g, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  {U32.is_le(EM_.EM.uo(e), w1) == True{} : Bool}
+
+def WF.uo_le(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, hinv):
+  match e g:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc} EM_.EG{ops, ph, dd, di, da}:
+      EM_.EM.R.hi(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, EM_.EM.hs(ops, ph), Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG, EM_.EM.inv.r(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG, hinv))
+
+law WF.inv_of:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for hJ: EI_.EI.J(e, g, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG})
+  {EM_.EM.inv(e, g, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+
+def WF.inv_of(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, hJ):
+  match hJ:
+    case Tuple{hinv, hc}:
+      hinv
+
+law WF.uo_flk:
+  for +td: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +r: EM_.TI
+  {EM_.EM.uo(EM_.EM.flk(td, ta, tc, dl, al, slot, uoff, r)) == uoff : U32}
+
+def WF.uo_flk(td, ta, tc, dl, al, slot, uoff, r):
+  match r:
+    case EM_.TI{ti, il}:
+      {==}
+
+law WF.uo_fl:
+  for +e: EM_.ET
+  {EM_.EM.uo(EM_.EM.fl(e)) == EM_.EM.uo(e) : U32}
+
+def WF.uo_fl(e):
+  match e:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}:
+      WF.uo_flk(td, ta, tc, dl, al, slot, uoff, EM_.EM.sg(pt, ps, pc, ti, il))
+
+# After settling, the gap to w1 and the flush, the window's sections are
+# whole...
+law WF.em_F:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +HB: U32
+  for +nio: U32
+  for +tio: A.Tr
+  for +hinv: {EM_.EM.inv(e, g, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hc: {EM_.EM.tc(e) == Q.SP.sc(Q.SP.run(EM_.EM.ghs(g), EM_.EM.x(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}), EM_.EM.s0(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}))) : A.Tr}
+  for +hwok: {EM_.EM.wok(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(cpl), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hall: {SE_.SE.oks(V.U.N(nio), ts, tt, seg, cpl, w0, w1, Es, tio, 0) == True{} : Bool}
+  {EI_.EI.F(EM_.EM.fl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))))), EI_.EI.gfl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)})))), EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))))), EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+
+def WF.em_F(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, HB, nio, tio, hinv, hc, hwok, hH, hall):
+  EI_.EI.fl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)})))), EI_.EI.ggap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)})))), ts, tt, seg, cpl, w0, w1, E, Es, BIG, EI_.EI.gap(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), ts, tt, seg, cpl, w0, w1, E, Es, BIG, w1, SE_.SE.flush_J(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, HB, nio, tio, hinv, hc, hwok, hH, hall), hwok, C.CP.le_refl(V.U.N(w1))), hwok)
+
+# ... and the emitter is at w1.
+law WF.em_uo:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +HB: U32
+  for +nio: U32
+  for +tio: A.Tr
+  for +hinv: {EM_.EM.inv(e, g, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hc: {EM_.EM.tc(e) == Q.SP.sc(Q.SP.run(EM_.EM.ghs(g), EM_.EM.x(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}), EM_.EM.s0(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}))) : A.Tr}
+  for +hwok: {EM_.EM.wok(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(cpl), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hall: {SE_.SE.oks(V.U.N(nio), ts, tt, seg, cpl, w0, w1, Es, tio, 0) == True{} : Bool}
+  {EM_.EM.uo(EM_.EM.fl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)})))))) == w1 : U32}
+
+def WF.em_uo(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, HB, nio, tio, hinv, hc, hwok, hH, hall):
+  %Equal.sym(U32, EM_.EM.uo(EM_.EM.fl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)})))))), EM_.EM.uo(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))))), WF.uo_fl(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)})))))) :
+    {_ == w1 : U32}
+  EI_.EI.uo_gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), WF.uo_le(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), ts, tt, seg, cpl, w0, w1, E, Es, BIG, WF.inv_of(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), ts, tt, seg, cpl, w0, w1, E, Es, BIG, SE_.SE.flush_J(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, HB, nio, tio, hinv, hc, hwok, hH, hall))))
+
+# The settling, the gap and the flush, as code.
+law WF.em_code:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +HB: U32
+  for +nio: U32
+  for +tio: A.Tr
+  for +hinv: {EM_.EM.inv(e, g, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hc: {EM_.EM.tc(e) == Q.SP.sc(Q.SP.run(EM_.EM.ghs(g), EM_.EM.x(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}), EM_.EM.s0(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}))) : A.Tr}
+  for +hwok: {EM_.EM.wok(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(cpl), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hall: {SE_.SE.oks(V.U.N(nio), ts, tt, seg, cpl, w0, w1, Es, tio, 0) == True{} : Bool}
+  {N.io.flush(A.A.from(tio), nio, cpl, w0, A.A.from(tt), EM_.EM.em(e)) == (A.A.from(tio), (A.A.from(tt), EM_.EM.em(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)})))))) : Array<U32> & (Array<U32> & N.Em)}
+
+def WF.em_code(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, HB, nio, tio, hinv, hc, hwok, hH, hall):
+  SE_.SE.flush_code(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, HB, nio, tio, hinv, hc, hwok, hH, hall)
+
+law WF.gap1_code:
+  for +e: EM_.ET
+  for +g: EM_.EG
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +seg: U32
+  for +cpl: U32
+  for +w0: U32
+  for +w1: U32
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +HB: U32
+  for +nio: U32
+  for +tio: A.Tr
+  for +hinv: {EM_.EM.inv(e, g, EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hc: {EM_.EM.tc(e) == Q.SP.sc(Q.SP.run(EM_.EM.ghs(g), EM_.EM.x(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}), EM_.EM.s0(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}))) : A.Tr}
+  for +hwok: {EM_.EM.wok(EM_.EW{Q.XC{ts, tt, seg, cpl, w0, w1}, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(cpl), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hall: {SE_.SE.oks(V.U.N(nio), ts, tt, seg, cpl, w0, w1, Es, tio, 0) == True{} : Bool}
+  {N.em.gap(A.A.from(tt), w1, EM_.EM.em(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))))) == (A.A.from(tt), EM_.EM.em(EM_.EM.gap(tt, w1, SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)})))))) : Array<U32> & N.Em}
+
+def WF.gap1_code(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, HB, nio, tio, hinv, hc, hwok, hH, hall):
+  WF.gap_code(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), ts, tt, seg, cpl, w0, w1, E, Es, BIG, WF.inv_of(SE_.SE.fe(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), SE_.SE.fg(SE_.SE.loop(V.U.N(U32.add(nio, 1)), nio, cpl, w0, tio, tt, (U32.is_ne(nio, 0), SE_.FT{e, g, SE_.SE.ent(tio, 0), 1, U32.is_ne(nio, 0)}))), ts, tt, seg, cpl, w0, w1, E, Es, BIG, SE_.SE.flush_J(e, g, ts, tt, seg, cpl, w0, w1, E, Es, BIG, HB, nio, tio, hinv, hc, hwok, hH, hall)))

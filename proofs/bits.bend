@@ -11856,3 +11856,881 @@ def BB.split8.all(+r: U32, +k: Nat) -> V.U.allb(U32.or(U32.shln(U32.shrn(r, 8n),
 
 def BB.split8(r):
   V.U.ext(U32.or(U32.shln(U32.shrn(r, 8n), 8n), U32.and(r, 255)), r, BB.split8.all(r, 32n))
+
+# A RUN's length, marked and read back.
+law BB.runl1:
+  for +w: U32
+  {U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483647) == U32.and(w, 2147483647) : U32}
+
+def BB.runl1.h(+k: Nat, +w_0: Bool, +w_1: Bool, +w_2: Bool, +w_3: Bool, +w_4: Bool, +w_5: Bool, +w_6: Bool, +w_7: Bool, +w_8: Bool, +w_9: Bool, +w_10: Bool, +w_11: Bool, +w_12: Bool, +w_13: Bool, +w_14: Bool, +w_15: Bool, +w_16: Bool, +w_17: Bool, +w_18: Bool, +w_19: Bool, +w_20: Bool, +w_21: Bool, +w_22: Bool, +w_23: Bool, +w_24: Bool, +w_25: Bool, +w_26: Bool, +w_27: Bool, +w_28: Bool, +w_29: Bool, +w_30: Bool, +w_31: Bool) ->
+  {V.U.bit(U32.and(U32.or(U32.and(U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}, 2147483647), 2147483648), 2147483647), k) == V.U.bit(U32.and(U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}, 2147483647), k) : Bool}:
+  match k:
+    case 0n:
+      match w_0:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 1n:
+      match w_1:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 2n:
+      match w_2:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 3n:
+      match w_3:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 4n:
+      match w_4:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 5n:
+      match w_5:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 6n:
+      match w_6:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 7n:
+      match w_7:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 8n:
+      match w_8:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 9n:
+      match w_9:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 10n:
+      match w_10:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 11n:
+      match w_11:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 12n:
+      match w_12:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 13n:
+      match w_13:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 14n:
+      match w_14:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 15n:
+      match w_15:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 16n:
+      match w_16:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 17n:
+      match w_17:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 18n:
+      match w_18:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 19n:
+      match w_19:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 20n:
+      match w_20:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 21n:
+      match w_21:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 22n:
+      match w_22:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 23n:
+      match w_23:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 24n:
+      match w_24:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 25n:
+      match w_25:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 26n:
+      match w_26:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 27n:
+      match w_27:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 28n:
+      match w_28:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 29n:
+      match w_29:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 30n:
+      match w_30:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 31n:
+      match w_31:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 32n+j:
+      {==}
+
+def BB.runl1.b(+k: Nat, +w: U32) ->
+  {V.U.bit(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483647), k) == V.U.bit(U32.and(w, 2147483647), k) : Bool}:
+  match w:
+    case U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}:
+      BB.runl1.h(k, w_0, w_1, w_2, w_3, w_4, w_5, w_6, w_7, w_8, w_9, w_10, w_11, w_12, w_13, w_14, w_15, w_16, w_17, w_18, w_19, w_20, w_21, w_22, w_23, w_24, w_25, w_26, w_27, w_28, w_29, w_30, w_31)
+
+def BB.runl1.all(+w: U32, +k: Nat) -> V.U.allb(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483647), U32.and(w, 2147483647), k):
+  match k:
+    case 0n:
+      Unit{}
+    case 1n+j:
+      W.W.allb.con({V.U.bit(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483647), j) == V.U.bit(U32.and(w, 2147483647), j) : Bool},
+        V.U.allb(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483647), U32.and(w, 2147483647), j), BB.runl1.b(j, w), BB.runl1.all(w, j))
+
+def BB.runl1(w):
+  V.U.ext(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483647), U32.and(w, 2147483647), BB.runl1.all(w, 32n))
+
+law BB.runf1:
+  for +w: U32
+  {U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483648) == 2147483648 : U32}
+
+def BB.runf1.h(+k: Nat, +w_0: Bool, +w_1: Bool, +w_2: Bool, +w_3: Bool, +w_4: Bool, +w_5: Bool, +w_6: Bool, +w_7: Bool, +w_8: Bool, +w_9: Bool, +w_10: Bool, +w_11: Bool, +w_12: Bool, +w_13: Bool, +w_14: Bool, +w_15: Bool, +w_16: Bool, +w_17: Bool, +w_18: Bool, +w_19: Bool, +w_20: Bool, +w_21: Bool, +w_22: Bool, +w_23: Bool, +w_24: Bool, +w_25: Bool, +w_26: Bool, +w_27: Bool, +w_28: Bool, +w_29: Bool, +w_30: Bool, +w_31: Bool) ->
+  {V.U.bit(U32.and(U32.or(U32.and(U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}, 2147483647), 2147483648), 2147483648), k) == V.U.bit(2147483648, k) : Bool}:
+  match k:
+    case 0n:
+      match w_0:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 1n:
+      match w_1:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 2n:
+      match w_2:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 3n:
+      match w_3:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 4n:
+      match w_4:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 5n:
+      match w_5:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 6n:
+      match w_6:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 7n:
+      match w_7:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 8n:
+      match w_8:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 9n:
+      match w_9:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 10n:
+      match w_10:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 11n:
+      match w_11:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 12n:
+      match w_12:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 13n:
+      match w_13:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 14n:
+      match w_14:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 15n:
+      match w_15:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 16n:
+      match w_16:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 17n:
+      match w_17:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 18n:
+      match w_18:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 19n:
+      match w_19:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 20n:
+      match w_20:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 21n:
+      match w_21:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 22n:
+      match w_22:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 23n:
+      match w_23:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 24n:
+      match w_24:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 25n:
+      match w_25:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 26n:
+      match w_26:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 27n:
+      match w_27:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 28n:
+      match w_28:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 29n:
+      match w_29:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 30n:
+      match w_30:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 31n:
+      match w_31:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 32n+j:
+      {==}
+
+def BB.runf1.b(+k: Nat, +w: U32) ->
+  {V.U.bit(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483648), k) == V.U.bit(2147483648, k) : Bool}:
+  match w:
+    case U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}:
+      BB.runf1.h(k, w_0, w_1, w_2, w_3, w_4, w_5, w_6, w_7, w_8, w_9, w_10, w_11, w_12, w_13, w_14, w_15, w_16, w_17, w_18, w_19, w_20, w_21, w_22, w_23, w_24, w_25, w_26, w_27, w_28, w_29, w_30, w_31)
+
+def BB.runf1.all(+w: U32, +k: Nat) -> V.U.allb(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483648), 2147483648, k):
+  match k:
+    case 0n:
+      Unit{}
+    case 1n+j:
+      W.W.allb.con({V.U.bit(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483648), j) == V.U.bit(2147483648, j) : Bool},
+        V.U.allb(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483648), 2147483648, j), BB.runf1.b(j, w), BB.runf1.all(w, j))
+
+def BB.runf1(w):
+  V.U.ext(U32.and(U32.or(U32.and(w, 2147483647), 2147483648), 2147483648), 2147483648, BB.runf1.all(w, 32n))
+
+# A COPY's length, read back.
+law BB.runl0:
+  for +w: U32
+  {U32.and(U32.and(w, 2147483647), 2147483647) == U32.and(w, 2147483647) : U32}
+
+def BB.runl0.h(+k: Nat, +w_0: Bool, +w_1: Bool, +w_2: Bool, +w_3: Bool, +w_4: Bool, +w_5: Bool, +w_6: Bool, +w_7: Bool, +w_8: Bool, +w_9: Bool, +w_10: Bool, +w_11: Bool, +w_12: Bool, +w_13: Bool, +w_14: Bool, +w_15: Bool, +w_16: Bool, +w_17: Bool, +w_18: Bool, +w_19: Bool, +w_20: Bool, +w_21: Bool, +w_22: Bool, +w_23: Bool, +w_24: Bool, +w_25: Bool, +w_26: Bool, +w_27: Bool, +w_28: Bool, +w_29: Bool, +w_30: Bool, +w_31: Bool) ->
+  {V.U.bit(U32.and(U32.and(U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}, 2147483647), 2147483647), k) == V.U.bit(U32.and(U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}, 2147483647), k) : Bool}:
+  match k:
+    case 0n:
+      match w_0:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 1n:
+      match w_1:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 2n:
+      match w_2:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 3n:
+      match w_3:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 4n:
+      match w_4:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 5n:
+      match w_5:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 6n:
+      match w_6:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 7n:
+      match w_7:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 8n:
+      match w_8:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 9n:
+      match w_9:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 10n:
+      match w_10:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 11n:
+      match w_11:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 12n:
+      match w_12:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 13n:
+      match w_13:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 14n:
+      match w_14:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 15n:
+      match w_15:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 16n:
+      match w_16:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 17n:
+      match w_17:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 18n:
+      match w_18:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 19n:
+      match w_19:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 20n:
+      match w_20:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 21n:
+      match w_21:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 22n:
+      match w_22:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 23n:
+      match w_23:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 24n:
+      match w_24:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 25n:
+      match w_25:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 26n:
+      match w_26:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 27n:
+      match w_27:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 28n:
+      match w_28:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 29n:
+      match w_29:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 30n:
+      match w_30:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 31n:
+      match w_31:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 32n+j:
+      {==}
+
+def BB.runl0.b(+k: Nat, +w: U32) ->
+  {V.U.bit(U32.and(U32.and(w, 2147483647), 2147483647), k) == V.U.bit(U32.and(w, 2147483647), k) : Bool}:
+  match w:
+    case U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}:
+      BB.runl0.h(k, w_0, w_1, w_2, w_3, w_4, w_5, w_6, w_7, w_8, w_9, w_10, w_11, w_12, w_13, w_14, w_15, w_16, w_17, w_18, w_19, w_20, w_21, w_22, w_23, w_24, w_25, w_26, w_27, w_28, w_29, w_30, w_31)
+
+def BB.runl0.all(+w: U32, +k: Nat) -> V.U.allb(U32.and(U32.and(w, 2147483647), 2147483647), U32.and(w, 2147483647), k):
+  match k:
+    case 0n:
+      Unit{}
+    case 1n+j:
+      W.W.allb.con({V.U.bit(U32.and(U32.and(w, 2147483647), 2147483647), j) == V.U.bit(U32.and(w, 2147483647), j) : Bool},
+        V.U.allb(U32.and(U32.and(w, 2147483647), 2147483647), U32.and(w, 2147483647), j), BB.runl0.b(j, w), BB.runl0.all(w, j))
+
+def BB.runl0(w):
+  V.U.ext(U32.and(U32.and(w, 2147483647), 2147483647), U32.and(w, 2147483647), BB.runl0.all(w, 32n))
+
+law BB.runf0:
+  for +w: U32
+  {U32.and(U32.and(w, 2147483647), 2147483648) == 0 : U32}
+
+def BB.runf0.h(+k: Nat, +w_0: Bool, +w_1: Bool, +w_2: Bool, +w_3: Bool, +w_4: Bool, +w_5: Bool, +w_6: Bool, +w_7: Bool, +w_8: Bool, +w_9: Bool, +w_10: Bool, +w_11: Bool, +w_12: Bool, +w_13: Bool, +w_14: Bool, +w_15: Bool, +w_16: Bool, +w_17: Bool, +w_18: Bool, +w_19: Bool, +w_20: Bool, +w_21: Bool, +w_22: Bool, +w_23: Bool, +w_24: Bool, +w_25: Bool, +w_26: Bool, +w_27: Bool, +w_28: Bool, +w_29: Bool, +w_30: Bool, +w_31: Bool) ->
+  {V.U.bit(U32.and(U32.and(U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}, 2147483647), 2147483648), k) == V.U.bit(0, k) : Bool}:
+  match k:
+    case 0n:
+      match w_0:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 1n:
+      match w_1:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 2n:
+      match w_2:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 3n:
+      match w_3:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 4n:
+      match w_4:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 5n:
+      match w_5:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 6n:
+      match w_6:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 7n:
+      match w_7:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 8n:
+      match w_8:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 9n:
+      match w_9:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 10n:
+      match w_10:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 11n:
+      match w_11:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 12n:
+      match w_12:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 13n:
+      match w_13:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 14n:
+      match w_14:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 15n:
+      match w_15:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 16n:
+      match w_16:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 17n:
+      match w_17:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 18n:
+      match w_18:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 19n:
+      match w_19:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 20n:
+      match w_20:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 21n:
+      match w_21:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 22n:
+      match w_22:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 23n:
+      match w_23:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 24n:
+      match w_24:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 25n:
+      match w_25:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 26n:
+      match w_26:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 27n:
+      match w_27:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 28n:
+      match w_28:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 29n:
+      match w_29:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 30n:
+      match w_30:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 31n:
+      match w_31:
+        case False{}:
+          {==}
+        case True{}:
+          {==}
+    case 32n+j:
+      {==}
+
+def BB.runf0.b(+k: Nat, +w: U32) ->
+  {V.U.bit(U32.and(U32.and(w, 2147483647), 2147483648), k) == V.U.bit(0, k) : Bool}:
+  match w:
+    case U32{WCon{w_0, WCon{w_1, WCon{w_2, WCon{w_3, WCon{w_4, WCon{w_5, WCon{w_6, WCon{w_7, WCon{w_8, WCon{w_9, WCon{w_10, WCon{w_11, WCon{w_12, WCon{w_13, WCon{w_14, WCon{w_15, WCon{w_16, WCon{w_17, WCon{w_18, WCon{w_19, WCon{w_20, WCon{w_21, WCon{w_22, WCon{w_23, WCon{w_24, WCon{w_25, WCon{w_26, WCon{w_27, WCon{w_28, WCon{w_29, WCon{w_30, WCon{w_31, WNil{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}:
+      BB.runf0.h(k, w_0, w_1, w_2, w_3, w_4, w_5, w_6, w_7, w_8, w_9, w_10, w_11, w_12, w_13, w_14, w_15, w_16, w_17, w_18, w_19, w_20, w_21, w_22, w_23, w_24, w_25, w_26, w_27, w_28, w_29, w_30, w_31)
+
+def BB.runf0.all(+w: U32, +k: Nat) -> V.U.allb(U32.and(U32.and(w, 2147483647), 2147483648), 0, k):
+  match k:
+    case 0n:
+      Unit{}
+    case 1n+j:
+      W.W.allb.con({V.U.bit(U32.and(U32.and(w, 2147483647), 2147483648), j) == V.U.bit(0, j) : Bool},
+        V.U.allb(U32.and(U32.and(w, 2147483647), 2147483648), 0, j), BB.runf0.b(j, w), BB.runf0.all(w, j))
+
+def BB.runf0(w):
+  V.U.ext(U32.and(U32.and(w, 2147483647), 2147483648), 0, BB.runf0.all(w, 32n))
