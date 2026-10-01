@@ -1077,3 +1077,180 @@ def EM.pt(+e: ET) -> U32:
   match e:
     case ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}:
       pt
+
+# Lists of halves and opcodes
+# ===========================
+
+def EM.happ(+a: List<&2, Q.HF>, +b: List<&2, Q.HF>) -> List<&2, Q.HF>:
+  match a:
+    case []:
+      b
+    case h <> r:
+      h <> EM.happ(r, b)
+
+def EM.oapp(+a: List<&2, Q.OP>, +b: List<&2, Q.OP>) -> List<&2, Q.OP>:
+  match a:
+    case []:
+      b
+    case o <> r:
+      o <> EM.oapp(r, b)
+
+law EM.run_app:
+  for +a: List<&2, Q.HF>
+  for +b: List<&2, Q.HF>
+  for +x: Q.XC
+  for +s: Q.ST
+  {Q.SP.run(EM.happ(a, b), x, s) == Q.SP.run(b, x, Q.SP.run(a, x, s)) : Q.ST}
+
+def EM.run_app(a, b, x, s):
+  match a:
+    case []:
+      {==}
+    case h <> r:
+      EM.run_app(r, b, x, Q.SP.next(x, s, h))
+
+law EM.vhs_app:
+  for +a: List<&2, Q.HF>
+  for +b: List<&2, Q.HF>
+  for +x: Q.XC
+  for +s: Q.ST
+  {Q.SP.vhs(EM.happ(a, b), x, s) == Bool.and(Q.SP.vhs(a, x, s), Q.SP.vhs(b, x, Q.SP.run(a, x, s))) : Bool}
+
+def EM.vhs_app(a, b, x, s):
+  match a:
+    case []:
+      {==}
+    case h <> r:
+      @simp
+      @rw EM.vhs_app(r, b, x, Q.SP.next(x, s, h))
+      @rw K.WD.and_assoc(Q.SP.vst(x, s, h), Q.SP.vhs(r, x, Q.SP.next(x, s, h)), Q.SP.vhs(b, x, Q.SP.run(r, x, Q.SP.next(x, s, h))))
+      {==}
+
+law EM.bnds_app:
+  for +a: List<&2, Q.HF>
+  for +b: List<&2, Q.HF>
+  for +x: Q.XC
+  for +s: Q.ST
+  for +E: U32
+  for +Es: U32
+  {Q.SP.bnds(EM.happ(a, b), x, s, E, Es) == Bool.and(Q.SP.bnds(a, x, s, E, Es), Q.SP.bnds(b, x, Q.SP.run(a, x, s), E, Es)) : Bool}
+
+def EM.bnds_app(a, b, x, s, E, Es):
+  match a:
+    case []:
+      {==}
+    case h <> r:
+      @simp
+      @rw EM.bnds_app(r, b, x, Q.SP.next(x, s, h), E, Es)
+      @rw K.WD.and_assoc(Q.SP.bnd(x, s, h, E, Es), Q.SP.bnds(r, x, Q.SP.next(x, s, h), E, Es), Q.SP.bnds(b, x, Q.SP.run(r, x, Q.SP.next(x, s, h)), E, Es))
+      {==}
+
+law EM.doks_app:
+  for +a: List<&2, Q.HF>
+  for +b: List<&2, Q.HF>
+  {Q.SP.doks(EM.happ(a, b)) == Bool.and(Q.SP.doks(a), Q.SP.doks(b)) : Bool}
+
+def EM.doks_app(a, b):
+  match a:
+    case []:
+      {==}
+    case h <> r:
+      @simp
+      @rw EM.doks_app(r, b)
+      @rw K.WD.and_assoc(Q.SP.dok(h), Q.SP.doks(r), Q.SP.doks(b))
+      {==}
+
+law EM.datl_app:
+  for +a: List<&2, Q.HF>
+  for +b: List<&2, Q.HF>
+  {Q.SP.datl(EM.happ(a, b)) == K.WD.app(Q.SP.datl(a), Q.SP.datl(b)) : List<&2, U32>}
+
+def EM.datl_app(a, b):
+  match a:
+    case []:
+      {==}
+    case h <> r:
+      @simp
+      @rw EM.datl_app(r, b)
+      @rw K.WD.app_assoc(Q.SP.dat(h), Q.SP.datl(r), Q.SP.datl(b))
+      {==}
+
+law EM.adrl_app:
+  for +a: List<&2, Q.HF>
+  for +b: List<&2, Q.HF>
+  {Q.SP.adrl(EM.happ(a, b)) == K.WD.app(Q.SP.adrl(a), Q.SP.adrl(b)) : List<&2, U32>}
+
+def EM.adrl_app(a, b):
+  match a:
+    case []:
+      {==}
+    case h <> r:
+      @simp
+      @rw EM.adrl_app(r, b)
+      @rw K.WD.app_assoc(Q.SP.adr(h), Q.SP.adrl(r), Q.SP.adrl(b))
+      {==}
+
+law EM.halves_app:
+  for +a: List<&2, Q.OP>
+  for +b: List<&2, Q.OP>
+  {Q.SP.halves(EM.oapp(a, b)) == EM.happ(Q.SP.halves(a), Q.SP.halves(b)) : List<&2, Q.HF>}
+
+def EM.halves_app(a, b):
+  match a:
+    case Nil{}:
+      {==}
+    case Con{Q.OP{c, h1, h2}, r}:
+      @simp
+      @rw EM.halves_app(r, b)
+      {==}
+
+law EM.insl_app:
+  for +a: List<&2, Q.OP>
+  for +b: List<&2, Q.OP>
+  {Q.SP.insl(EM.oapp(a, b)) == K.WD.app(Q.SP.insl(a), Q.SP.insl(b)) : List<&2, U32>}
+
+def EM.insl_app(a, b):
+  match a:
+    case []:
+      {==}
+    case o <> r:
+      @simp
+      @rw EM.insl_app(r, b)
+      @rw K.WD.app_assoc(Q.SP.ins(o), Q.SP.insl(r), Q.SP.insl(b))
+      {==}
+
+law EM.coks_app:
+  for +a: List<&2, Q.OP>
+  for +b: List<&2, Q.OP>
+  for +tb: A.Tr
+  {Q.SP.coks(EM.oapp(a, b), tb) == Bool.and(Q.SP.coks(a, tb), Q.SP.coks(b, tb)) : Bool}
+
+def EM.coks_app(a, b, tb):
+  match a:
+    case []:
+      {==}
+    case o <> r:
+      @simp
+      @rw EM.coks_app(r, b, tb)
+      @rw K.WD.and_assoc(Q.SP.cok(tb, o), Q.SP.coks(r, tb), Q.SP.coks(b, tb))
+      {==}
+
+# A tree holds its own bytes.
+law EM.has_sl:
+  for +n: Nat
+  for +t: A.Tr
+  for +p: U32
+  {S.S.has(S.S.sl(n, t, p), t, p) == True{} : Bool}
+
+def EM.has_sl(n, t, p):
+  match n:
+    case 0n:
+      {==}
+    case 1n+k:
+      @simp -S.S.sl -S.S.has
+      @unfold S.S.sl
+      @simp -S.S.sl
+      @rw Y.BP.byt_255(t, p)
+      @rw V.U.is_eq_refl(Y.BP.byt(t, p))
+      @rw EM.has_sl(k, t, U32.add(p, 1))
+      {==}

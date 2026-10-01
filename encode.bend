@@ -44,7 +44,7 @@ def T.CPY() -> U32:
 def op.single(+t: U32, +size: U32, +mode: U32) -> U32:
   u32.pick(U32.is_eq(t, 2), 0,
   u32.pick(U32.is_eq(t, 1), u32.pick((size <= 17 : U32), (1 + size : U32), 1),
-    (((19 + (16 * mode : U32) : U32))
+    ((19 + (16 * mode : U32) : U32)
       + u32.pick((4 <= size : U32) && (size <= 18 : U32), (size - 3 : U32), 0) : U32)))
 
 # The opcode of the pending instruction (pt, ps, pm) followed by (t, size,
@@ -58,9 +58,9 @@ def op.double(+pt: U32, +ps: U32, +pm: U32, +t: U32, +size: U32, +mode: U32) ->
   +ac1 = add_copy && (size <= 6 : U32) && (mode <= 5 : U32)
   +ac2 = add_copy && U32.is_eq(size, 4) && (mode >= 6 : U32)
   u32.pick(copy_add, (247 + pm : U32),
-  u32.pick(ac1, ((((163 + (mode * 12 : U32) : U32) + ((ps - 1 : U32) * 3 : U32)) : U32)
+  u32.pick(ac1, (((163 + (mode * 12 : U32) : U32) + ((ps - 1 : U32) * 3 : U32) : U32)
       + (size - 4 : U32) : U32),
-  u32.pick(ac2, (((235 + ((mode - 6 : U32) * 4 : U32) : U32)) + (ps - 1 : U32) : U32),
+  u32.pick(ac2, ((235 + ((mode - 6 : U32) * 4 : U32) : U32) + (ps - 1 : U32) : U32),
     0)))
 
 # Whether a single opcode takes its size from the instruction section.
