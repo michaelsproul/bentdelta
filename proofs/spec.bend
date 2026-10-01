@@ -99,9 +99,16 @@ def SP.cok(+o: OP) -> Bool:
 
 # The size of a half, in the instruction section when its table half has
 # size 0.
+# Whether a table half takes its size from the instruction section.
+def SP.z(+h: U32) -> Bool:
+  U32.is_eq(SP.hs(h), 0) && U32.is_ne(SP.ht(h), 0)
+
 def SP.sz(+h: U32, +f: HF) -> List<&2, U32>:
-  Bool.pick(List<&2, U32>, U32.is_eq(SP.hs(h), 0) && U32.is_ne(SP.ht(h), 0),
-    R.VI.var(SP.size(f)), [])
+  Bool.pick(List<&2, U32>, SP.z(h), R.VI.var(SP.size(f)), [])
+
+# The instruction section position after the size of a half.
+def SP.ipos(+h: U32, +f: HF, +ipos: U32) -> U32:
+  Bool.pick(U32, SP.z(h), (ipos + B.B.var.len(SP.size(f)) : U32), ipos)
 
 def SP.ins(+o: OP) -> List<&2, U32>:
   match o:
@@ -270,3 +277,81 @@ def SP.run(+hs: List<&2, HF>, +x: XC, +s: ST) -> ST:
       s
     case h <> r:
       SP.run(r, x, SP.next(x, s, h))
+
+# The address section position after a half.
+def SP.anext(+f: HF, +apos: U32) -> U32:
+  match f:
+    case HN{}:
+      apos
+    case HA{n, xs}:
+      apos
+    case HR{n, b}:
+      apos
+    case HC{n, m, v}:
+      Bool.pick(U32, (m < 6 : U32), (apos + B.B.var.len(v) : U32), (apos + 1 : U32))
+
+# The data section position after a half.
+def SP.dnext(+f: HF, +dpos: U32) -> U32:
+  match f:
+    case HN{}:
+      dpos
+    case HA{n, xs}:
+      (dpos + n : U32)
+    case HR{n, b}:
+      (dpos + 1 : U32)
+    case HC{n, m, v}:
+      dpos
+
+# The target after a half's copy from window address addr.
+def SP.cout(+x: XC, +to: A.Tr, +opos: U32, +n: U32, +addr: U32) -> A.Tr:
+  match x:
+    case XC{ts, tt, +seg, +cpl, +wst, oend}:
+      Bool.pick(A.Tr, (addr < cpl : U32), S.S.puts(S.S.sl(U32.to_nat(n), ts, (seg + addr : U32)), to, opos),
+        C.CP.mv(U32.to_nat(n), to, opos, (wst + (addr - cpl : U32) : U32)))
+
+# The target after a half.
+def SP.out(+x: XC, +to: A.Tr, +s: ST, +f: HF) -> A.Tr:
+  match s f:
+    case ST{opos, c, slot} HN{}:
+      to
+    case ST{opos, c, slot} HA{n, xs}:
+      S.S.puts(xs, to, opos)
+    case ST{opos, c, slot} HR{n, b}:
+      S.S.puts(C.CP.rep(U32.to_nat(n), b), to, opos)
+    case ST{opos, c, slot} HC{n, m, v}:
+      SP.cout(x, to, opos, n, SP.daddr(m, v, SP.here(x, opos), c))
+
+def SP.so(+s: ST) -> U32:
+  match s:
+    case ST{opos, c, slot}:
+      opos
+
+def SP.sc(+s: ST) -> A.Tr:
+  match s:
+    case ST{opos, c, slot}:
+      c
+
+def SP.ss(+s: ST) -> U32:
+  match s:
+    case ST{opos, c, slot}:
+      slot
+
+# The bound a COPY's copy needs: its source bytes below E, or its target
+# bytes before its destination.
+def SP.cbnd(+x: XC, +opos: U32, +n: U32, +addr: U32, +E: U32) -> Bool:
+  match x:
+    case XC{ts, tt, +seg, +cpl, +wst, oend}:
+      Bool.pick(Bool, (addr < cpl : U32),
+        Cmp.is_le(Nat.cmp(Nat.add(U32.to_nat(n), U32.to_nat((seg + addr : U32))), U32.to_nat(E))),
+        Cmp.is_lt(Nat.cmp(U32.to_nat((wst + (addr - cpl : U32) : U32)), U32.to_nat(opos))))
+
+def SP.hbnd(+x: XC, +s: ST, +f: HF, +E: U32) -> Bool:
+  match s f:
+    case ST{opos, c, slot} HN{}:
+      True{}
+    case ST{opos, c, slot} HA{n, xs}:
+      True{}
+    case ST{opos, c, slot} HR{n, b}:
+      True{}
+    case ST{opos, c, slot} HC{n, m, v}:
+      SP.cbnd(x, opos, n, SP.daddr(m, v, SP.here(x, opos), c), E)

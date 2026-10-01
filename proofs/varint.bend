@@ -75,7 +75,6 @@ law VI.pos_lt:
 def VI.pos_lt(s, E, j, h):
   V.U.N_lt(D.WD.step(j, s), E, (%Equal.sym(Nat, V.U.N(D.WD.step(j, s)), Nat.add(j, V.U.N(s)), VI.pos(s, E, j, h)) : {Nat.cmp(_, V.U.N(E)) == LT{} : Cmp}; h))
 
-
 # Varints
 # =======
 
@@ -672,3 +671,27 @@ law VI.get:
 
 def VI.get(td, pos, end, v, rest, h, hb):
   VI.get.c1(td, pos, end, v, rest, h, hb, U32.is_lt(v, 128), {==})
+
+law VI.len_go:
+  for +k: Nat
+  for +v: U32
+  {S.S.len(VI.go(k, v)) == k : Nat}
+
+def VI.len_go(k, v):
+  match k:
+    case 0n:
+      {==}
+    case 1n+p:
+      %Equal.sym(Nat, S.S.len(VI.go(p, v)), p, VI.len_go(p, v)) :
+        {1n+_ == 1n+p : Nat}
+      {==}
+
+# A varint's length, as a value.
+law VI.len_var:
+  for +v: U32
+  {S.S.len(VI.var(v)) == V.U.N(B.B.var.len(v)) : Nat}
+
+def VI.len_var(v):
+  %Equal.sym(Nat, S.S.len(VI.go(U32.to_nat(B.B.var.len(v)), v)), U32.to_nat(B.B.var.len(v)), VI.len_go(U32.to_nat(B.B.var.len(v)), v)) :
+    {_ == V.U.N(B.B.var.len(v)) : Nat}
+  {==}
