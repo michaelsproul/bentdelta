@@ -425,3 +425,46 @@ def SP.bnds(+hs: List<&2, HF>, +x: XC, +s: ST, +E: U32, +Es: U32) -> Bool:
       True{}
     case h <> r:
       SP.bnd(x, s, h, E, Es) && SP.bnds(r, x, SP.next(x, s, h), E, Es)
+
+# Windows
+# =======
+
+# A window as the encoder writes it: the copy segment (length, offset), the
+# target length, the section lengths, the opcodes and the checksum.
+type AW is Data:
+  AW{cpl: U32, off: U32, tlen: U32, dl: U32, il: U32, al: U32, ops: List<&2, OP>, sum: U32}
+
+def SP.ind(+cpl: U32) -> U32:
+  B.u32.pick((0 < cpl : U32), 5, 4)
+
+def SP.segb(+cpl: U32, +off: U32) -> List<&2, U32>:
+  Bool.pick(List<&2, U32>, (0 < cpl : U32), K.WD.app(R.VI.var(cpl), R.VI.var(off)), [])
+
+# The length of what follows the delta encoding length.
+def SP.enc(+tlen: U32, +dl: U32, +il: U32, +al: U32) -> U32:
+  ((((((((1 + B.B.var.len(tlen) : U32) + B.B.var.len(dl) : U32)
+    + B.B.var.len(il) : U32) + B.B.var.len(al) : U32) + 4 : U32) + dl : U32)
+    + il : U32) + al : U32)
+
+# A big-endian word, as wr.be32 writes it.
+def SP.be(+v: U32) -> List<&2, U32>:
+  (v >> 24n : U32) <> ((v >> 16n : U32) .&. 255 : U32) <> ((v >> 8n : U32) .&. 255 : U32) <> (v .&. 255 : U32) <> []
+
+# The sections after the header.
+def SP.secs(+w: AW) -> List<&2, U32>:
+  match w:
+    case AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      K.WD.app(SP.datl(SP.halves(ops)), K.WD.app(SP.insl(ops), SP.adrl(SP.halves(ops))))
+
+# The header fields after the delta encoding length.
+def SP.hdr2(+w: AW) -> List<&2, U32>:
+  match w:
+    case AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      K.WD.app(R.VI.var(tlen), 0 <> K.WD.app(R.VI.var(dl), K.WD.app(R.VI.var(il), K.WD.app(R.VI.var(al), SP.be(sum)))))
+
+# A window's bytes.
+def SP.wb(+w: AW) -> List<&2, U32>:
+  match w:
+    case AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      SP.ind(cpl) <> K.WD.app(SP.segb(cpl, off), K.WD.app(R.VI.var(SP.enc(tlen, dl, il, al)),
+        K.WD.app(SP.hdr2(AW{cpl, off, tlen, dl, il, al, ops, sum}), SP.secs(AW{cpl, off, tlen, dl, il, al, ops, sum}))))

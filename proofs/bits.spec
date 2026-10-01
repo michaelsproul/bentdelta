@@ -244,3 +244,8 @@ id BB.vf1 x
 id BB.vf0 x
   lhs U32.and(128, U32.and(U32.or(0, U32.and(127, x)), 255))
   rhs 0
+
+id BB.be32 v
+  # A big-endian word read back.
+  lhs U32.or(U32.shln(U32.or(U32.shln(U32.or(U32.shln(U32.and(U32.shrn(v, 24n), 255), 8n), U32.and(U32.and(U32.shrn(v, 16n), 255), 255)), 8n), U32.and(U32.and(U32.shrn(v, 8n), 255), 255)), 8n), U32.and(U32.and(v, 255), 255))
+  rhs v
