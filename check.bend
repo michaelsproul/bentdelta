@@ -82,27 +82,30 @@ def chk.ok(ok: Bool, t: B.Bytes, d: B.Bytes) -> B.Bytes:
     case False{}:
       Pair.snd(B.Bytes, B.Bytes, fallback(t))
 
-def chk.cmp(t: B.Bytes, d: B.Bytes, r: (B.Bytes & B.Bytes) & Bool) -> B.Bytes:
-  (xt, ok) = r
+def chk.cmp.k(ok: Bool, d: B.Bytes, xt: B.Bytes & B.Bytes) -> B.Bytes:
+  (x, t) = xt
   chk.ok(ok, t, d)
 
-def chk.res(t1: B.Bytes, t2: B.Bytes, d: B.Bytes,
+def chk.cmp(d: B.Bytes, r: (B.Bytes & B.Bytes) & Bool) -> B.Bytes:
+  (xt, ok) = r
+  chk.cmp.k(ok, d, xt)
+
+def chk.res(t: B.Bytes, d: B.Bytes,
   r: B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>)) -> B.Bytes:
   match r:
     case Tuple{s, Tuple{d1, Done{x}}}:
-      chk.cmp(t2, d, B.B.eq(x, t1))
+      chk.cmp(d, B.B.eq(x, t))
     case Tuple{s, Tuple{d1, Fail{e}}}:
-      Pair.snd(B.Bytes, B.Bytes, fallback(t2))
+      Pair.snd(B.Bytes, B.Bytes, fallback(t))
 
-def chk.go(src: B.Bytes, tt: B.Bytes & B.Bytes, dd: B.Bytes & B.Bytes) ->
-  B.Bytes:
-  (t1, t2) = tt
+def chk.go(src: B.Bytes, t: B.Bytes, dd: B.Bytes & B.Bytes) -> B.Bytes:
   (d1, d2) = dd
-  chk.res(t1, t2, d2, V.decode(src, d1))
+  chk.res(t, d2, V.decode(src, d1))
 
-# d if it decodes to tgt, else the plain encoding of tgt.
+# d if it decodes to tgt, else the plain encoding of tgt. B.eq hands tgt
+# back, for the plain encoding.
 def check(src: B.Bytes, tgt: B.Bytes, d: B.Bytes) -> B.Bytes:
-  chk.go(src, B.B.clone(tgt), B.B.clone(d))
+  chk.go(src, tgt, B.B.clone(d))
 
 def enc.go(s: B.Bytes & B.Bytes, t: B.Bytes & B.Bytes) -> B.Bytes:
   (s1, s2) = s
@@ -111,7 +114,8 @@ def enc.go(s: B.Bytes & B.Bytes, t: B.Bytes & B.Bytes) -> B.Bytes:
 
 # A delta that turns src into tgt.
 def encode(src: B.Bytes, tgt: B.Bytes) -> B.Bytes:
-  enc.go(B.B.clone(src), B.B.clone(tgt))
+  cs ct = B.B.clone(src) B.B.clone(tgt)
+  enc.go(cs, ct)
 
 # What decoding d against src gives, as a list of bytes.
 def restore.k(r: B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>)) ->

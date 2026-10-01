@@ -134,18 +134,18 @@ law T.res.done:
   for -x: B.Bytes
   for vx: &v:BV -> {x == T.bytes(v) : B.Bytes}
   {D.decode(B.Bytes{sl, A.A.from(st)}, B.Bytes{dl, A.A.from(dt)}) == (s, (d1, Done{x})) : B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>)}
-    -> {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.cmp(B.Bytes{tl, A.A.from(tt)}, B.Bytes{dl, A.A.from(dt)}, B.B.eq(x, B.Bytes{tl, A.A.from(tt)}))) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+    -> {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.cmp(B.Bytes{dl, A.A.from(dt)}, B.B.eq(x, B.Bytes{tl, A.A.from(tt)}))) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
 
 def T.res.done(sl, st, tl, tt, dl, dt, hl, s, d1, x, vx):
   match vx:
     case Tuple{BV{+xl, +xt}, ex}:
       %Equal.sym(B.Bytes, x, B.Bytes{xl, A.A.from(xt)}, ex) :
         {D.decode(B.Bytes{sl, A.A.from(st)}, B.Bytes{dl, A.A.from(dt)}) == (s, (d1, Done{_})) : B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>)}
-          -> {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.cmp(B.Bytes{tl, A.A.from(tt)}, B.Bytes{dl, A.A.from(dt)}, B.B.eq(_, B.Bytes{tl, A.A.from(tt)}))) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+          -> {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.cmp(B.Bytes{dl, A.A.from(dt)}, B.B.eq(_, B.Bytes{tl, A.A.from(tt)}))) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
       er =>
         %Equal.sym((Array<U32> & Array<U32>) & Bool, B.B.eq.words(U32.to_nat(B.B.words(xl)), 0, (U32.is_eq(xl, tl), (A.A.from(xt), A.A.from(tt)))), ((A.A.from(xt), A.A.from(tt)), Q.E.w(U32.to_nat(B.B.words(xl)), 0, xt, tt, U32.is_eq(xl, tl))),
           Q.E.loop(U32.to_nat(B.B.words(xl)), 0, xt, tt, U32.is_eq(xl, tl))) :
-          {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.cmp(B.Bytes{tl, A.A.from(tt)}, B.Bytes{dl, A.A.from(dt)}, B.B.eq.fin(xl, tl, _))) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+          {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.cmp(B.Bytes{dl, A.A.from(dt)}, B.B.eq.fin(xl, tl, _))) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
         T.res.z(sl, st, tl, tt, dl, dt, xl, xt, hl, s, d1, er, Q.E.w(U32.to_nat(B.B.words(xl)), 0, xt, tt, U32.is_eq(xl, tl)), {==})
 
 # What decoding the candidate gave: the target (kept) or anything else
@@ -160,7 +160,7 @@ law T.res:
   for +hl: {U32.is_lt(tl, 134217728) == True{} : Bool}
   for r: B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>)
   for er: {D.decode(B.Bytes{sl, A.A.from(st)}, B.Bytes{dl, A.A.from(dt)}) == r : B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>)}
-  {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.res(B.Bytes{tl, A.A.from(tt)}, B.Bytes{tl, A.A.from(tt)}, B.Bytes{dl, A.A.from(dt)}, r)) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+  {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.res(B.Bytes{tl, A.A.from(tt)}, B.Bytes{dl, A.A.from(dt)}, r)) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
 
 def T.res(sl, st, tl, tt, dl, dt, hl, r, er):
   match r:
@@ -183,10 +183,8 @@ def T.chk(sl, st, tl, tt, hl, d, vd):
   match vd:
     case Tuple{BV{+dl, +dt}, ed}:
       %Equal.sym(B.Bytes, d, B.Bytes{dl, A.A.from(dt)}, ed) : {C.restore(B.Bytes{sl, A.A.from(st)}, C.check(B.Bytes{sl, A.A.from(st)}, B.Bytes{tl, A.A.from(tt)}, _)) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
-      %Equal.sym(B.Bytes & B.Bytes, B.B.clone(B.Bytes{tl, A.A.from(tt)}), (B.Bytes{tl, A.A.from(tt)}, B.Bytes{tl, A.A.from(tt)}), T.clone(tl, tt)) :
-        {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.go(B.Bytes{sl, A.A.from(st)}, _, B.B.clone(B.Bytes{dl, A.A.from(dt)}))) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
       %Equal.sym(B.Bytes & B.Bytes, B.B.clone(B.Bytes{dl, A.A.from(dt)}), (B.Bytes{dl, A.A.from(dt)}, B.Bytes{dl, A.A.from(dt)}), T.clone(dl, dt)) :
-        {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.go(B.Bytes{sl, A.A.from(st)}, (B.Bytes{tl, A.A.from(tt)}, B.Bytes{tl, A.A.from(tt)}), _)) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
+        {C.restore(B.Bytes{sl, A.A.from(st)}, C.chk.go(B.Bytes{sl, A.A.from(st)}, B.Bytes{tl, A.A.from(tt)}, _)) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
       T.res(sl, st, tl, tt, dl, dt, hl, D.decode(B.Bytes{sl, A.A.from(st)}, B.Bytes{dl, A.A.from(dt)}), {==})
 
 law T.enc:

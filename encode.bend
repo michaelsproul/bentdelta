@@ -1279,18 +1279,132 @@ def enc.done(+slen: U32, +tlen: U32, st: ES) -> (B.Bytes & B.Bytes) & B.Bytes:
     case ES{src, tgt, lt, stb, spv, io, em, out, olen, lidx, cont}:
       ((B.Bytes{slen, src}, B.Bytes{tlen, tgt}), B.Bytes{olen, out})
 
+# Parallel windows
+# ================
+
+# Windows are encoded in parallel, each range of them in a task of its own
+# with copies of the source, the target and the source index. A task's
+# index is the sequential one at its first window (it indexes from where
+# the index stood, in the same order), so only xdelta3's MATCH_TARGET guess
+# differs at a task's first window: it tries the source at the window's own
+# offset.
+
+# A task's own tables, emitter and output.
+def es.fresh(+sbits: Nat, +wb: U32, +ocap: U32, src: Array<U32>,
+  tgt: Array<U32>, lt: Array<U32>, +lidx: U32, +cont: U32) -> ES:
+  ES{src, tgt, lt, Array.new(U32, sbits, 0), Array.new(U32, 18n, 0),
+    Array.new(U32, 22n, 0),
+    Em{B.B.zeros(wb), B.B.zeros((wb * 4 : U32)), B.B.zeros((wb * 2 : U32)),
+      Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    B.B.zeros(ocap), 0, lidx, cont}
+
+def es.join.k(src: Array<U32>, tgt: Array<U32>, lt: Array<U32>,
+  stb: Array<U32>, spv: Array<U32>, io: Array<U32>, em: Em, +olen: U32,
+  +lidx: U32, +cont: U32, r: Array<U32> & Array<U32>) -> ES:
+  (rout, out) = r
+  ES{src, tgt, lt, stb, spv, io, em, out, olen, lidx, cont}
+
+# The windows of l, then those of r.
+def es.join(l: ES, r: ES) -> ES:
+  match l r:
+    case ES{src, tgt, lt, stb, spv, io, em, out, +olen, lidx, cont}
+      ES{rs, rt, rl, rstb, rspv, rio, rem, rout, +rolen, +rlidx, +rcont}:
+      es.join.k(src, tgt, lt, stb, spv, io, em, (olen + rolen : U32), rlidx, rcont,
+        B.B.copy(B.B.grow(out, olen, (olen + rolen : U32)), olen, rout, 0, rolen))
+
+def es.split.k(+sbits: Nat, +wb: U32, +wm: U32, +ocap: U32,
+  sc: Array<U32> & Array<U32>, tc: Array<U32> & Array<U32>,
+  lc: Array<U32> & Array<U32>, stb: Array<U32>, spv: Array<U32>,
+  io: Array<U32>, em: Em, out: Array<U32>, +olen: U32, +lidx: U32,
+  +cont: U32) -> ES & ES:
+  (s1, s2) = sc
+  (t1, t2) = tc
+  (l1, l2) = lc
+  (ES{s1, t1, l1, stb, spv, io, em, out, olen, lidx, cont},
+    es.fresh(sbits, wb, ocap, s2, t2, l2, lidx, wm))
+
+# Two states for the halves of the nw windows from w0: this one, and a
+# fresh one with copies of the source, the target and the index.
+def es.split(+E: EK, +sbits: Nat, +wb: U32, +w0: U32, +nw: U32, st: ES) ->
+  ES & ES:
+  match E st:
+    case EK{slen, tlen, +wsz, blk, lsh, lmask, ssh, smask, cap}
+      ES{src, tgt, lt, stb, spv, io, em, out, olen, lidx, cont}:
+      +nl = (nw >> 1n : U32)
+      +nr = (nw - nl : U32)
+      es.split.k(sbits, wb, (w0 + (nl * wsz : U32) : U32),
+        u32.max(((nr * wsz : U32) >> 3n : U32), 4096), Array.clone(U32, src),
+        Array.clone(U32, tgt), Array.clone(U32, lt), stb, spv, io, em, out, olen,
+        lidx, cont)
+
+def EK.wsz(+E: EK) -> U32:
+  match E:
+    case EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}:
+      wsz
+
+# The windows of a task, one after another. It never forks, so the
+# scheduler hands it to a core of its own.
+def enc.leaf(+E: EK, +w0: U32, +nw: U32, st: ES) -> ES:
+  win.loop(U32.to_nat(nw), E, w0, st)
+
+# The nw windows from w0 in a full binary tree of 2^k tasks, each with at
+# least one window; for k > 0, sp holds the states of the two halves, else
+# the state and an unused one.
+def enc.par(+k: Nat, +E: EK, +sbits: Nat, +wb: U32, +w0: U32, +nw: U32,
+  sp: ES & ES) -> ES:
+  match k:
+    case 0n:
+      (st, none) = sp
+      enc.leaf(E, w0, nw, st)
+    case 1n:
+      (sl, sr) = sp
+      +nl = (nw >> 1n : U32)
+      +nr = (nw - nl : U32)
+      +wm = (w0 + (nl * EK.wsz(E) : U32) : U32)
+      l r = enc.leaf(E, w0, nl, sl) enc.leaf(E, wm, nr, sr)
+      es.join(l, r)
+    case 2n+q:
+      (sl, sr) = sp
+      +nl = (nw >> 1n : U32)
+      +nr = (nw - nl : U32)
+      +wm = (w0 + (nl * EK.wsz(E) : U32) : U32)
+      l r = enc.par(1n+q, E, sbits, wb, w0, nl, es.split(E, sbits, wb, w0, nl, sl)) enc.par(1n+q, E, sbits, wb, wm, nr, es.split(E, sbits, wb, wm, nr, sr))
+      es.join(l, r)
+
+# How many levels of tasks for nw windows: 8 tasks of a window or more for
+# large targets; below 8 windows, copying the inputs for each task costs
+# more than it saves.
+def enc.depth(+nw: U32) -> Nat:
+  Bool.pick(Nat, (8 <= nw : U32), 3n, 0n)
+
+# A state with no room in it, for a task that does not split.
+def es.none() -> ES:
+  ES{[0 : U32^0n], [0 : U32^0n], [0 : U32^0n], [0 : U32^0n], [0 : U32^0n],
+    [0 : U32^0n], Em{[0 : U32^0n], [0 : U32^0n], [0 : U32^0n], [0 : U32^0n],
+      0, 0, 0, 0, 0, 0, 0, 0, 0}, [0 : U32^0n], 0, 0, 0}
+
+def enc.top.sp(+k: Nat, +E: EK, +sbits: Nat, +wb: U32, +nw: U32, st: ES) -> ES & ES:
+  match k:
+    case 0n:
+      (st, es.none())
+    case 1n+q:
+      es.split(E, sbits, wb, 0, nw, st)
+
+def enc.par.top(+E: EK, +sbits: Nat, +wb: U32, +nw: U32, st: ES) -> ES:
+  enc.par(enc.depth(nw), E, sbits, wb, 0, nw, enc.top.sp(enc.depth(nw), E, sbits, wb, nw, st))
+
 def enc.go(+E: EK, src: Array<U32>, tgt: Array<U32>, +lbits: Nat,
   +sbits: Nat, +wb: U32, r: Array<U32> & U32) -> (B.Bytes & B.Bytes) & B.Bytes:
   match E r:
     case EK{+slen, +tlen, +wsz, blk, lsh, lmask, ssh, smask, cap} Tuple{out, ol}:
       +olen = {ol : U32}
       enc.done(slen, tlen,
-        win.loop(U32.to_nat(u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32))), E, 0,
-          ES{src, tgt, Array.new(U32, lbits, 0), Array.new(U32, sbits, 0),
+        enc.par.top(E, sbits, wb, u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32)),
+          win.index(E, U32.min(tlen, wsz), ES{src, tgt, Array.new(U32, lbits, 0), Array.new(U32, sbits, 0),
             Array.new(U32, 18n, 0), Array.new(U32, 22n, 0),
             Em{B.B.zeros(wb), B.B.zeros((wb * 4 : U32)), B.B.zeros((wb * 2 : U32)),
               Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
-            out, olen, 0, 0}))
+            out, olen, 0, 0})))
 
 # A delta that turns src into tgt. Answers both inputs back.
 def encode(src: B.Bytes, tgt: B.Bytes) -> (B.Bytes & B.Bytes) & B.Bytes:
