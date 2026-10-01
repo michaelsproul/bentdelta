@@ -20,6 +20,22 @@ type Bytes is Type:
 # Helpers
 # =======
 
+def B.clone.k(+len: U32, r: Array<U32> & Array<U32>) -> Bytes & Bytes:
+  (a, b) = r
+  (Bytes{len, a}, Bytes{len, b})
+
+# Two copies of a byte string.
+def B.clone(b: Bytes) -> Bytes & Bytes:
+  match b:
+    case Bytes{+len, buf}:
+      B.clone.k(len, Array.clone(U32, buf))
+
+# The length of a byte string.
+def B.len(b: Bytes) -> U32:
+  match b:
+    case Bytes{len, buf}:
+      len
+
 def u32.pick(c: Bool, a: U32, b: U32) -> U32:
   Bool.pick(U32, c, a, b)
 
@@ -59,6 +75,23 @@ def B.get.k(+i: U32, r: Array<U32> & U32) -> Array<U32> & U32:
 # The byte at i.
 def B.get(a: Array<U32>, +i: U32) -> Array<U32> & U32:
   B.get.k(i, a[(i >> 2n : U32)])
+
+# The bytes [i, i + n) of the array in r (which holds the byte at i), as a
+# list. A specification: never run.
+def B.list.go(n: Nat, +i: U32, r: Array<U32> & U32) -> List<&2, U32>:
+  match n:
+    case 0n:
+      Nil{}
+    case 1n+p:
+      (a, x) = r
+      +i2 = (i + 1 : U32)
+      x <> B.list.go(p, i2, B.get(a, i2))
+
+# The bytes of b, as a list.
+def B.list(b: Bytes) -> List<&2, U32>:
+  match b:
+    case Bytes{len, buf}:
+      B.list.go(U32.to_nat(len), 0, B.get(buf, 0))
 
 def B.put.k(+i: U32, +v: U32, r: Array<U32> & U32) -> Array<U32>:
   (a, +w) = r

@@ -1,7 +1,7 @@
 import Base
 import ./bytes.bend as B
 import ./vcdiff.bend as V
-import ./encode.bend as N
+import ./check.bend as C
 
 # bentdelta: a VCDIFF (RFC 3284) delta encoder and decoder, compatible with
 # xdelta3.
@@ -62,9 +62,10 @@ def cmd.go(args: List<&2, String>, +mode: U32, +want_src: Bool,
     case Con{+a, rest}:
       +is_e = String.eq(a, "-e")
       +is_d = String.eq(a, "-d")
+      +is_p = String.eq(a, "--plain")
       +is_s = String.eq(a, "-s")
-      +plain = Bool.not(is_e || is_d || is_s)
-      +mode2 = u32.pick(is_e, 1, u32.pick(is_d, 2, mode))
+      +plain = Bool.not(is_e || is_d || is_s || is_p)
+      +mode2 = u32.pick(is_e, 1, u32.pick(is_d, 2, u32.pick(is_p, 3, mode)))
       +src2 = Bool.pick(Maybe<&2, String>, want_src, Some{a}, src)
       +files2 = Bool.pick(List<&2, String>, plain && Bool.not(want_src), a <> files,
         files)
@@ -114,29 +115,37 @@ def run.decode(src: Maybe<&2, String>, delta: String, out: String) -> IO(Unit):
     d : B.Bytes <- load(delta)
     run.decode.k(s, out, V.decode.size(d))
 
-def run.encoded(out: String, r: (B.Bytes & B.Bytes) & B.Bytes) -> IO(Unit):
-  (st, d) = r
+def run.plain(out: String, r: B.Bytes & B.Bytes) -> IO(Unit):
+  (t, d) = r
   save(out, d)
 
-def run.encode(src: Maybe<&2, String>, tgt: String, out: String) -> IO(Unit):
+def run.encode.go(plain: Bool, s: B.Bytes, t: B.Bytes, out: String) -> IO(Unit):
+  match plain:
+    case False{}:
+      save(out, C.encode(s, t))
+    case True{}:
+      run.plain(out, C.fallback(t))
+
+def run.encode(+mode: U32, src: Maybe<&2, String>, tgt: String, out: String) ->
+  IO(Unit):
   do IO<Unit>:
     s : B.Bytes <- src.load(src)
     t : B.Bytes <- load(tgt)
-    run.encoded(out, N.encode(s, t))
+    run.encode.go(U32.is_eq(mode, 3), s, t, out)
 
-def run.mode(dec: Bool, src: Maybe<&2, String>, a: String, b: String) ->
-  IO(Unit):
+def run.mode(dec: Bool, +mode: U32, src: Maybe<&2, String>, a: String,
+  b: String) -> IO(Unit):
   match dec:
     case True{}:
       run.decode(src, a, b)
     case False{}:
-      run.encode(src, a, b)
+      run.encode(mode, src, a, b)
 
 def run.files(+mode: U32, src: Maybe<&2, String>, files: List<&2, String>) ->
   IO(Unit):
   match files:
     case Con{a, Con{b, Nil{}}}:
-      run.mode(U32.is_eq(mode, 2), src, a, b)
+      run.mode(U32.is_eq(mode, 2), mode, src, a, b)
     case other:
       IO.die(Unit, 2, usage())
 

@@ -215,7 +215,7 @@ def dec.add(+wc: WinC, sd: U32 & Dec) -> Dec:
       +ok = (n <= (dend - dpos : U32) : U32) && (n <= (oend - opos : U32) : U32)
       +m = u32.pick(ok, n, 0)
       dec.add.k(src, tab, ca, opos, dpos, ipos, apos, slot, err, m, ok,
-        B.B.copy(out, opos, del, dpos, m))
+        B.B.copy.bytes(U32.to_nat(m), out, opos, dpos, B.B.get(del, dpos)))
 
 # RUN: n copies of one byte from the data section.
 def dec.run.k(src: Array<U32>, out: Array<U32>, tab: Array<U32>,
