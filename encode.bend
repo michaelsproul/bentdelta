@@ -1345,6 +1345,39 @@ def io.put.if(z: Bool, io: Array<U32>, +pos: U32, +len: U32, +val: U32) ->
 # xdelta3's MATCH_TARGET: at the start of a window, the source match that
 # reached the end of the last one (or, at first, the source's start) is
 # tried as it stands.
+def win.start.s(+E: EK, +K: SK, +w0: U32, +w1: U32, +at: U32, +fwd: U32,
+  +ok: Bool, +p: U32, tgt: Array<U32>, stb: Array<U32>, spv: Array<U32>,
+  io: Array<U32>, em: Em, out: Array<U32>, +olen: U32,
+  r: U32 & (Array<U32> & Array<U32>)) -> ES:
+  (+lidx, sl) = r
+  (src, lt) = sl
+  win.scan(E, K, w0, w1, out, olen, lidx,
+    Sc{src, tgt, lt, stb, spv, io.put.if(ok, io, w0, fwd, at), em, p, 4, 0, 0, 0,
+      NONE(), u32.pick(ok, 1, 0),
+      u32.pick(ok && U32.is_eq(p, w1), (at + fwd : U32), NONE())})
+
+# Indexes the source as far as the window needs (xd3_srcwin_move_point):
+# the furthest of 64 MiB and 32 MiB past the window, a block at a time.
+def ix.upto(+E: EK, +w1: U32, +lidx: U32, src: Array<U32>, lt: Array<U32>) ->
+  U32 & (Array<U32> & Array<U32>):
+  match E:
+    case EK{+slen, tlen, wsz, +blk, +lsh, +lmask, ssh, smask, cap}:
+      +want = U32.min(slen, u32.max(67108864, (w1 + 33554432 : U32)))
+      +nb = u32.pick((lidx < want : U32),
+        ((((want - lidx : U32) + blk : U32) - 1 : U32) / blk : U32), 0)
+      ((lidx + (nb * blk : U32) : U32),
+        ix.blocks(U32.to_nat(nb), lidx, slen, blk, U32.to_nat(lsh), lmask, (src, lt)))
+
+def win.start.i(z: Bool, +E: EK, +w1: U32, +lidx: U32, src: Array<U32>,
+  lt: Array<U32>) -> U32 & (Array<U32> & Array<U32>):
+  match z:
+    case True{}:
+      ix.upto(E, w1, lidx, src, lt)
+    case False{}:
+      (lidx, (src, lt))
+
+# After xdelta3's MATCH_TARGET try: the source is indexed (and the window
+# scanned) only if that match does not cover the whole window.
 def win.start.k(+E: EK, +K: SK, +w0: U32, +w1: U32, +at: U32, lt: Array<U32>,
   stb: Array<U32>, spv: Array<U32>, io: Array<U32>, em: Em, out: Array<U32>,
   +olen: U32, +lidx: U32, r: (Array<U32> & Array<U32>) & U32) -> ES:
@@ -1352,10 +1385,8 @@ def win.start.k(+E: EK, +K: SK, +w0: U32, +w1: U32, +at: U32, lt: Array<U32>,
   (src, tgt) = st2
   +ok = (4 <= fwd : U32)
   +p = u32.pick(ok, (w0 + fwd : U32), w0)
-  win.scan(E, K, w0, w1, out, olen, lidx,
-    Sc{src, tgt, lt, stb, spv, io.put.if(ok, io, w0, fwd, at), em, p, 4, 0, 0, 0,
-      NONE(), u32.pick(ok, 1, 0),
-      u32.pick(ok && U32.is_eq(p, w1), (at + fwd : U32), NONE())})
+  win.start.s(E, K, w0, w1, at, fwd, ok, p, tgt, stb, spv, io, em, out, olen,
+    win.start.i((p < w1 : U32), E, w1, lidx, src, lt))
 
 def win.start(+E: EK, +K: SK, +w0: U32, +w1: U32, st: ES) -> ES:
   match E st:
@@ -1393,8 +1424,7 @@ def win.enc(+E: EK, +w0: U32, st: ES) -> ES:
   match E:
     case EK{+slen, +tlen, +wsz, blk, +lsh, +lmask, +ssh, +smask, +cap}:
       +w1 = U32.min(tlen, (w0 + wsz : U32))
-      win.start(E, SK{slen, w0, w1, slen, lsh, lmask, ssh, smask, cap}, w0, w1,
-        win.index(E, w1, st))
+      win.start(E, SK{slen, w0, w1, slen, lsh, lmask, ssh, smask, cap}, w0, w1, st)
 
 def win.loop(k: Nat, +E: EK, +w0: U32, st: ES) -> ES:
   match k E:
@@ -1535,6 +1565,15 @@ def enc.top.sp(+k: Nat, +E: EK, +sbits: Nat, +wb: U32, +nw: U32, st: ES) -> ES &
     case 1n+q:
       es.split(E, sbits, wb, 0, nw, st)
 
+# Before splitting into tasks, the index the first window needs (which
+# every task starts from); a single task indexes as it goes.
+def enc.pre(+k: Nat, +E: EK, +w1: U32, st: ES) -> ES:
+  match k:
+    case 0n:
+      st
+    case 1n+q:
+      win.index(E, w1, st)
+
 def enc.par.top(+E: EK, +sbits: Nat, +wb: U32, +nw: U32, st: ES) -> ES:
   enc.par(enc.depth(nw), E, sbits, wb, 0, nw, enc.top.sp(enc.depth(nw), E, sbits, wb, nw, st))
 
@@ -1545,7 +1584,8 @@ def enc.go(+E: EK, src: Array<U32>, tgt: Array<U32>, +lbits: Nat,
       +olen = {ol : U32}
       enc.done(slen, tlen,
         enc.par.top(E, sbits, wb, u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32)),
-          win.index(E, U32.min(tlen, wsz), ES{src, tgt, Array.new(U32, lbits, 0), Array.new(U32, sbits, 0),
+          enc.pre(enc.depth(u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32))), E,
+            U32.min(tlen, wsz), ES{src, tgt, Array.new(U32, lbits, 0), Array.new(U32, sbits, 0),
             Array.new(U32, 18n, 0), Array.new(U32, 22n, 0),
             Em{B.B.zeros(wb), B.B.zeros((wb * 4 : U32)), B.B.zeros((wb * 2 : U32)),
               Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
