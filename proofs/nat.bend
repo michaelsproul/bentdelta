@@ -1089,3 +1089,93 @@ def Nat.one_le(x, h):
       Cmp.eq_lt({Cmp.is_le(Nat.cmp(1n, 0n)) == True{} : Bool}, h)
     case 1n+y:
       Nat.le_zero(y)
+
+law Nat.lt_to_le:
+  for +a: Nat
+  for +b: Nat
+  for +h: {Nat.cmp(a, b) == LT{} : Cmp}
+  {Cmp.is_le(Nat.cmp(a, b)) == True{} : Bool}
+
+def Nat.lt_to_le(a, b, h):
+  %Equal.sym(Cmp, Nat.cmp(a, b), LT{}, h) : {Cmp.is_le(_) == True{} : Bool}
+  {==}
+
+law Nat.le_trans:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  for +h1: {Cmp.is_le(Nat.cmp(a, b)) == True{} : Bool}
+  for +h2: {Cmp.is_le(Nat.cmp(b, c)) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(a, c)) == True{} : Bool}
+
+def Nat.le_trans(a, b, c, h1, h2):
+  match a b c:
+    case 0n _ _:
+      Nat.le_zero(c)
+    case 1n+p 0n _:
+      Bool.false_true({Cmp.is_le(Nat.cmp(1n+p, c)) == True{} : Bool}, h1)
+    case 1n+p 1n+q 0n:
+      Bool.false_true({Cmp.is_le(Nat.cmp(1n+p, 0n)) == True{} : Bool}, h2)
+    case 1n+p 1n+q 1n+r:
+      Nat.le_trans(p, q, r, h1, h2)
+
+# k + c < d + c when k < d.
+law Nat.add_lt_r:
+  for +k: Nat
+  for +d: Nat
+  for +c: Nat
+  for +h: {Nat.cmp(k, d) == LT{} : Cmp}
+  {Nat.cmp(Nat.add(k, c), Nat.add(d, c)) == LT{} : Cmp}
+
+def Nat.add_lt_r(k, d, c, h):
+  %Equal.sym(Cmp, Nat.cmp(Nat.add(k, c), Nat.add(d, c)), Nat.cmp(k, d), Nat.cmp_add_rr(k, d, c)) :
+    {_ == LT{} : Cmp}
+  h
+
+# d <= k + d.
+law Nat.le_add_l:
+  for +k: Nat
+  for +d: Nat
+  {Cmp.is_le(Nat.cmp(d, Nat.add(k, d))) == True{} : Bool}
+
+def Nat.le_add_l(k, d):
+  %Nat.add_comm(d, k) : {Cmp.is_le(Nat.cmp(d, _)) == True{} : Bool}
+  Nat.cmp_add_r(d, k)
+
+# k < 8 and x <= 24 give k + x < 32.
+law Nat.lt32:
+  for +k: Nat
+  for +x: Nat
+  for +hk: {Nat.cmp(k, 8n) == LT{} : Cmp}
+  for +hx: {Cmp.is_le(Nat.cmp(x, 24n)) == True{} : Bool}
+  {Nat.cmp(Nat.add(k, x), 32n) == LT{} : Cmp}
+
+def Nat.lt32(k, x, hk, hx):
+  Nat.lt_le_trans(Nat.add(k, x), Nat.add(8n, x), 32n, Nat.add_lt_r(k, 8n, x, hk),
+    (%Equal.sym(Cmp, Nat.cmp(Nat.add(8n, x), Nat.add(8n, 24n)), Nat.cmp(x, 24n), Nat.cmp_add_l(8n, x, 24n)) :
+      {Cmp.is_le(_) == True{} : Bool}
+      hx))
+
+# A Cmp that is not LT means the other way round is at most.
+law Nat.not_lt_le:
+  for +a: Nat
+  for +b: Nat
+  for +c: Cmp
+  for +e: {Nat.cmp(a, b) == c : Cmp}
+  for +h: {Cmp.is_lt(c) == False{} : Bool}
+  {Cmp.is_le(Nat.cmp(b, a)) == True{} : Bool}
+
+def Nat.not_lt_le(a, b, c, e, h):
+  match c:
+    case LT{}:
+      Bool.true_false({Cmp.is_le(Nat.cmp(b, a)) == True{} : Bool}, h)
+    case EQ{}:
+      %Equal.sym(Cmp, Nat.cmp(b, a), Cmp.flip(Nat.cmp(a, b)), Nat.cmp_swap(a, b)) :
+        {Cmp.is_le(_) == True{} : Bool}
+      %Equal.sym(Cmp, Nat.cmp(a, b), EQ{}, e) : {Cmp.is_le(Cmp.flip(_)) == True{} : Bool}
+      {==}
+    case GT{}:
+      %Equal.sym(Cmp, Nat.cmp(b, a), Cmp.flip(Nat.cmp(a, b)), Nat.cmp_swap(a, b)) :
+        {Cmp.is_le(_) == True{} : Bool}
+      %Equal.sym(Cmp, Nat.cmp(a, b), GT{}, e) : {Cmp.is_le(Cmp.flip(_)) == True{} : Bool}
+      {==}

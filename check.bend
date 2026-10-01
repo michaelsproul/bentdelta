@@ -21,11 +21,13 @@ def u32.max(+a: U32, +b: U32) -> U32:
 # The plain encoding
 # ==================
 
-# The target in windows of at most 2^23 bytes, each a single ADD (or no
-# instruction, for an empty target), with no source and no checksum.
+# The target in windows of at most 4096 bytes, each a single ADD (or no
+# instruction, for an empty target), with no source and no checksum. Small
+# windows keep the proof's arithmetic small; this encoding is only the
+# fallback.
 
 def FB.W() -> U32:
-  8388608
+  4096
 
 # The instruction section of a window of t bytes: ADD with its size.
 def fb.ilen(+t: U32) -> U32:
@@ -75,15 +77,18 @@ def fb.win(tgt: Array<U32>, +w0: U32, +t: U32, r: Array<U32> & U32) ->
     wr.byte(0, wr.var(fb.ilen(t), wr.var(t, wr.byte(0, wr.var(t,
       wr.var(fb.enc(t), wr.byte(0, r)))))))))
 
-def fb.loop(k: Nat, +len: U32, +w0: U32, r: Array<U32> & (Array<U32> & U32)) ->
+# Writes windows from w0 while bytes remain (and once, for an empty target).
+def fb.loop(k: Nat, +len: U32, +w0: U32, s: Bool & (Array<U32> & (Array<U32> & U32))) ->
   Array<U32> & (Array<U32> & U32):
-  match k:
-    case 0n:
+  match k s:
+    case 0n Tuple{g, r}:
       r
-    case 1n+p:
-      (tgt, dp) = r
+    case 1n+p Tuple{False{}, r}:
+      r
+    case 1n+p Tuple{True{}, Tuple{tgt, dp}}:
       +t = U32.min(FB.W(), (len - w0 : U32))
-      fb.loop(p, len, (w0 + t : U32), fb.win(tgt, w0, t, dp))
+      +w1 = (w0 + t : U32)
+      fb.loop(p, len, w1, ((w1 < len : U32), fb.win(tgt, w0, t, dp)))
 
 def fb.done(+len: U32, r: Array<U32> & (Array<U32> & U32)) ->
   B.Bytes & B.Bytes:
@@ -95,10 +100,9 @@ def fb.done(+len: U32, r: Array<U32> & (Array<U32> & U32)) ->
 def fallback(tgt: B.Bytes) -> B.Bytes & B.Bytes:
   match tgt:
     case B.Bytes{+len, buf}:
-      +n = u32.max(1, (((len + FB.W() : U32) - 1 : U32) / FB.W() : U32))
-      fb.done(len, fb.loop(U32.to_nat(n), len, 0, (buf,
+      fb.done(len, fb.loop(U32.to_nat((len + 1 : U32)), len, 0, (True{}, (buf,
         wr.byte(0, wr.byte(0, wr.byte(196, wr.byte(195, wr.byte(214,
-          (B.B.zeros((((len + 5 : U32)) + (n * 40 : U32) : U32)), 0)))))))))
+          (B.B.zeros(((len + len : U32) + 64 : U32)), 0))))))))))
 
 # Checking
 # ========

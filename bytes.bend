@@ -41,7 +41,7 @@ def u32.pick(c: Bool, a: U32, b: U32) -> U32:
 
 # The bit offset of byte i within its word.
 def B.sh(+i: U32) -> Nat:
-  U32.to_nat(((i .&. 3 : U32) << 3n : U32))
+  U32.to_nat(((3 .&. i : U32) << 3n : U32))
 
 # The smallest d with 2^d >= n.
 def B.depth.go(k: Nat, done: Bool, +n: U32, +d: Nat, +p: U32) -> Nat:

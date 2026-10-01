@@ -1304,3 +1304,20 @@ def W.bit_ones(n, w, p, k, e, hk):
                     (%W.N_cons(m, b, t) : {Nat.add(_, 1n) == Nat.double(P.Nat.pow2(q)) : Nat}
                       e))),
                 hk)
+
+law W.and_zero:
+  for +n: Nat
+  for +r: Word(n)
+  {Word.and(n, Word.zero(n), r) == Word.zero(n) : Word(n)}
+
+def W.and_zero(n, r):
+  match n:
+    case 0n:
+      match r:
+        case WNil{}:
+          {==}
+    case 1n+p:
+      match r:
+        case WCon{b, t}:
+          %W.and_zero(p, t) : {WCon{False{}, Word.and(p, Word.zero(p), t)} == WCon{False{}, _} : Word(1n+p)}
+          {==}

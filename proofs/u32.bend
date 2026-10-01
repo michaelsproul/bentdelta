@@ -698,3 +698,47 @@ law U.mask_id:
 
 def U.mask_id(i, p, hd, hi):
   U.ext(U32.and(i, U.ones(p)), i, U.mask_all(i, p, hd, hi, 32n))
+
+# The bits of 255: the 8 low ones.
+law U.bit_255_lo:
+  for +k: Nat
+  for +h: {Nat.cmp(k, 8n) == LT{} : Cmp}
+  {U.bit(255, k) == True{} : Bool}
+
+def U.bit_255_lo(k, h):
+  U.bit_ones(255, 8n, k, {==}, h)
+
+law U.bit_255_hi:
+  for +k: Nat
+  for +h: {Cmp.is_le(Nat.cmp(8n, k)) == True{} : Bool}
+  {U.bit(255, k) == False{} : Bool}
+
+def U.bit_255_hi(k, h):
+  U.bit_high(255, 8n, k, {==}, h)
+
+# The low byte of v.
+law U.bit_low:
+  for +v: U32
+  for +k: Nat
+  for +h: {Nat.cmp(k, 8n) == LT{} : Cmp}
+  {U.bit(U32.and(v, 255), k) == U.bit(v, k) : Bool}
+
+def U.bit_low(v, k, h):
+  %Equal.sym(Bool, U.bit(U32.and(v, 255), k), Bool.and(U.bit(v, k), U.bit(255, k)),
+    U.bit_and(v, 255, k)) : {_ == U.bit(v, k) : Bool}
+  %Equal.sym(Bool, U.bit(255, k), True{}, U.bit_255_lo(k, h)) :
+    {Bool.and(U.bit(v, k), _) == U.bit(v, k) : Bool}
+  P.Bool.and_true(U.bit(v, k))
+
+law U.bit_low_hi:
+  for +v: U32
+  for +k: Nat
+  for +h: {Cmp.is_le(Nat.cmp(8n, k)) == True{} : Bool}
+  {U.bit(U32.and(v, 255), k) == False{} : Bool}
+
+def U.bit_low_hi(v, k, h):
+  %Equal.sym(Bool, U.bit(U32.and(v, 255), k), Bool.and(U.bit(v, k), U.bit(255, k)),
+    U.bit_and(v, 255, k)) : {_ == False{} : Bool}
+  %Equal.sym(Bool, U.bit(255, k), False{}, U.bit_255_hi(k, h)) :
+    {Bool.and(U.bit(v, k), _) == False{} : Bool}
+  P.Bool.and_false(U.bit(v, k))
