@@ -18,6 +18,7 @@ import ./dec.bend as X
 import ./dwin.bend as J
 import ./ctab.bend as T
 import ./match.bend as MT_
+import ./umod.bend as UM_
 
 # The encoder's emitter (encode.bend) writes the three sections of a window
 # as the spec (proofs/spec) reads them: each emitter step is mirrored by a
@@ -6009,3 +6010,423 @@ def EM.run_tc(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, d
   %Equal.sym(A.Tr, EM.tc(EM.q(2, size, 0, ET{Y.BP.put(GR.t(td, dl, U32.add(dl, 1)), dl, b), GR.t(ti, il, U32.add(il, 12)), GR.t(ta, al, U32.add(al, 6)), tc, U32.add(dl, 1), il, al, slot, U32.add(uoff, size), pt, ps, pm, pc})), tc, EM.q_tc(Y.BP.put(GR.t(td, dl, U32.add(dl, 1)), dl, b), GR.t(ti, il, U32.add(il, 12)), GR.t(ta, al, U32.add(al, 6)), tc, U32.add(dl, 1), il, al, slot, U32.add(uoff, size), pt, ps, pm, pc, 2, size, 0)) :
     {_ == Q.SP.sc(Q.SP.run(EM.hs(ops, ph), Q.XC{ts, tt, seg, cpl, w0, w1}, Q.SP.s0(w0))) : A.Tr}
   hc
+
+# Addresses decode back
+# =====================
+
+# A value and mode that name addr from here, with the cache tc.
+def EM.av(+e: N.EB, +here: U32, +tc: A.Tr, +addr: U32) -> Bool:
+  match e:
+    case N.EB{b, m}:
+      Bool.and(U32.is_eq(Q.SP.daddr(m, b, here, tc), addr), Bool.and(Q.SP.aok(m, b, here), Cmp.is_le(Nat.cmp(V.U.N(m), 5n))))
+
+law EM.subsub:
+  for +x: U32
+  for +y: U32
+  {U32.sub(x, U32.sub(x, y)) == y : U32}
+
+def EM.subsub(x, y):
+  %V.U.add_sub(x, y) :
+    {U32.sub(_, U32.sub(x, y)) == y : U32}
+  %Equal.sym(U32, U32.sub(U32.add(U32.sub(x, y), y), U32.sub(x, y)), y, V.U.sub_add_l(U32.sub(x, y), y)) :
+    {_ == y : U32}
+  {==}
+
+law EM.addsub:
+  for +n: U32
+  for +a: U32
+  {U32.add(n, U32.sub(a, n)) == a : U32}
+
+def EM.addsub(n, a):
+  %Equal.sym(U32, U32.add(n, U32.sub(a, n)), U32.add(U32.sub(a, n), n), V.U.add_comm(n, U32.sub(a, n))) :
+    {_ == a : U32}
+  %Equal.sym(U32, U32.add(U32.sub(a, n), n), a, V.U.add_sub(a, n)) :
+    {_ == a : U32}
+  {==}
+
+law EM.av_self.c:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +hle: {U32.is_le(addr, here) == True{} : Bool}
+  for +c: Bool
+  for +ec: {Bool.and(U32.is_ge(addr, 128), U32.is_lt(U32.sub(here, addr), addr)) == c : Bool}
+  {EM.av(N.ea.self(addr, here), here, tc, addr) == True{} : Bool}
+
+def EM.av_self.c(addr, here, tc, hle, c, ec):
+  match c:
+    case True{}:
+      %Equal.sym(Bool, Bool.and(U32.is_ge(addr, 128), U32.is_lt(U32.sub(here, addr), addr)), True{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(here, addr), addr), N.u32.pick(_, 1, 0)}, here, tc, addr) == True{} : Bool}
+      %Equal.sym(U32, U32.sub(here, U32.sub(here, addr)), addr, EM.subsub(here, addr)) :
+        {Bool.and(U32.is_eq(_, addr), Bool.and(U32.is_le(U32.sub(here, addr), here), True{})) == True{} : Bool}
+      %Equal.sym(Bool, U32.is_eq(addr, addr), True{}, V.U.is_eq_refl(addr)) :
+        {Bool.and(_, Bool.and(U32.is_le(U32.sub(here, addr), here), True{})) == True{} : Bool}
+      %Equal.sym(Bool, U32.is_le(U32.sub(here, addr), here), True{}, V.U.N_le(U32.sub(here, addr), here, EM.sub_le(here, addr, hle))) :
+        {Bool.and(True{}, Bool.and(_, True{})) == True{} : Bool}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, Bool.and(U32.is_ge(addr, 128), U32.is_lt(U32.sub(here, addr), addr)), False{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(here, addr), addr), N.u32.pick(_, 1, 0)}, here, tc, addr) == True{} : Bool}
+      %Equal.sym(Bool, U32.is_eq(addr, addr), True{}, V.U.is_eq_refl(addr)) :
+        {Bool.and(_, True{}) == True{} : Bool}
+      {==}
+
+# SELF or HERE name addr.
+law EM.av_self:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +hle: {U32.is_le(addr, here) == True{} : Bool}
+  {EM.av(N.ea.self(addr, here), here, tc, addr) == True{} : Bool}
+
+def EM.av_self(addr, here, tc, hle):
+  EM.av_self.c(addr, here, tc, hle, Bool.and(U32.is_ge(addr, 128), U32.is_lt(U32.sub(here, addr), addr)), {==})
+
+law EM.av_near2.c:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +b: U32
+  for +m: U32
+  for +hav: {EM.av(N.EB{b, m}, here, tc, addr) == True{} : Bool}
+  for +c: Bool
+  for +ec: {Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 768))), U32.is_lt(U32.sub(addr, A.T.word(tc, 768)), b)) == c : Bool}
+  {EM.av(N.ea.near(addr, A.T.word(tc, 768), 2, N.EB{b, m}), here, tc, addr) == True{} : Bool}
+
+def EM.av_near2.c(addr, here, tc, b, m, hav, c, ec):
+  match c:
+    case True{}:
+      %Equal.sym(Bool, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 768))), U32.is_lt(U32.sub(addr, A.T.word(tc, 768)), b)), True{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(addr, A.T.word(tc, 768)), b), N.u32.pick(_, 2, m)}, here, tc, addr) == True{} : Bool}
+      %Equal.sym(U32, U32.add(A.T.word(tc, 768), U32.sub(addr, A.T.word(tc, 768))), addr, EM.addsub(A.T.word(tc, 768), addr)) :
+        {Bool.and(U32.is_eq(_, addr), True{}) == True{} : Bool}
+      %Equal.sym(Bool, U32.is_eq(addr, addr), True{}, V.U.is_eq_refl(addr)) :
+        {Bool.and(_, True{}) == True{} : Bool}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 768))), U32.is_lt(U32.sub(addr, A.T.word(tc, 768)), b)), False{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(addr, A.T.word(tc, 768)), b), N.u32.pick(_, 2, m)}, here, tc, addr) == True{} : Bool}
+      hav
+
+law EM.av_near2:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +e: N.EB
+  for +hav: {EM.av(e, here, tc, addr) == True{} : Bool}
+  {EM.av(N.ea.near(addr, A.T.word(tc, 768), 2, e), here, tc, addr) == True{} : Bool}
+
+def EM.av_near2(addr, here, tc, e, hav):
+  match e:
+    case N.EB{b, m}:
+      EM.av_near2.c(addr, here, tc, b, m, hav, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 768))), U32.is_lt(U32.sub(addr, A.T.word(tc, 768)), b)), {==})
+
+law EM.av_near3.c:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +b: U32
+  for +m: U32
+  for +hav: {EM.av(N.EB{b, m}, here, tc, addr) == True{} : Bool}
+  for +c: Bool
+  for +ec: {Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 769))), U32.is_lt(U32.sub(addr, A.T.word(tc, 769)), b)) == c : Bool}
+  {EM.av(N.ea.near(addr, A.T.word(tc, 769), 3, N.EB{b, m}), here, tc, addr) == True{} : Bool}
+
+def EM.av_near3.c(addr, here, tc, b, m, hav, c, ec):
+  match c:
+    case True{}:
+      %Equal.sym(Bool, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 769))), U32.is_lt(U32.sub(addr, A.T.word(tc, 769)), b)), True{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(addr, A.T.word(tc, 769)), b), N.u32.pick(_, 3, m)}, here, tc, addr) == True{} : Bool}
+      %Equal.sym(U32, U32.add(A.T.word(tc, 769), U32.sub(addr, A.T.word(tc, 769))), addr, EM.addsub(A.T.word(tc, 769), addr)) :
+        {Bool.and(U32.is_eq(_, addr), True{}) == True{} : Bool}
+      %Equal.sym(Bool, U32.is_eq(addr, addr), True{}, V.U.is_eq_refl(addr)) :
+        {Bool.and(_, True{}) == True{} : Bool}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 769))), U32.is_lt(U32.sub(addr, A.T.word(tc, 769)), b)), False{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(addr, A.T.word(tc, 769)), b), N.u32.pick(_, 3, m)}, here, tc, addr) == True{} : Bool}
+      hav
+
+law EM.av_near3:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +e: N.EB
+  for +hav: {EM.av(e, here, tc, addr) == True{} : Bool}
+  {EM.av(N.ea.near(addr, A.T.word(tc, 769), 3, e), here, tc, addr) == True{} : Bool}
+
+def EM.av_near3(addr, here, tc, e, hav):
+  match e:
+    case N.EB{b, m}:
+      EM.av_near3.c(addr, here, tc, b, m, hav, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 769))), U32.is_lt(U32.sub(addr, A.T.word(tc, 769)), b)), {==})
+
+law EM.av_near4.c:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +b: U32
+  for +m: U32
+  for +hav: {EM.av(N.EB{b, m}, here, tc, addr) == True{} : Bool}
+  for +c: Bool
+  for +ec: {Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 770))), U32.is_lt(U32.sub(addr, A.T.word(tc, 770)), b)) == c : Bool}
+  {EM.av(N.ea.near(addr, A.T.word(tc, 770), 4, N.EB{b, m}), here, tc, addr) == True{} : Bool}
+
+def EM.av_near4.c(addr, here, tc, b, m, hav, c, ec):
+  match c:
+    case True{}:
+      %Equal.sym(Bool, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 770))), U32.is_lt(U32.sub(addr, A.T.word(tc, 770)), b)), True{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(addr, A.T.word(tc, 770)), b), N.u32.pick(_, 4, m)}, here, tc, addr) == True{} : Bool}
+      %Equal.sym(U32, U32.add(A.T.word(tc, 770), U32.sub(addr, A.T.word(tc, 770))), addr, EM.addsub(A.T.word(tc, 770), addr)) :
+        {Bool.and(U32.is_eq(_, addr), True{}) == True{} : Bool}
+      %Equal.sym(Bool, U32.is_eq(addr, addr), True{}, V.U.is_eq_refl(addr)) :
+        {Bool.and(_, True{}) == True{} : Bool}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 770))), U32.is_lt(U32.sub(addr, A.T.word(tc, 770)), b)), False{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(addr, A.T.word(tc, 770)), b), N.u32.pick(_, 4, m)}, here, tc, addr) == True{} : Bool}
+      hav
+
+law EM.av_near4:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +e: N.EB
+  for +hav: {EM.av(e, here, tc, addr) == True{} : Bool}
+  {EM.av(N.ea.near(addr, A.T.word(tc, 770), 4, e), here, tc, addr) == True{} : Bool}
+
+def EM.av_near4(addr, here, tc, e, hav):
+  match e:
+    case N.EB{b, m}:
+      EM.av_near4.c(addr, here, tc, b, m, hav, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 770))), U32.is_lt(U32.sub(addr, A.T.word(tc, 770)), b)), {==})
+
+law EM.av_near5.c:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +b: U32
+  for +m: U32
+  for +hav: {EM.av(N.EB{b, m}, here, tc, addr) == True{} : Bool}
+  for +c: Bool
+  for +ec: {Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 771))), U32.is_lt(U32.sub(addr, A.T.word(tc, 771)), b)) == c : Bool}
+  {EM.av(N.ea.near(addr, A.T.word(tc, 771), 5, N.EB{b, m}), here, tc, addr) == True{} : Bool}
+
+def EM.av_near5.c(addr, here, tc, b, m, hav, c, ec):
+  match c:
+    case True{}:
+      %Equal.sym(Bool, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 771))), U32.is_lt(U32.sub(addr, A.T.word(tc, 771)), b)), True{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(addr, A.T.word(tc, 771)), b), N.u32.pick(_, 5, m)}, here, tc, addr) == True{} : Bool}
+      %Equal.sym(U32, U32.add(A.T.word(tc, 771), U32.sub(addr, A.T.word(tc, 771))), addr, EM.addsub(A.T.word(tc, 771), addr)) :
+        {Bool.and(U32.is_eq(_, addr), True{}) == True{} : Bool}
+      %Equal.sym(Bool, U32.is_eq(addr, addr), True{}, V.U.is_eq_refl(addr)) :
+        {Bool.and(_, True{}) == True{} : Bool}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 771))), U32.is_lt(U32.sub(addr, A.T.word(tc, 771)), b)), False{}, ec) :
+        {EM.av(N.EB{N.u32.pick(_, U32.sub(addr, A.T.word(tc, 771)), b), N.u32.pick(_, 5, m)}, here, tc, addr) == True{} : Bool}
+      hav
+
+law EM.av_near5:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +e: N.EB
+  for +hav: {EM.av(e, here, tc, addr) == True{} : Bool}
+  {EM.av(N.ea.near(addr, A.T.word(tc, 771), 5, e), here, tc, addr) == True{} : Bool}
+
+def EM.av_near5(addr, here, tc, e, hav):
+  match e:
+    case N.EB{b, m}:
+      EM.av_near5.c(addr, here, tc, b, m, hav, Bool.and(Bool.and(U32.is_ge(b, 128), U32.is_ge(addr, A.T.word(tc, 771))), U32.is_lt(U32.sub(addr, A.T.word(tc, 771)), b)), {==})
+
+# The value and mode SELF, HERE and the NEAR slots choose name addr.
+law EM.av_eb:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +hle: {U32.is_le(addr, here) == True{} : Bool}
+  {EM.av(EM.eb(addr, here, tc), here, tc, addr) == True{} : Bool}
+
+def EM.av_eb(addr, here, tc, hle):
+  EM.av_near5(addr, here, tc, N.ea.near(addr, A.T.word(tc, 770), 4, N.ea.near(addr, A.T.word(tc, 769), 3, N.ea.near(addr, A.T.word(tc, 768), 2, N.ea.self(addr, here)))),
+    EM.av_near4(addr, here, tc, N.ea.near(addr, A.T.word(tc, 769), 3, N.ea.near(addr, A.T.word(tc, 768), 2, N.ea.self(addr, here))),
+      EM.av_near3(addr, here, tc, N.ea.near(addr, A.T.word(tc, 768), 2, N.ea.self(addr, here)),
+        EM.av_near2(addr, here, tc, N.ea.self(addr, here), EM.av_self(addr, here, tc, hle)))))
+
+# The SAME slot
+# =============
+
+law EM.h8:
+  for +r: U32
+  {V.U.N(U32.shrn(r, 8n)) == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+
+def EM.h8(r):
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r))))))))), P.Nat.half(V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r))))))))), V.U.N_shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r))))))))) :
+    {_ == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r)))))))), P.Nat.half(V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r)))))))), V.U.N_shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r)))))))) :
+    {P.Nat.half(_) == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r))))))), P.Nat.half(V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r))))))), V.U.N_shr(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r))))))) :
+    {P.Nat.half(P.Nat.half(_)) == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(U32.shr(r)))))), P.Nat.half(V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(r)))))), V.U.N_shr(U32.shr(U32.shr(U32.shr(U32.shr(r)))))) :
+    {P.Nat.half(P.Nat.half(P.Nat.half(_))) == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr(U32.shr(U32.shr(r))))), P.Nat.half(V.U.N(U32.shr(U32.shr(U32.shr(r))))), V.U.N_shr(U32.shr(U32.shr(U32.shr(r))))) :
+    {P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(_)))) == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr(U32.shr(r)))), P.Nat.half(V.U.N(U32.shr(U32.shr(r)))), V.U.N_shr(U32.shr(U32.shr(r)))) :
+    {P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(_))))) == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr(r))), P.Nat.half(V.U.N(U32.shr(r))), V.U.N_shr(U32.shr(r))) :
+    {P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(_)))))) == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr(r)), P.Nat.half(V.U.N(r)), V.U.N_shr(r)) :
+    {P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(_))))))) == P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(r))))))))) : Nat}
+  {==}
+
+law EM.hm8:
+  for +a: Nat
+  for +h: {Cmp.is_le(Nat.cmp(a, 767n)) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(a)))))))), 2n)) == True{} : Bool}
+
+def EM.hm8(a, h):
+  P.Nat.half_mono(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(a))))))), 5n,
+    P.Nat.half_mono(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(a)))))), 11n,
+      P.Nat.half_mono(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(a))))), 23n,
+        P.Nat.half_mono(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(a)))), 47n,
+          P.Nat.half_mono(P.Nat.half(P.Nat.half(P.Nat.half(a))), 95n,
+            P.Nat.half_mono(P.Nat.half(P.Nat.half(a)), 191n,
+              P.Nat.half_mono(P.Nat.half(a), 383n,
+                P.Nat.half_mono(a, 767n, h))))))))
+
+# The SAME cache's slot of addr, over 256, is at most 2.
+law EM.j2:
+  for +addr: U32
+  {Cmp.is_le(Nat.cmp(V.U.N(U32.shrn(U32.mod(addr, 768), 8n)), 2n)) == True{} : Bool}
+
+def EM.j2(addr):
+  %Equal.sym(Nat, V.U.N(U32.shrn(U32.mod(addr, 768), 8n)), P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(P.Nat.half(V.U.N(U32.mod(addr, 768)))))))))), EM.h8(U32.mod(addr, 768))) :
+    {Cmp.is_le(Nat.cmp(_, 2n)) == True{} : Bool}
+  EM.hm8(V.U.N(U32.mod(addr, 768)), P.Nat.lt_succ_le(V.U.N(U32.mod(addr, 768)), 767n, UM_.UM.mod(addr, 768, {==}, {==})))
+
+law EM.nlt0:
+  for +n: Nat
+  {Cmp.is_lt(Nat.cmp(n, 0n)) == False{} : Bool}
+
+def EM.nlt0(n):
+  match n:
+    case 0n:
+      {==}
+    case 1n+p:
+      {==}
+
+# The SAME modes, 6 + x for x <= 2.
+law EM.m6:
+  for +x: U32
+  for +h: {Cmp.is_le(Nat.cmp(V.U.N(x), 2n)) == True{} : Bool}
+  {V.U.N(U32.add(6, x)) == Nat.add(V.U.N(6), V.U.N(x)) : Nat}
+
+def EM.m6(x, h):
+  V.U.add_N(6, x, 8, h)
+
+law EM.m6.lt6:
+  for +x: U32
+  for +h: {Cmp.is_le(Nat.cmp(V.U.N(x), 2n)) == True{} : Bool}
+  {U32.is_lt(U32.add(6, x), 6) == False{} : Bool}
+
+def EM.m6.lt6(x, h):
+  %Equal.sym(Cmp, U32.cmp(U32.add(6, x), 6), Nat.cmp(V.U.N(U32.add(6, x)), 6n), V.U.cmp_nat(U32.add(6, x), 6)) :
+    {Cmp.is_lt(_) == False{} : Bool}
+  %Equal.sym(Nat, V.U.N(U32.add(6, x)), Nat.add(6n, V.U.N(x)), EM.m6(x, h)) :
+    {Cmp.is_lt(Nat.cmp(_, 6n)) == False{} : Bool}
+  EM.nlt0(V.U.N(x))
+
+law EM.m6.eq0:
+  for +x: U32
+  for +h: {Cmp.is_le(Nat.cmp(V.U.N(x), 2n)) == True{} : Bool}
+  {U32.is_eq(U32.add(6, x), 0) == False{} : Bool}
+
+def EM.m6.eq0(x, h):
+  %Equal.sym(Cmp, U32.cmp(U32.add(6, x), 0), Nat.cmp(V.U.N(U32.add(6, x)), 0n), V.U.cmp_nat(U32.add(6, x), 0)) :
+    {Cmp.is_eq(_) == False{} : Bool}
+  %Equal.sym(Nat, V.U.N(U32.add(6, x)), Nat.add(6n, V.U.N(x)), EM.m6(x, h)) :
+    {Cmp.is_eq(Nat.cmp(_, 0n)) == False{} : Bool}
+  {==}
+
+law EM.m6.eq1:
+  for +x: U32
+  for +h: {Cmp.is_le(Nat.cmp(V.U.N(x), 2n)) == True{} : Bool}
+  {U32.is_eq(U32.add(6, x), 1) == False{} : Bool}
+
+def EM.m6.eq1(x, h):
+  %Equal.sym(Cmp, U32.cmp(U32.add(6, x), 1), Nat.cmp(V.U.N(U32.add(6, x)), 1n), V.U.cmp_nat(U32.add(6, x), 1)) :
+    {Cmp.is_eq(_) == False{} : Bool}
+  %Equal.sym(Nat, V.U.N(U32.add(6, x)), Nat.add(6n, V.U.N(x)), EM.m6(x, h)) :
+    {Cmp.is_eq(Nat.cmp(_, 1n)) == False{} : Bool}
+  {==}
+
+law EM.m6.lt9:
+  for +x: U32
+  for +h: {Cmp.is_le(Nat.cmp(V.U.N(x), 2n)) == True{} : Bool}
+  {U32.is_lt(U32.add(6, x), 9) == True{} : Bool}
+
+def EM.m6.lt9(x, h):
+  %Equal.sym(Cmp, U32.cmp(U32.add(6, x), 9), Nat.cmp(V.U.N(U32.add(6, x)), 9n), V.U.cmp_nat(U32.add(6, x), 9)) :
+    {Cmp.is_lt(_) == True{} : Bool}
+  %Equal.sym(Nat, V.U.N(U32.add(6, x)), Nat.add(6n, V.U.N(x)), EM.m6(x, h)) :
+    {Cmp.is_lt(Nat.cmp(_, 9n)) == True{} : Bool}
+  %Equal.sym(Cmp, Nat.cmp(V.U.N(x), 3n), LT{}, P.Nat.le_lt_succ(V.U.N(x), 2n, h)) :
+    {Cmp.is_lt(_) == True{} : Bool}
+  {==}
+
+law EM.m6.le8:
+  for +x: U32
+  for +h: {Cmp.is_le(Nat.cmp(V.U.N(x), 2n)) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, x)), 8n)) == True{} : Bool}
+
+def EM.m6.le8(x, h):
+  %Equal.sym(Nat, V.U.N(U32.add(6, x)), Nat.add(6n, V.U.N(x)), EM.m6(x, h)) :
+    {Cmp.is_le(Nat.cmp(_, 8n)) == True{} : Bool}
+  h
+
+law EM.m6.ne1:
+  for +x: U32
+  for +h: {Cmp.is_le(Nat.cmp(V.U.N(x), 2n)) == True{} : Bool}
+  {U32.is_ne(U32.add(6, x), 1) == True{} : Bool}
+
+def EM.m6.ne1(x, h):
+  %Equal.sym(Cmp, U32.cmp(U32.add(6, x), 1), Nat.cmp(V.U.N(U32.add(6, x)), 1n), V.U.cmp_nat(U32.add(6, x), 1)) :
+    {Bool.not(Cmp.is_eq(_)) == True{} : Bool}
+  %Equal.sym(Nat, V.U.N(U32.add(6, x)), Nat.add(6n, V.U.N(x)), EM.m6(x, h)) :
+    {Bool.not(Cmp.is_eq(Nat.cmp(_, 1n))) == True{} : Bool}
+  {==}
+
+# A mode and value that name addr from here, with the cache tc.
+def EM.av8(+m: U32, +v: U32, +here: U32, +tc: A.Tr, +addr: U32) -> Bool:
+  Bool.and(U32.is_eq(Q.SP.daddr(m, v, here, tc), addr), Bool.and(Q.SP.aok(m, v, here), Cmp.is_le(Nat.cmp(V.U.N(m), 8n))))
+
+# The SAME slot names addr when it holds it.
+law EM.av_same:
+  for +addr: U32
+  for +here: U32
+  for +tc: A.Tr
+  for +hs: {U32.is_eq(A.T.word(tc, U32.mod(addr, 768)), addr) == True{} : Bool}
+  {EM.av8(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), U32.and(U32.mod(addr, 768), 255), here, tc, addr) == True{} : Bool}
+
+def EM.av_same(addr, here, tc, hs):
+  %Equal.sym(Bool, U32.is_lt(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), False{}, EM.m6.lt6(U32.shrn(U32.mod(addr, 768), 8n), EM.j2(addr))) :
+    {Bool.and(U32.is_eq(B.u32.pick(U32.is_eq(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 0), U32.and(U32.mod(addr, 768), 255), B.u32.pick(U32.is_eq(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.sub(here, U32.and(U32.mod(addr, 768), 255)), B.u32.pick(_, U32.add(A.T.word(tc, B.u32.pick(_, U32.add(766, U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), U32.or(U32.shln(U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255)))), U32.and(U32.mod(addr, 768), 255)), A.T.word(tc, B.u32.pick(_, U32.add(766, U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), U32.or(U32.shln(U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255))))))), addr), Bool.and(Bool.and(U32.is_lt(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 9), Bool.or(U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.is_le(U32.and(U32.mod(addr, 768), 255), here))), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(Bool, U32.is_eq(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 0), False{}, EM.m6.eq0(U32.shrn(U32.mod(addr, 768), 8n), EM.j2(addr))) :
+    {Bool.and(U32.is_eq(B.u32.pick(_, U32.and(U32.mod(addr, 768), 255), B.u32.pick(U32.is_eq(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.sub(here, U32.and(U32.mod(addr, 768), 255)), B.u32.pick(False{}, U32.add(A.T.word(tc, B.u32.pick(False{}, U32.add(766, U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), U32.or(U32.shln(U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255)))), U32.and(U32.mod(addr, 768), 255)), A.T.word(tc, B.u32.pick(False{}, U32.add(766, U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), U32.or(U32.shln(U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255))))))), addr), Bool.and(Bool.and(U32.is_lt(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 9), Bool.or(U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.is_le(U32.and(U32.mod(addr, 768), 255), here))), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(Bool, U32.is_eq(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), False{}, EM.m6.eq1(U32.shrn(U32.mod(addr, 768), 8n), EM.j2(addr))) :
+    {Bool.and(U32.is_eq(B.u32.pick(False{}, U32.and(U32.mod(addr, 768), 255), B.u32.pick(_, U32.sub(here, U32.and(U32.mod(addr, 768), 255)), B.u32.pick(False{}, U32.add(A.T.word(tc, B.u32.pick(False{}, U32.add(766, U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), U32.or(U32.shln(U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255)))), U32.and(U32.mod(addr, 768), 255)), A.T.word(tc, B.u32.pick(False{}, U32.add(766, U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), U32.or(U32.shln(U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255))))))), addr), Bool.and(Bool.and(U32.is_lt(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 9), Bool.or(U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.is_le(U32.and(U32.mod(addr, 768), 255), here))), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(Bool, U32.is_lt(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 9), True{}, EM.m6.lt9(U32.shrn(U32.mod(addr, 768), 8n), EM.j2(addr))) :
+    {Bool.and(U32.is_eq(B.u32.pick(False{}, U32.and(U32.mod(addr, 768), 255), B.u32.pick(False{}, U32.sub(here, U32.and(U32.mod(addr, 768), 255)), B.u32.pick(False{}, U32.add(A.T.word(tc, B.u32.pick(False{}, U32.add(766, U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), U32.or(U32.shln(U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255)))), U32.and(U32.mod(addr, 768), 255)), A.T.word(tc, B.u32.pick(False{}, U32.add(766, U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), U32.or(U32.shln(U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255))))))), addr), Bool.and(Bool.and(_, Bool.or(U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.is_le(U32.and(U32.mod(addr, 768), 255), here))), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(U32, U32.sub(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 6), U32.shrn(U32.mod(addr, 768), 8n), V.U.sub_add_l(6, U32.shrn(U32.mod(addr, 768), 8n))) :
+    {Bool.and(U32.is_eq(A.T.word(tc, U32.or(U32.shln(_, 8n), U32.and(U32.and(U32.mod(addr, 768), 255), 255))), addr), Bool.and(Bool.or(U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.is_le(U32.and(U32.mod(addr, 768), 255), here)), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(U32, U32.and(U32.and(U32.mod(addr, 768), 255), 255), U32.and(U32.mod(addr, 768), 255), Z.BB.and255(U32.mod(addr, 768))) :
+    {Bool.and(U32.is_eq(A.T.word(tc, U32.or(U32.shln(U32.shrn(U32.mod(addr, 768), 8n), 8n), _)), addr), Bool.and(Bool.or(U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.is_le(U32.and(U32.mod(addr, 768), 255), here)), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(U32, U32.or(U32.shln(U32.shrn(U32.mod(addr, 768), 8n), 8n), U32.and(U32.mod(addr, 768), 255)), U32.mod(addr, 768), Z.BB.split8(U32.mod(addr, 768))) :
+    {Bool.and(U32.is_eq(A.T.word(tc, _), addr), Bool.and(Bool.or(U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.is_le(U32.and(U32.mod(addr, 768), 255), here)), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(Bool, U32.is_eq(A.T.word(tc, U32.mod(addr, 768)), addr), True{}, hs) :
+    {Bool.and(_, Bool.and(Bool.or(U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), U32.is_le(U32.and(U32.mod(addr, 768), 255), here)), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(Bool, U32.is_ne(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n)), 1), True{}, EM.m6.ne1(U32.shrn(U32.mod(addr, 768), 8n), EM.j2(addr))) :
+    {Bool.and(True{}, Bool.and(Bool.or(_, U32.is_le(U32.and(U32.mod(addr, 768), 255), here)), Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)))) == True{} : Bool}
+  %Equal.sym(Bool, Cmp.is_le(Nat.cmp(V.U.N(U32.add(6, U32.shrn(U32.mod(addr, 768), 8n))), 8n)), True{}, EM.m6.le8(U32.shrn(U32.mod(addr, 768), 8n), EM.j2(addr))) :
+    {Bool.and(True{}, Bool.and(Bool.or(True{}, U32.is_le(U32.and(U32.mod(addr, 768), 255), here)), _)) == True{} : Bool}
+  {==}

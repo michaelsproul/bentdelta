@@ -259,3 +259,8 @@ id BB.xxy x y
   # y, from x and their difference.
   lhs y
   rhs U32.xor(x, U32.xor(x, y))
+
+id BB.split8 r
+  # A word from its bits above 8 and its low byte.
+  lhs U32.or(U32.shln(U32.shrn(r, 8n), 8n), U32.and(r, 255))
+  rhs r
