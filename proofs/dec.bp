@@ -1111,3 +1111,437 @@ def DX.half(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oen
     case Q.HC{n, m, v}:
       @rw DX.h_copy(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, n, m, v, h, restI, P.Bool.and_r(U32.is_eq(Q.SP.ht(h), 3), Bool.or(U32.is_eq(Q.SP.hs(h), 0), U32.is_eq(Q.SP.hs(h), n)), P.Bool.and_l(Bool.and(U32.is_eq(Q.SP.ht(h), 3), Bool.or(U32.is_eq(Q.SP.hs(h), 0), U32.is_eq(Q.SP.hs(h), n))), Bool.or(U32.is_ne(3, 3), U32.is_eq(Q.SP.hm(h), m)), hok)), hi, hib, restA, V.U.is_eq(Q.SP.ht(h), 3, P.Bool.and_l(U32.is_eq(Q.SP.ht(h), 3), Bool.or(U32.is_eq(Q.SP.hs(h), 0), U32.is_eq(Q.SP.hs(h), n)), P.Bool.and_l(Bool.and(U32.is_eq(Q.SP.ht(h), 3), Bool.or(U32.is_eq(Q.SP.hs(h), 0), U32.is_eq(Q.SP.hs(h), n))), Bool.or(U32.is_ne(3, 3), U32.is_eq(Q.SP.hm(h), m)), hok))), V.U.is_eq(Q.SP.hm(h), m, P.Bool.and_r(Bool.and(U32.is_eq(Q.SP.ht(h), 3), Bool.or(U32.is_eq(Q.SP.hs(h), 0), U32.is_eq(Q.SP.hs(h), n))), Bool.or(U32.is_ne(3, 3), U32.is_eq(Q.SP.hm(h), m)), hok)), ha, hab, P.Bool.and_l(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), P.Bool.and_l(Bool.and(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos))), Q.SP.room(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n), P.Bool.and_l(Bool.and(Bool.and(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos))), Q.SP.room(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n)), Q.SP.cpok(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n, Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca)), hv))), dp, E, hp, hdp, he, hob, P.Bool.and_r(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), P.Bool.and_l(Bool.and(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos))), Q.SP.room(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n), P.Bool.and_l(Bool.and(Bool.and(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos))), Q.SP.room(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n)), Q.SP.cpok(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n, Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca)), hv))), P.Bool.and_r(Bool.and(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos))), Q.SP.room(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n), P.Bool.and_l(Bool.and(Bool.and(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos))), Q.SP.room(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n)), Q.SP.cpok(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n, Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca)), hv)), DX.hseg(ts, tt, seg, cpl, wst, oend, opos, n, Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), P.Bool.and_r(Bool.and(Bool.and(Q.SP.aok(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos)), U32.is_lt(Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca), Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos))), Q.SP.room(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n)), Q.SP.cpok(Q.XC{ts, tt, seg, cpl, wst, oend}, opos, n, Q.SP.daddr(m, v, Q.SP.here(Q.XC{ts, tt, seg, cpl, wst, oend}, opos), ca)), hv)), hB)
       {==}
+
+# Sections
+# ========
+
+# b + (c + a) = (a + b) + c.
+law DX.nat3:
+  for +a: Nat
+  for +b: Nat
+  for +c: Nat
+  {Nat.add(b, Nat.add(c, a)) == Nat.add(Nat.add(a, b), c) : Nat}
+
+def DX.nat3(a, b, c):
+  @rw P.Nat.add_comm(c, a)
+  @rw- P.Nat.add_assoc(b, a, c)
+  @rw P.Nat.add_comm(b, a)
+  {==}
+
+law DX.at_has:
+  for +xs: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +h: {Q.SP.at(xs, t, q, e) == True{} : Bool}
+  {S.S.has(xs, t, q) == True{} : Bool}
+
+def DX.at_has(xs, t, q, e, h):
+  P.Bool.and_l(S.S.has(xs, t, q), Cmp.is_le(Nat.cmp(Nat.add(S.S.len(xs), U32.to_nat(q)), U32.to_nat(e))), h)
+
+law DX.at_le:
+  for +xs: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +h: {Q.SP.at(xs, t, q, e) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(xs), V.U.N(q)), V.U.N(e))) == True{} : Bool}
+
+def DX.at_le(xs, t, q, e, h):
+  P.Bool.and_r(S.S.has(xs, t, q), Cmp.is_le(Nat.cmp(Nat.add(S.S.len(xs), U32.to_nat(q)), U32.to_nat(e))), h)
+
+law DX.at_mk:
+  for +xs: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +h1: {S.S.has(xs, t, q) == True{} : Bool}
+  for +h2: {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(xs), V.U.N(q)), V.U.N(e))) == True{} : Bool}
+  {Q.SP.at(xs, t, q, e) == True{} : Bool}
+
+def DX.at_mk(xs, t, q, e, h1, h2):
+  @unfold Q.SP.at
+  @rename U32.to_nat V.U.N
+  @rwx h1 : {S.S.has(xs, t, q) == True{} : Bool}
+  @rwx h2 : {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(xs), V.U.N(q)), V.U.N(e))) == True{} : Bool}
+  {==}
+
+# The bound past a held prefix.
+law DX.at_next.le:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  for +q: U32
+  for +e: U32
+  for +x: U32
+  for +ex: {V.U.N(x) == S.S.len(xs) : Nat}
+  for +h: {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(K.WD.app(xs, ys)), V.U.N(q)), V.U.N(e))) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(ys), V.U.N(U32.add(q, x))), V.U.N(e))) == True{} : Bool}
+
+def DX.at_next.le(xs, ys, q, e, x, ex, h):
+  @rw V.U.add_N(q, x, e, DX.at_next.qx(xs, ys, q, e, x, ex, h))
+  @rwx ex : {V.U.N(x) == S.S.len(xs) : Nat}
+  @rw DX.nat3(S.S.len(xs), S.S.len(ys), V.U.N(q))
+  @rw- K.WD.len_app(xs, ys)
+  h
+
+law DX.at_next.qx:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  for +q: U32
+  for +e: U32
+  for +x: U32
+  for +ex: {V.U.N(x) == S.S.len(xs) : Nat}
+  for +h: {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(K.WD.app(xs, ys)), V.U.N(q)), V.U.N(e))) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(q), V.U.N(x)), V.U.N(e))) == True{} : Bool}
+
+def DX.at_next.qx(xs, ys, q, e, x, ex, h):
+  @rwx ex : {V.U.N(x) == S.S.len(xs) : Nat}
+  @rw P.Nat.add_comm(V.U.N(q), S.S.len(xs))
+  P.Nat.le_trans(Nat.add(S.S.len(xs), V.U.N(q)), Nat.add(S.S.len(K.WD.app(xs, ys)), V.U.N(q)), V.U.N(e),
+    C.CP.le_add_r(S.S.len(xs), S.S.len(K.WD.app(xs, ys)), V.U.N(q),
+      (%Equal.sym(Nat, S.S.len(K.WD.app(xs, ys)), Nat.add(S.S.len(xs), S.S.len(ys)), K.WD.len_app(xs, ys)) :
+          {Cmp.is_le(Nat.cmp(S.S.len(xs), _)) == True{} : Bool};
+        P.Nat.cmp_add_r(S.S.len(xs), S.S.len(ys)))),
+    h)
+
+law DX.has_tail:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +x: U32
+  for +ex: {V.U.N(x) == S.S.len(xs) : Nat}
+  for +h: {S.S.has(K.WD.app(xs, ys), t, q) == True{} : Bool}
+  {S.S.has(ys, t, U32.add(q, x)) == True{} : Bool}
+
+def DX.has_tail(xs, ys, t, q, x, ex, h):
+  P.Bool.and_r(S.S.has(xs, t, q), S.S.has(ys, t, U32.add(q, x)), (%K.WD.has_app(xs, ys, t, q, x, ex) : {_ == True{} : Bool}; h))
+
+law DX.has_head:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +x: U32
+  for +ex: {V.U.N(x) == S.S.len(xs) : Nat}
+  for +h: {S.S.has(K.WD.app(xs, ys), t, q) == True{} : Bool}
+  {S.S.has(xs, t, q) == True{} : Bool}
+
+def DX.has_head(xs, ys, t, q, x, ex, h):
+  P.Bool.and_l(S.S.has(xs, t, q), S.S.has(ys, t, U32.add(q, x)), (%K.WD.has_app(xs, ys, t, q, x, ex) : {_ == True{} : Bool}; h))
+
+# Past a held prefix, the rest is held.
+law DX.at_next:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +x: U32
+  for +ex: {V.U.N(x) == S.S.len(xs) : Nat}
+  for +h: {Q.SP.at(K.WD.app(xs, ys), t, q, e) == True{} : Bool}
+  {Q.SP.at(ys, t, U32.add(q, x), e) == True{} : Bool}
+
+def DX.at_next(xs, ys, t, q, e, x, ex, h):
+  DX.at_mk(ys, t, U32.add(q, x), e,
+    DX.has_tail(xs, ys, t, q, x, ex, DX.at_has(K.WD.app(xs, ys), t, q, e, h)),
+    DX.at_next.le(xs, ys, q, e, x, ex, DX.at_le(K.WD.app(xs, ys), t, q, e, h)))
+
+law DX.sz_next.go:
+  for +h: U32
+  for +f: Q.HF
+  for +rest: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +hat: {Q.SP.at(K.WD.app(Q.SP.sz(h, f), rest), t, q, e) == True{} : Bool}
+  for +c: Bool
+  for +ec: {Q.SP.z(h) == c : Bool}
+  {Q.SP.at(rest, t, Q.SP.ipos(h, f, q), e) == True{} : Bool}
+
+def DX.sz_next.go(h, f, rest, t, q, e, hat, c, ec):
+  match c:
+    case True{}:
+      @unfold Q.SP.ipos
+      @rwx ec : {Q.SP.z(h) == True{} : Bool}
+      @simp
+      DX.at_next(R.VI.var(Q.SP.size(f)), rest, t, q, e, B.B.var.len(Q.SP.size(f)), Equal.sym(Nat, S.S.len(R.VI.var(Q.SP.size(f))), V.U.N(B.B.var.len(Q.SP.size(f))), R.VI.len_var(Q.SP.size(f))), (%DX.sz_true(h, f, ec) : {Q.SP.at(K.WD.app(_, rest), t, q, e) == True{} : Bool}; hat))
+    case False{}:
+      @unfold Q.SP.ipos
+      @rwx ec : {Q.SP.z(h) == False{} : Bool}
+      @simp
+      (%DX.sz_false(h, f, ec) : {Q.SP.at(K.WD.app(_, rest), t, q, e) == True{} : Bool}; hat)
+
+law DX.sz_false:
+  for +h: U32
+  for +f: Q.HF
+  for +ez: {Q.SP.z(h) == False{} : Bool}
+  {Q.SP.sz(h, f) == [] : List<&2, U32>}
+
+def DX.sz_false(h, f, ez):
+  @unfold Q.SP.sz
+  @rwx ez : {Q.SP.z(h) == False{} : Bool}
+  @simp
+  {==}
+
+law DX.sz_next:
+  for +h: U32
+  for +f: Q.HF
+  for +rest: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +hat: {Q.SP.at(K.WD.app(Q.SP.sz(h, f), rest), t, q, e) == True{} : Bool}
+  {Q.SP.at(rest, t, Q.SP.ipos(h, f, q), e) == True{} : Bool}
+
+def DX.sz_next(h, f, rest, t, q, e, hat):
+  DX.sz_next.go(h, f, rest, t, q, e, hat, Q.SP.z(h), {==})
+
+law DX.dat_next:
+  for +f: Q.HF
+  for +rest: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +hdok: {Q.SP.dok(f) == True{} : Bool}
+  for +hat: {Q.SP.at(K.WD.app(Q.SP.dat(f), rest), t, q, e) == True{} : Bool}
+  {Q.SP.at(rest, t, Q.SP.dnext(f, q), e) == True{} : Bool}
+
+def DX.dat_next(f, rest, t, q, e, hdok, hat):
+  match f:
+    case Q.HN{}:
+      hat
+    case Q.HA{n, xs}:
+      DX.at_next(xs, rest, t, q, e, n, DX.lenis(xs, n, hdok), hat)
+    case Q.HR{n, b}:
+      DX.at_next(b <> [], rest, t, q, e, 1, {==}, hat)
+    case Q.HC{n, m, v}:
+      hat
+
+law DX.adr_next.go:
+  for +m: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +hat: {Q.SP.at(K.WD.app(Q.SP.adr.m(U32.is_lt(m, 6), v), rest), t, q, e) == True{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_lt(m, 6) == c : Bool}
+  {Q.SP.at(rest, t, Bool.pick(U32, U32.is_lt(m, 6), U32.add(q, B.B.var.len(v)), U32.add(q, 1)), e) == True{} : Bool}
+
+def DX.adr_next.go(m, v, rest, t, q, e, hat, c, ec):
+  match c:
+    case True{}:
+      @rwx ec : {U32.is_lt(m, 6) == True{} : Bool}
+      @simp
+      DX.at_next(R.VI.var(v), rest, t, q, e, B.B.var.len(v), Equal.sym(Nat, S.S.len(R.VI.var(v)), V.U.N(B.B.var.len(v)), R.VI.len_var(v)), (%ec : {Q.SP.at(K.WD.app(Q.SP.adr.m(_, v), rest), t, q, e) == True{} : Bool}; hat))
+    case False{}:
+      @rwx ec : {U32.is_lt(m, 6) == False{} : Bool}
+      @simp
+      DX.at_next(v <> [], rest, t, q, e, 1, {==}, (%ec : {Q.SP.at(K.WD.app(Q.SP.adr.m(_, v), rest), t, q, e) == True{} : Bool}; hat))
+
+law DX.adr_next:
+  for +f: Q.HF
+  for +rest: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +hat: {Q.SP.at(K.WD.app(Q.SP.adr(f), rest), t, q, e) == True{} : Bool}
+  {Q.SP.at(rest, t, Q.SP.anext(f, q), e) == True{} : Bool}
+
+def DX.adr_next(f, rest, t, q, e, hat):
+  match f:
+    case Q.HN{}:
+      hat
+    case Q.HA{n, xs}:
+      hat
+    case Q.HR{n, b}:
+      hat
+    case Q.HC{n, m, v}:
+      DX.adr_next.go(m, v, rest, t, q, e, hat, U32.is_lt(m, 6), {==})
+
+# A half from any state.
+law DX.half_s:
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +s: Q.ST
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +tt: A.Tr
+  for +h: U32
+  for +f: Q.HF
+  for +restI: List<&2, U32>
+  for +restD: List<&2, U32>
+  for +restA: List<&2, U32>
+  for +hok: {Q.SP.hok(h, f) == True{} : Bool}
+  for +hi: {S.S.has(K.WD.app(Q.SP.sz(h, f), restI), td, ipos) == True{} : Bool}
+  for +hib: {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(Q.SP.sz(h, f)), V.U.N(ipos)), V.U.N(iend))) == True{} : Bool}
+  for +hd: {S.S.has(K.WD.app(Q.SP.dat(f), restD), td, dpos) == True{} : Bool}
+  for +hdb: {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(Q.SP.dat(f)), V.U.N(dpos)), V.U.N(dend))) == True{} : Bool}
+  for +ha: {S.S.has(K.WD.app(Q.SP.adr(f), restA), td, apos) == True{} : Bool}
+  for +hab: {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(Q.SP.adr(f)), V.U.N(apos)), V.U.N(aend))) == True{} : Bool}
+  for +hv: {Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f) == True{} : Bool}
+  for +dp: Nat
+  for +E: U32
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  for +hdp: {Nat.cmp(dp, 32n) == LT{} : Cmp}
+  for +he: {Cmp.is_le(Nat.cmp(V.U.N(E), Nat.double(Nat.double(P.Nat.pow2(dp))))) == True{} : Bool}
+  for +hob: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(Q.SP.size(f)), V.U.N(Q.SP.so(s))), V.U.N(E))) == True{} : Bool}
+  for +hB: {Q.SP.hbnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f, E) == True{} : Bool}
+  {D.dec.half(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, h, DX.st(ts, td, to, tb, Q.SP.sc(s), Q.SP.so(s), dpos, ipos, apos, Q.SP.ss(s))) == DX.st(ts, td, Q.SP.out(Q.XC{ts, tt, seg, cpl, wst, oend}, to, s, f), tb, Q.SP.sc(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f)), Q.SP.so(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f)), Q.SP.dnext(f, dpos), Q.SP.ipos(h, f, ipos), Q.SP.anext(f, apos), Q.SP.ss(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f))) : D.Dec}
+
+def DX.half_s(ts, td, to, tb, s, dpos, ipos, apos, seg, cpl, wst, oend, dend, iend, aend, tt, h, f, restI, restD, restA, hok, hi, hib, hd, hdb, ha, hab, hv, dp, E, hp, hdp, he, hob, hB):
+  match s:
+    case Q.ST{opos, ca, slot}:
+      DX.half(ts, td, to, tb, ca, opos, dpos, ipos, apos, slot, seg, cpl, wst, oend, dend, iend, aend, tt, h, f, restI, restD, restA, hok, hi, hib, hd, hdb, ha, hab, hv, dp, E, hp, hdp, he, hob, hB)
+
+# A half keeps the target tree perfect.
+law DX.pf_out:
+  for +x: Q.XC
+  for +to: A.Tr
+  for +s: Q.ST
+  for +f: Q.HF
+  for +dp: Nat
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  {A.T.pf(dp, Q.SP.out(x, to, s, f)) == True{} : Bool}
+
+def DX.pf_out(x, to, s, f, dp, hp):
+  match s f:
+    case Q.ST{opos, c, slot} Q.HN{}:
+      hp
+    case Q.ST{opos, c, slot} Q.HA{n, xs}:
+      S.S.pf_puts(dp, xs, to, opos, hp)
+    case Q.ST{opos, c, slot} Q.HR{n, b}:
+      S.S.pf_puts(dp, C.CP.rep(U32.to_nat(n), b), to, opos, hp)
+    case Q.ST{opos, c, slot} Q.HC{n, m, v}:
+      DX.pf_cout(x, to, opos, n, Q.SP.daddr(m, v, Q.SP.here(x, opos), c), dp, hp)
+
+law DX.pf_cout:
+  for +x: Q.XC
+  for +to: A.Tr
+  for +opos: U32
+  for +n: U32
+  for +addr: U32
+  for +dp: Nat
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  {A.T.pf(dp, Q.SP.cout(x, to, opos, n, addr)) == True{} : Bool}
+
+def DX.pf_cout(x, to, opos, n, addr, dp, hp):
+  match x:
+    case Q.XC{ts, tt, seg, cpl, wst, oend}:
+      DX.pf_cout.go(ts, to, opos, n, seg, cpl, wst, addr, dp, hp, U32.is_lt(addr, cpl))
+
+law DX.pf_cout.go:
+  for +ts: A.Tr
+  for +to: A.Tr
+  for +opos: U32
+  for +n: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +addr: U32
+  for +dp: Nat
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  for +c: Bool
+  {A.T.pf(dp, Bool.pick(A.Tr, c, S.S.puts(S.S.sl(U32.to_nat(n), ts, U32.add(seg, addr)), to, opos), C.CP.mv(U32.to_nat(n), to, opos, U32.add(wst, U32.sub(addr, cpl))))) == True{} : Bool}
+
+def DX.pf_cout.go(ts, to, opos, n, seg, cpl, wst, addr, dp, hp, c):
+  match c:
+    case True{}:
+      S.S.pf_puts(dp, S.S.sl(U32.to_nat(n), ts, U32.add(seg, addr)), to, opos, hp)
+    case False{}:
+      C.CP.pf_mv(U32.to_nat(n), to, opos, U32.add(wst, U32.sub(addr, cpl)), dp, hp)
+
+
+# The bound of a held list bounds its prefix.
+law DX.at_pre:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  for +t: A.Tr
+  for +q: U32
+  for +e: U32
+  for +h: {Q.SP.at(K.WD.app(xs, ys), t, q, e) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(xs), V.U.N(q)), V.U.N(e))) == True{} : Bool}
+
+def DX.at_pre(xs, ys, t, q, e, h):
+  P.Nat.le_trans(Nat.add(S.S.len(xs), V.U.N(q)), Nat.add(S.S.len(K.WD.app(xs, ys)), V.U.N(q)), V.U.N(e),
+    C.CP.le_add_r(S.S.len(xs), S.S.len(K.WD.app(xs, ys)), V.U.N(q),
+      (%Equal.sym(Nat, S.S.len(K.WD.app(xs, ys)), Nat.add(S.S.len(xs), S.S.len(ys)), K.WD.len_app(xs, ys)) :
+          {Cmp.is_le(Nat.cmp(S.S.len(xs), _)) == True{} : Bool};
+        P.Nat.cmp_add_r(S.S.len(xs), S.S.len(ys)))),
+    DX.at_le(K.WD.app(xs, ys), t, q, e, h))
+
+# An opcode
+# =========
+
+# The decoder on an opcode: its byte, its table entry, its two halves, then
+# whether to go on.
+law DX.op:
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +s: Q.ST
+  for +dpos: U32
+  for +ipos: U32
+  for +apos: U32
+  for +seg: U32
+  for +cpl: U32
+  for +wst: U32
+  for +oend: U32
+  for +dend: U32
+  for +iend: U32
+  for +aend: U32
+  for +tt: A.Tr
+  for +c: U32
+  for +f1: Q.HF
+  for +f2: Q.HF
+  for +restI: List<&2, U32>
+  for +restD: List<&2, U32>
+  for +restA: List<&2, U32>
+  for +hc: {Q.SP.cok(tb, Q.OP{c, f1, f2}) == True{} : Bool}
+  for +hi: {Q.SP.at(K.WD.app(Q.SP.ins(Q.OP{c, f1, f2}), restI), td, ipos, iend) == True{} : Bool}
+  for +hd: {Q.SP.at(K.WD.app(Q.SP.dat(f1), K.WD.app(Q.SP.dat(f2), restD)), td, dpos, dend) == True{} : Bool}
+  for +ha: {Q.SP.at(K.WD.app(Q.SP.adr(f1), K.WD.app(Q.SP.adr(f2), restA)), td, apos, aend) == True{} : Bool}
+  for +hv1: {Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1) == True{} : Bool}
+  for +hv2: {Q.SP.vst(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2) == True{} : Bool}
+  for +hdok1: {Q.SP.dok(f1) == True{} : Bool}
+  for +dp: Nat
+  for +E: U32
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  for +hdp: {Nat.cmp(dp, 32n) == LT{} : Cmp}
+  for +he: {Cmp.is_le(Nat.cmp(V.U.N(E), Nat.double(Nat.double(P.Nat.pow2(dp))))) == True{} : Bool}
+  for +hob1: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(Q.SP.size(f1)), V.U.N(Q.SP.so(s))), V.U.N(E))) == True{} : Bool}
+  for +hob2: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(Q.SP.size(f2)), V.U.N(Q.SP.so(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1)))), V.U.N(E))) == True{} : Bool}
+  for +hB1: {Q.SP.hbnd(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1, E) == True{} : Bool}
+  for +hB2: {Q.SP.hbnd(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2, E) == True{} : Bool}
+  {D.dec.step(D.WinC{seg, cpl, False{}, wst, oend, dend, iend, aend}, DX.st(ts, td, to, tb, Q.SP.sc(s), Q.SP.so(s), dpos, ipos, apos, Q.SP.ss(s))) == (U32.is_lt(Q.SP.ipos(Q.SP.e2(c), f2, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1))), iend), DX.st(ts, td, Q.SP.out(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.out(Q.XC{ts, tt, seg, cpl, wst, oend}, to, s, f1), Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2), tb, Q.SP.sc(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2)), Q.SP.so(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2)), Q.SP.dnext(f2, Q.SP.dnext(f1, dpos)), Q.SP.ipos(Q.SP.e2(c), f2, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1))), Q.SP.anext(f2, Q.SP.anext(f1, apos)), Q.SP.ss(Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), f2)))) : Bool & D.Dec}
+
+def DX.op(ts, td, to, tb, s, dpos, ipos, apos, seg, cpl, wst, oend, dend, iend, aend, tt, c, f1, f2, restI, restD, restA, hc, hi, hd, ha, hv1, hv2, hdok1, dp, E, hp, hdp, he, hob1, hob2, hB1, hB2):
+  @unfold DX.st
+  @simp -D.dec.half
+  @rw R.VI.rd(td, ipos, c, K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), restI), DX.at_has(c <> K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), restI), td, ipos, iend, hi))
+  @rw V.U.mask_id(c, 8n, {==}, P.Bool.and_l(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c)), P.Bool.and_l(Bool.and(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c))), Q.SP.hok(Q.SP.e1(c), f1), P.Bool.and_l(Bool.and(Bool.and(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c))), Q.SP.hok(Q.SP.e1(c), f1)), Q.SP.hok(Q.SP.e2(c), f2), hc))))
+  @unfold D.dec.opcode
+  @rw A.A.get_from(tb, c)
+  @rw V.U.is_eq(A.T.word(tb, c), D.ct.entry(c), P.Bool.and_r(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c)), P.Bool.and_l(Bool.and(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c))), Q.SP.hok(Q.SP.e1(c), f1), P.Bool.and_l(Bool.and(Bool.and(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c))), Q.SP.hok(Q.SP.e1(c), f1)), Q.SP.hok(Q.SP.e2(c), f2), hc))))
+  @unfold D.dec.op
+  @fold DX.st
+  @fold Q.SP.e1 Q.SP.e2
+  @rw DX.half_s(ts, td, to, tb, s, dpos, U32.add(ipos, 1), apos, seg, cpl, wst, oend, dend, iend, aend, tt, Q.SP.e1(c), f1, K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), restI), K.WD.app(Q.SP.dat(f2), restD), K.WD.app(Q.SP.adr(f2), restA), P.Bool.and_r(Bool.and(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c))), Q.SP.hok(Q.SP.e1(c), f1), P.Bool.and_l(Bool.and(Bool.and(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c))), Q.SP.hok(Q.SP.e1(c), f1)), Q.SP.hok(Q.SP.e2(c), f2), hc)), DX.at_has(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), restI)), td, U32.add(ipos, 1), iend, (%K.WD.app_assoc(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2), restI) : {Q.SP.at(_, td, U32.add(ipos, 1), iend) == True{} : Bool}; DX.at_next(c <> [], K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), restI), td, ipos, iend, 1, {==}, hi))), DX.at_pre(Q.SP.sz(Q.SP.e1(c), f1), K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), restI), td, U32.add(ipos, 1), iend, (%K.WD.app_assoc(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2), restI) : {Q.SP.at(_, td, U32.add(ipos, 1), iend) == True{} : Bool}; DX.at_next(c <> [], K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), restI), td, ipos, iend, 1, {==}, hi))), DX.at_has(K.WD.app(Q.SP.dat(f1), K.WD.app(Q.SP.dat(f2), restD)), td, dpos, dend, hd), DX.at_pre(Q.SP.dat(f1), K.WD.app(Q.SP.dat(f2), restD), td, dpos, dend, hd), DX.at_has(K.WD.app(Q.SP.adr(f1), K.WD.app(Q.SP.adr(f2), restA)), td, apos, aend, ha), DX.at_pre(Q.SP.adr(f1), K.WD.app(Q.SP.adr(f2), restA), td, apos, aend, ha), hv1, dp, E, hp, hdp, he, hob1, hB1)
+  @rw DX.half_s(ts, td, Q.SP.out(Q.XC{ts, tt, seg, cpl, wst, oend}, to, s, f1), tb, Q.SP.next(Q.XC{ts, tt, seg, cpl, wst, oend}, s, f1), Q.SP.dnext(f1, dpos), Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1)), Q.SP.anext(f1, apos), seg, cpl, wst, oend, dend, iend, aend, tt, Q.SP.e2(c), f2, restI, restD, restA, P.Bool.and_r(Bool.and(Bool.and(U32.is_lt(c, 256), U32.is_eq(A.T.word(tb, c), D.ct.entry(c))), Q.SP.hok(Q.SP.e1(c), f1)), Q.SP.hok(Q.SP.e2(c), f2), hc), DX.at_has(K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), restI), td, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1)), iend, DX.sz_next(Q.SP.e1(c), f1, K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), restI), td, U32.add(ipos, 1), iend, (%K.WD.app_assoc(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2), restI) : {Q.SP.at(_, td, U32.add(ipos, 1), iend) == True{} : Bool}; DX.at_next(c <> [], K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), restI), td, ipos, iend, 1, {==}, hi)))), DX.at_pre(Q.SP.sz(Q.SP.e2(c), f2), restI, td, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1)), iend, DX.sz_next(Q.SP.e1(c), f1, K.WD.app(Q.SP.sz(Q.SP.e2(c), f2), restI), td, U32.add(ipos, 1), iend, (%K.WD.app_assoc(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2), restI) : {Q.SP.at(_, td, U32.add(ipos, 1), iend) == True{} : Bool}; DX.at_next(c <> [], K.WD.app(K.WD.app(Q.SP.sz(Q.SP.e1(c), f1), Q.SP.sz(Q.SP.e2(c), f2)), restI), td, ipos, iend, 1, {==}, hi)))), DX.at_has(K.WD.app(Q.SP.dat(f2), restD), td, Q.SP.dnext(f1, dpos), dend, DX.dat_next(f1, K.WD.app(Q.SP.dat(f2), restD), td, dpos, dend, hdok1, hd)), DX.at_pre(Q.SP.dat(f2), restD, td, Q.SP.dnext(f1, dpos), dend, DX.dat_next(f1, K.WD.app(Q.SP.dat(f2), restD), td, dpos, dend, hdok1, hd)), DX.at_has(K.WD.app(Q.SP.adr(f2), restA), td, Q.SP.anext(f1, apos), aend, DX.adr_next(f1, K.WD.app(Q.SP.adr(f2), restA), td, apos, aend, ha)), DX.at_pre(Q.SP.adr(f2), restA, td, Q.SP.anext(f1, apos), aend, DX.adr_next(f1, K.WD.app(Q.SP.adr(f2), restA), td, apos, aend, ha)), hv2, dp, E, DX.pf_out(Q.XC{ts, tt, seg, cpl, wst, oend}, to, s, f1, dp, hp), hdp, he, hob2, hB2)
+  @unfold DX.st D.dec.more
+  @simp
+  @rw DX.and_true(U32.is_lt(Q.SP.ipos(Q.SP.e2(c), f2, Q.SP.ipos(Q.SP.e1(c), f1, U32.add(ipos, 1))), iend))
+  {==}

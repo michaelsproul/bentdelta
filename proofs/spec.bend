@@ -89,10 +89,13 @@ def SP.hok(+h: U32, +f: HF) -> Bool:
     && (U32.is_eq(SP.hs(h), 0) || U32.is_eq(SP.hs(h), SP.size(f)))
     && (U32.is_ne(SP.kind(f), 3) || U32.is_eq(SP.hm(h), SP.mode(f)))
 
-def SP.cok(+o: OP) -> Bool:
+# An opcode fits its halves, and the table tb holds the code table's entry
+# for it (the decoder's table, as a tree).
+def SP.cok(+tb: A.Tr, +o: OP) -> Bool:
   match o:
     case OP{c, h1, h2}:
-      (c < 256 : U32) && SP.hok(SP.e1(c), h1) && SP.hok(SP.e2(c), h2)
+      (c < 256 : U32) && U32.is_eq(A.T.word(tb, c), D.ct.entry(c))
+        && SP.hok(SP.e1(c), h1) && SP.hok(SP.e2(c), h2)
 
 # Sections
 # ========
@@ -355,3 +358,19 @@ def SP.hbnd(+x: XC, +s: ST, +f: HF, +E: U32) -> Bool:
       True{}
     case ST{opos, c, slot} HC{n, m, v}:
       SP.cbnd(x, opos, n, SP.daddr(m, v, SP.here(x, opos), c), E)
+
+# The tree t holds xs at q, ending by e.
+def SP.at(+xs: List<&2, U32>, +t: A.Tr, +q: U32, +e: U32) -> Bool:
+  S.S.has(xs, t, q) && Cmp.is_le(Nat.cmp(Nat.add(S.S.len(xs), U32.to_nat(q)), U32.to_nat(e)))
+
+# What a half of an ADD needs of its data: as many bytes as its size.
+def SP.dok(+f: HF) -> Bool:
+  match f:
+    case HN{}:
+      True{}
+    case HA{n, xs}:
+      SP.lenis(xs, n)
+    case HR{n, b}:
+      True{}
+    case HC{n, m, v}:
+      True{}

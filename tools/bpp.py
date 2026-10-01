@@ -974,6 +974,39 @@ def fold_all(e):
     return c if c is not None else e
 
 
+def fo_match(pat, e, env):
+    """First-order matching: pattern variables are ('var', '?x')."""
+    if isinstance(pat, tuple) and pat and pat[0] == 'var' and pat[1].startswith('?'):
+        k = pat[1][1:]
+        if k in env:
+            return env[k] == e
+        env[k] = e
+        return True
+    if not isinstance(pat, tuple) or not isinstance(e, tuple):
+        return pat == e
+    if len(pat) != len(e):
+        return False
+    if pat and isinstance(pat[0], str) and pat[0] != e[0]:
+        return False
+    for x, y in zip(pat, e):
+        if isinstance(x, tuple) or isinstance(y, tuple):
+            if not fo_match(x, y, env):
+                return False
+        elif x != y:
+            return False
+    return True
+
+
+def fold_with(e, name, ps, tmpl):
+    """e with every instance of the template replaced by name(args)."""
+    if not isinstance(e, tuple) or not e:
+        return e
+    env = {}
+    if fo_match(tmpl, e, env) and all(p in env for p in ps):
+        return ('call', name, tuple(env[p] for p in ps))
+    return tuple(fold_with(x, name, ps, tmpl) if isinstance(x, tuple) else x for x in e)
+
+
 DEFCACHE = {}
 NOSIMP = {'U32.shrn', 'U32.shln', 'Nat.mul'}
 
@@ -1122,6 +1155,16 @@ def directive(ctx, text, goal, ind, out):
             raise Err(f"{ctx.name}: no goal tracked here (use @goal)")
         f, g = arg.split()
         return rename(goal, lambda n: g if n == f else n)
+    if cmd == 'fold':
+        if goal is None:
+            raise Err(f"{ctx.name}: no goal tracked here (use @goal)")
+        for name in arg.split():
+            ps, body = def_body(ctx.cur, name)
+            t = run_body(body, {p: ('var', '?' + p) for p in ps})
+            if t is None:
+                raise Err(f"{ctx.name}: cannot fold {name}")
+            goal = fold_with(goal, name, ps, norm(t))
+        return goal
     if cmd == 'unfold':
         if goal is None:
             raise Err(f"{ctx.name}: no goal tracked here (use @goal)")
