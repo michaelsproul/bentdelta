@@ -1,0 +1,474 @@
+import Base
+import ../bytes.bend as B
+import ../vcdiff.bend as D
+import ./nat.bend as P
+import ./word.bend as W
+import ./u32.bend as V
+import ./array.bend as A
+import ./bytes.bend as Y
+import ./seq.bend as S
+import ./words.bend as K
+import ./copy.bend as C
+import ./varint.bend as R
+import ./spec.bend as Q
+import ./sem.bend as M
+import ./dec.bend as X
+import ./adler.bend as H
+import ./dwin.bend as J
+
+# The decoder on a whole delta: its header, the prescan of its windows, the
+# target buffer, then each window in turn (proofs/dwin).
+#
+# Source: proofs/dtop.bp (tools/bpp.py writes proofs/dtop.bend from it).
+
+# The file header
+# ===============
+
+law DT.rd:
+  for +td: A.Tr
+  for +q: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(v <> rest, td, q) == True{} : Bool}
+  {B.B.get(A.A.from(td), q) == (A.A.from(td), U32.and(v, 255)) : Array<U32> & U32}
+
+def DT.rd(td, q, v, rest, h):
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), q), (A.A.from(td), Y.BP.byt(td, q)), Y.BP.get_from(td, q)) :
+    {_ == (A.A.from(td), U32.and(v, 255)) : Array<U32> & U32}
+  %Equal.sym(U32, Y.BP.byt(td, q), U32.and(v, 255),
+    V.U.is_eq(Y.BP.byt(td, q), U32.and(v, 255),
+      P.Bool.and_l(U32.is_eq(Y.BP.byt(td, q), U32.and(v, 255)), S.S.has(rest, td, (q + 1 : U32)), h))) :
+    {(A.A.from(td), _) == (A.A.from(td), U32.and(v, 255)) : Array<U32> & U32}
+  {==}
+
+# The rest of a list held.
+law DT.tl:
+  for +td: A.Tr
+  for +q: U32
+  for +v: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(v <> rest, td, q) == True{} : Bool}
+  {S.S.has(rest, td, (q + 1 : U32)) == True{} : Bool}
+
+def DT.tl(td, q, v, rest, h):
+  P.Bool.and_r(U32.is_eq(Y.BP.byt(td, q), U32.and(v, 255)), S.S.has(rest, td, (q + 1 : U32)), h)
+
+law DT.hdr:
+  for +td: A.Tr
+  for +dlen: U32
+  for +rest: List<&2, U32>
+  for +h: {S.S.has(214 <> 195 <> 196 <> 0 <> 0 <> rest, td, 0) == True{} : Bool}
+  for +hl: {Nat.cmp(4n, V.U.N(dlen)) == LT{} : Cmp}
+  {D.hdr.parse(A.A.from(td), dlen) == (A.A.from(td), (5, 0)) : Array<U32> & (U32 & U32)}
+
+def DT.hdr(td, dlen, rest, h, hl):
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), 0), (A.A.from(td), 214),
+    DT.rd(td, 0, 214, 195 <> 196 <> 0 <> 0 <> rest, h)) :
+    {D.hdr.magic(dlen, D.be32.k0(0, dlen, _)) == (A.A.from(td), (5, 0)) : Array<U32> & (U32 & U32)}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), 1), (A.A.from(td), 195),
+    DT.rd(td, 1, 195, 196 <> 0 <> 0 <> rest, DT.tl(td, 0, 214, 195 <> 196 <> 0 <> 0 <> rest, h))) :
+    {D.hdr.magic(dlen, D.be32.k1(214, 1, dlen, _)) == (A.A.from(td), (5, 0)) : Array<U32> & (U32 & U32)}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), 2), (A.A.from(td), 196),
+    DT.rd(td, 2, 196, 0 <> 0 <> rest, DT.tl(td, 1, 195, 196 <> 0 <> 0 <> rest, DT.tl(td, 0, 214, 195 <> 196 <> 0 <> 0 <> rest, h)))) :
+    {D.hdr.magic(dlen, D.be32.k2(54979, 2, dlen, _)) == (A.A.from(td), (5, 0)) : Array<U32> & (U32 & U32)}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), 3), (A.A.from(td), 0),
+    DT.rd(td, 3, 0, 0 <> rest, DT.tl(td, 2, 196, 0 <> 0 <> rest, DT.tl(td, 1, 195, 196 <> 0 <> 0 <> rest, DT.tl(td, 0, 214, 195 <> 196 <> 0 <> 0 <> rest, h))))) :
+    {D.hdr.magic(dlen, D.be32.k3(14074820, 3, dlen, _)) == (A.A.from(td), (5, 0)) : Array<U32> & (U32 & U32)}
+  %Equal.sym(Bool, U32.is_lt(3, dlen), True{}, V.U.N_lt(3, dlen, P.Nat.lt_succ_l(3n, V.U.N(dlen), hl))) :
+    {D.hdr.magic(dlen, B.VR{A.A.from(td), 3603153920, 4, _}) == (A.A.from(td), (5, 0)) : Array<U32> & (U32 & U32)}
+  %Equal.sym(Array<U32> & U32, B.B.get(A.A.from(td), 4), (A.A.from(td), 0),
+    DT.rd(td, 4, 0, rest, DT.tl(td, 3, 0, 0 <> rest, DT.tl(td, 2, 196, 0 <> 0 <> rest, DT.tl(td, 1, 195, 196 <> 0 <> 0 <> rest, DT.tl(td, 0, 214, 195 <> 196 <> 0 <> 0 <> rest, h)))))) :
+    {D.hdr.ind(0, dlen, B.B.byte.k(4, dlen, _)) == (A.A.from(td), (5, 0)) : Array<U32> & (U32 & U32)}
+  %Equal.sym(Bool, U32.is_lt(4, dlen), True{}, V.U.N_lt(4, dlen, hl)) :
+    {D.hdr.ind(0, dlen, B.VR{A.A.from(td), 0, 5, _}) == (A.A.from(td), (5, 0)) : Array<U32> & (U32 & U32)}
+  {==}
+
+
+# The target buffer
+# =================
+
+# Its depth: one word for up to four bytes, else a new tree.
+def O.d(z: Bool, +len: U32) -> Nat:
+  match z:
+    case True{}:
+      0n
+    case False{}:
+      B.B.depth(B.B.words(len))
+
+def O.dep(+len: U32) -> Nat:
+  O.d(U32.is_le(B.B.words(len), 1), len)
+
+law O.buf.go:
+  for +len: U32
+  for +z: Bool
+  for +ez: {U32.is_le(B.B.words(len), 1) == z : Bool}
+  {D.dec.buf(len, Array.size(U32, [0 : U32^0n])) == A.A.from(A.T.new(O.dep(len), 0)) : Array<U32>}
+
+def O.buf.go(len, z, ez):
+  match z:
+    case True{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), True{}, ez) :
+        {D.dec.buf.if(Bool.and(_, True{}), len, [0 : U32^0n]) == A.A.from(A.T.new(O.d(_, len), 0)) : Array<U32>}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), False{}, ez) :
+        {D.dec.buf.if(Bool.and(_, True{}), len, [0 : U32^0n]) == A.A.from(A.T.new(O.d(_, len), 0)) : Array<U32>}
+      A.A.new_from(B.B.depth(B.B.words(len)), 0)
+
+law O.buf:
+  for +len: U32
+  {D.dec.buf(len, Array.size(U32, [0 : U32^0n])) == A.A.from(A.T.new(O.dep(len), 0)) : Array<U32>}
+
+def O.buf(len):
+  O.buf.go(len, U32.is_le(B.B.words(len), 1), {==})
+
+law O.lt32.go:
+  for +len: U32
+  for +z: Bool
+  for +ez: {U32.is_le(B.B.words(len), 1) == z : Bool}
+  {Nat.cmp(O.dep(len), 32n) == LT{} : Cmp}
+
+def O.lt32.go(len, z, ez):
+  match z:
+    case True{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), True{}, ez) : {Nat.cmp(O.d(_, len), 32n) == LT{} : Cmp}
+      {==}
+    case False{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), False{}, ez) : {Nat.cmp(O.d(_, len), 32n) == LT{} : Cmp}
+      Y.BD.lt(B.B.words(len))
+
+law O.lt32:
+  for +len: U32
+  {Nat.cmp(O.dep(len), 32n) == LT{} : Cmp}
+
+def O.lt32(len):
+  O.lt32.go(len, U32.is_le(B.B.words(len), 1), {==})
+
+# The words of len bytes, as a value.
+law O.Nw:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {V.U.N(B.B.words(len)) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
+
+def O.Nw(len, hlen):
+  %Equal.sym(Nat, V.U.N(U32.shr(U32.shr((len + 3 : U32)))), P.Nat.half(V.U.N(U32.shr((len + 3 : U32)))),
+    V.U.N_shr(U32.shr((len + 3 : U32)))) :
+    {_ == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
+  %Equal.sym(Nat, V.U.N(U32.shr((len + 3 : U32))), P.Nat.half(V.U.N((len + 3 : U32))), V.U.N_shr((len + 3 : U32))) :
+    {P.Nat.half(_) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
+  %Equal.sym(Nat, V.U.N((len + 3 : U32)), Nat.add(V.U.N(len), V.U.N(3)),
+    V.U.add_top(len, 3, V.U.bit_lt_pow(len, 27n, 31n, hlen, {==}, {==}), {==})) :
+    {P.Nat.half(P.Nat.half(_)) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
+  {==}
+
+law O.he.go:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +z: Bool
+  for +ez: {U32.is_le(B.B.words(len), 1) == z : Bool}
+  {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.dep(len)))))) == True{} : Bool}
+
+def O.he.go(len, hlen, z, ez):
+  match z:
+    case True{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), True{}, ez) :
+        {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.d(_, len)))))) == True{} : Bool}
+      P.Nat.le_trans(V.U.N(len), Nat.double(Nat.double(V.U.N(B.B.words(len)))), 4n,
+        (%Equal.sym(Nat, V.U.N(B.B.words(len)), P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))), O.Nw(len, hlen)) :
+            {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(_)))) == True{} : Bool}
+          P.Nat.le_words(V.U.N(len))),
+        P.Nat.double_mono(Nat.double(V.U.N(B.B.words(len))), 2n,
+          P.Nat.double_mono(V.U.N(B.B.words(len)), 1n, V.U.le_N(B.B.words(len), 1, ez))))
+    case False{}:
+      %Equal.sym(Bool, U32.is_le(B.B.words(len), 1), False{}, ez) :
+        {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.d(_, len)))))) == True{} : Bool}
+      P.Nat.le_trans(V.U.N(len), Nat.double(Nat.double(V.U.N(B.B.words(len)))),
+        Nat.double(Nat.double(P.Nat.pow2(B.B.depth(B.B.words(len))))),
+        (%Equal.sym(Nat, V.U.N(B.B.words(len)), P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))), O.Nw(len, hlen)) :
+            {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(_)))) == True{} : Bool}
+          P.Nat.le_words(V.U.N(len))),
+        P.Nat.double_mono(Nat.double(V.U.N(B.B.words(len))), Nat.double(P.Nat.pow2(B.B.depth(B.B.words(len)))),
+          P.Nat.double_mono(V.U.N(B.B.words(len)), P.Nat.pow2(B.B.depth(B.B.words(len))),
+            (%V.U.N_pow(B.B.depth(B.B.words(len)), Y.BD.lt(B.B.words(len))) :
+                {Cmp.is_le(Nat.cmp(V.U.N(B.B.words(len)), _)) == True{} : Bool}
+              V.U.le_N(B.B.words(len), U32.shln(1, B.B.depth(B.B.words(len))),
+                Y.BD.le(B.B.words(len),
+                  V.U.lt_to_le(B.B.words(len), U32.shln(1, 31n),
+                    V.U.lt_of_top(B.B.words(len), U32.shln(1, 31n),
+                      (%Equal.sym(Bool, V.U.bit(U32.shr(U32.shr((len + 3 : U32))), 31n),
+                          V.U.bit(U32.shr((len + 3 : U32)), 32n), V.U.bit_shr(U32.shr((len + 3 : U32)), 31n)) :
+                          {_ == False{} : Bool}
+                        V.U.bit_beyond(U32.shr((len + 3 : U32)), 32n, {==})),
+                      {==}))))))))
+
+# The target fits its buffer.
+law O.he:
+  for +len: U32
+  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.dep(len)))))) == True{} : Bool}
+
+def O.he(len, hlen):
+  O.he.go(len, hlen, U32.is_le(B.B.words(len), 1), {==})
+
+
+# The windows
+# ===========
+
+law DT.lt_self:
+  for +x: U32
+  {U32.is_lt(x, x) == False{} : Bool}
+
+def DT.lt_self(x):
+  @unfold U32.is_lt
+  @rw V.U.cmp_refl(x)
+  @simp
+  {==}
+
+# Decoding the windows ws from pos, to the delta's end.
+law DT.loop:
+  for +k: Nat
+  for +ws: List<&2, Q.AW>
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +ca: A.Tr
+  for +slen: U32
+  for +dlen: U32
+  for +pos: U32
+  for +opos: U32
+  for +tt: A.Tr
+  for +dp: Nat
+  for +E: U32
+  for +Es: U32
+  for +h: {Q.SP.at(Q.SP.wbs(ws), td, pos, dlen) == True{} : Bool}
+  for +hd: {Q.SP.wend(ws, pos) == dlen : U32}
+  for +hk: {Cmp.is_le(Nat.cmp(Q.SP.nw(ws), k)) == True{} : Bool}
+  for +hw: {Q.SP.wsok(ws, ts, tt, slen, opos, tb, E, Es) == True{} : Bool}
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  for +hdp: {Nat.cmp(dp, 32n) == LT{} : Cmp}
+  for +he: {Cmp.is_le(Nat.cmp(V.U.N(E), Nat.double(Nat.double(P.Nat.pow2(dp))))) == True{} : Bool}
+  for +hca: {A.T.pf(10n, ca) == True{} : Bool}
+  for +hto: {S.S.has(S.S.sl(V.U.N(opos), tt, 0), to, 0) == True{} : Bool}
+  {D.win.loop(k, (U32.is_lt(pos, dlen), D.DS{A.A.from(ts), A.A.from(td), A.A.from(to), A.A.from(tb), A.A.from(ca), slen, dlen, pos, opos, 0})) == D.DS{A.A.from(ts), A.A.from(td), A.A.from(Q.SP.wto(ws, ts, tt, to, opos)), A.A.from(tb), A.A.from(Q.SP.wca(ws, ts, tt, ca, opos)), slen, dlen, dlen, Q.SP.wop(ws, opos), 0} : D.DS}
+
+def DT.loop(k, ws, ts, td, to, tb, ca, slen, dlen, pos, opos, tt, dp, E, Es, h, hd, hk, hw, hp, hdp, he, hca, hto):
+  match k ws:
+    case 0n Nil{}:
+      @simp -A.T.new
+      @rwx hd : {pos == dlen : U32}
+      {==}
+    case 0n Con{w, r}:
+      @absurd hk
+    case 1n+p Nil{}:
+      @simp -A.T.new
+      @rwx hd : {pos == dlen : U32}
+      @rw DT.lt_self(dlen)
+      @simp -A.T.new
+      {==}
+    case 1n+p Con{w, r}:
+      @rw J.DW.lt_pos(w, Q.SP.wbs(r), td, pos, dlen, h)
+      @simp -A.T.new -D.win.dec
+      @rw J.DW.win(ts, td, to, tb, ca, slen, dlen, pos, opos, w, Q.SP.wbs(r), tt, dp, E, Es, h, P.Bool.and_l(Q.SP.wok(w, ts, tt, slen, opos, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(opos, Q.SP.wtl(w)), tb, E, Es), hw), hp, hdp, he, hca, hto)
+      @unfold D.win.more
+      @simp -A.T.new -D.win.dec
+      @rw P.Bool.and_true(U32.is_lt(Q.SP.wnd(pos, w), dlen))
+      @rw DT.loop(p, r, ts, td, Q.SP.outs(Q.SP.halves(Q.SP.wops(w)), Q.SP.wx(ts, tt, w, opos), to, Q.SP.s0(opos)), tb, Q.SP.sc(Q.SP.run(Q.SP.halves(Q.SP.wops(w)), Q.SP.wx(ts, tt, w, opos), Q.SP.s0(opos))), slen, dlen, Q.SP.wnd(pos, w), U32.add(opos, Q.SP.wtl(w)), tt, dp, E, Es, J.DW.next(ts, td, to, tb, ca, slen, dlen, pos, opos, w, Q.SP.wbs(r), tt, dp, E, Es, h, P.Bool.and_l(Q.SP.wok(w, ts, tt, slen, opos, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(opos, Q.SP.wtl(w)), tb, E, Es), hw)), hd, hk, P.Bool.and_r(Q.SP.wok(w, ts, tt, slen, opos, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(opos, Q.SP.wtl(w)), tb, E, Es), hw), J.DW.pf_outs(Q.SP.halves(Q.SP.wops(w)), Q.SP.wx(ts, tt, w, opos), to, Q.SP.s0(opos), dp, hp), hdp, he, J.DW.pf_ca(Q.SP.halves(Q.SP.wops(w)), Q.SP.wx(ts, tt, w, opos), Q.SP.s0(opos), 10n, A.T.pf_new(10n, 0)), J.DW.hto_next(ts, to, tb, slen, opos, w, tt, dp, E, Es, P.Bool.and_l(Q.SP.wok(w, ts, tt, slen, opos, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(opos, Q.SP.wtl(w)), tb, E, Es), hw), hp, hdp, he, hto))
+      {==}
+
+# The prescan over the windows ws from pos: the target's length.
+law DT.pre:
+  for +k: Nat
+  for +ws: List<&2, Q.AW>
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +tb: A.Tr
+  for +slen: U32
+  for +dlen: U32
+  for +pos: U32
+  for +total: U32
+  for +tt: A.Tr
+  for +E: U32
+  for +Es: U32
+  for +h: {Q.SP.at(Q.SP.wbs(ws), td, pos, dlen) == True{} : Bool}
+  for +hd: {Q.SP.wend(ws, pos) == dlen : U32}
+  for +hk: {Cmp.is_le(Nat.cmp(Q.SP.nw(ws), k)) == True{} : Bool}
+  for +hw: {Q.SP.wsok(ws, ts, tt, slen, total, tb, E, Es) == True{} : Bool}
+  {D.pre.loop(k, (U32.is_lt(pos, dlen), D.PS{A.A.from(td), dlen, pos, total, 0})) == D.PS{A.A.from(td), dlen, dlen, Q.SP.wop(ws, total), 0} : D.PS}
+
+def DT.pre(k, ws, ts, td, tb, slen, dlen, pos, total, tt, E, Es, h, hd, hk, hw):
+  match k ws:
+    case 0n Nil{}:
+      @simp
+      @rwx hd : {pos == dlen : U32}
+      {==}
+    case 0n Con{w, r}:
+      @absurd hk
+    case 1n+p Nil{}:
+      @simp
+      @rwx hd : {pos == dlen : U32}
+      @rw DT.lt_self(dlen)
+      @simp
+      {==}
+    case 1n+p Con{w, r}:
+      @rw J.DW.lt_pos(w, Q.SP.wbs(r), td, pos, dlen, h)
+      @simp -D.pre.step
+      @rw J.DW.pre(ts, td, tt, tb, tt, slen, dlen, pos, total, w, Q.SP.wbs(r), tt, 0n, E, Es, h, P.Bool.and_l(Q.SP.wok(w, ts, tt, slen, total, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(total, Q.SP.wtl(w)), tb, E, Es), hw))
+      @rw P.Bool.and_true(U32.is_lt(Q.SP.wnd(pos, w), dlen))
+      @rw DT.pre(p, r, ts, td, tb, slen, dlen, Q.SP.wnd(pos, w), U32.add(total, Q.SP.wtl(w)), tt, E, Es, J.DW.next(ts, td, tt, tb, tt, slen, dlen, pos, total, w, Q.SP.wbs(r), tt, 0n, E, Es, h, P.Bool.and_l(Q.SP.wok(w, ts, tt, slen, total, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(total, Q.SP.wtl(w)), tb, E, Es), hw)), hd, hk, P.Bool.and_r(Q.SP.wok(w, ts, tt, slen, total, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(total, Q.SP.wtl(w)), tb, E, Es), hw))
+      {==}
+
+# The target holds tt's bytes up to the windows' end.
+law DT.hto_all:
+  for +ws: List<&2, Q.AW>
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +to: A.Tr
+  for +tb: A.Tr
+  for +slen: U32
+  for +opos: U32
+  for +dp: Nat
+  for +E: U32
+  for +Es: U32
+  for +hw: {Q.SP.wsok(ws, ts, tt, slen, opos, tb, E, Es) == True{} : Bool}
+  for +hp: {A.T.pf(dp, to) == True{} : Bool}
+  for +hdp: {Nat.cmp(dp, 32n) == LT{} : Cmp}
+  for +he: {Cmp.is_le(Nat.cmp(V.U.N(E), Nat.double(Nat.double(P.Nat.pow2(dp))))) == True{} : Bool}
+  for +hto: {S.S.has(S.S.sl(V.U.N(opos), tt, 0), to, 0) == True{} : Bool}
+  {S.S.has(S.S.sl(V.U.N(Q.SP.wop(ws, opos)), tt, 0), Q.SP.wto(ws, ts, tt, to, opos), 0) == True{} : Bool}
+
+def DT.hto_all(ws, ts, tt, to, tb, slen, opos, dp, E, Es, hw, hp, hdp, he, hto):
+  match ws:
+    case []:
+      hto
+    case w <> r:
+      DT.hto_all(r, ts, tt, Q.SP.outs(Q.SP.halves(Q.SP.wops(w)), Q.SP.wx(ts, tt, w, opos), to, Q.SP.s0(opos)), tb, slen, U32.add(opos, Q.SP.wtl(w)), dp, E, Es, P.Bool.and_r(Q.SP.wok(w, ts, tt, slen, opos, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(opos, Q.SP.wtl(w)), tb, E, Es), hw), J.DW.pf_outs(Q.SP.halves(Q.SP.wops(w)), Q.SP.wx(ts, tt, w, opos), to, Q.SP.s0(opos), dp, hp), hdp, he, J.DW.hto_next(ts, to, tb, slen, opos, w, tt, dp, E, Es, P.Bool.and_l(Q.SP.wok(w, ts, tt, slen, opos, tb, E, Es), Q.SP.wsok(r, ts, tt, slen, U32.add(opos, Q.SP.wtl(w)), tb, E, Es), hw), hp, hdp, he, hto))
+
+law DT.len_le_r:
+  for +xs: List<&2, U32>
+  for +ys: List<&2, U32>
+  {Cmp.is_le(Nat.cmp(S.S.len(ys), S.S.len(K.WD.app(xs, ys)))) == True{} : Bool}
+
+def DT.len_le_r(xs, ys):
+  @rw K.WD.len_app(xs, ys)
+  P.Nat.le_add_l(S.S.len(xs), S.S.len(ys))
+
+law DT.nw_le.go:
+  for +w: Q.AW
+  for +r: List<&2, Q.AW>
+  for +ih: {Cmp.is_le(Nat.cmp(Q.SP.nw(r), S.S.len(Q.SP.wbs(r)))) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(1n+Q.SP.nw(r), S.S.len(K.WD.app(Q.SP.wb(w), Q.SP.wbs(r))))) == True{} : Bool}
+
+def DT.nw_le.go(w, r, ih):
+  match w:
+    case Q.AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      P.Nat.le_trans(Q.SP.nw(r), S.S.len(Q.SP.wbs(r)), S.S.len(K.WD.app(K.WD.app(Q.SP.segb(cpl, off), K.WD.app(R.VI.var(Q.SP.enc(tlen, dl, il, al)), K.WD.app(Q.SP.hdr2(Q.AW{cpl, off, tlen, dl, il, al, ops, sum}), Q.SP.secs(Q.AW{cpl, off, tlen, dl, il, al, ops, sum})))), Q.SP.wbs(r))), ih, DT.len_le_r(K.WD.app(Q.SP.segb(cpl, off), K.WD.app(R.VI.var(Q.SP.enc(tlen, dl, il, al)), K.WD.app(Q.SP.hdr2(Q.AW{cpl, off, tlen, dl, il, al, ops, sum}), Q.SP.secs(Q.AW{cpl, off, tlen, dl, il, al, ops, sum})))), Q.SP.wbs(r)))
+
+# Each window takes a byte at least.
+law DT.nw_le:
+  for +ws: List<&2, Q.AW>
+  {Cmp.is_le(Nat.cmp(Q.SP.nw(ws), S.S.len(Q.SP.wbs(ws)))) == True{} : Bool}
+
+def DT.nw_le(ws):
+  match ws:
+    case []:
+      {==}
+    case w <> r:
+      DT.nw_le.go(w, r, DT.nw_le(r))
+
+law DT.fuel.b:
+  for +ws: List<&2, Q.AW>
+  for +dlen: U32
+  for +hb: {Cmp.is_le(Nat.cmp(Nat.add(S.S.len(Q.SP.delta(ws)), V.U.N(0)), V.U.N(dlen))) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(S.S.len(Q.SP.wbs(ws)), V.U.N(dlen))) == True{} : Bool}
+
+def DT.fuel.b(ws, dlen, hb):
+  P.Nat.le_trans(S.S.len(Q.SP.wbs(ws)), Nat.add(S.S.len(Q.SP.delta(ws)), V.U.N(0)), V.U.N(dlen),
+    (%Equal.sym(Nat, Nat.add(5n+S.S.len(Q.SP.wbs(ws)), 0n), 5n+S.S.len(Q.SP.wbs(ws)), P.Nat.add_zero_r(5n+S.S.len(Q.SP.wbs(ws)))) : {Cmp.is_le(Nat.cmp(S.S.len(Q.SP.wbs(ws)), _)) == True{} : Bool};
+      P.Nat.le_add_l(5n, S.S.len(Q.SP.wbs(ws)))), hb)
+
+# The loops run once per window at most.
+law DT.fuel:
+  for +ws: List<&2, Q.AW>
+  for +td: A.Tr
+  for +dlen: U32
+  for +h: {Q.SP.at(Q.SP.delta(ws), td, 0, dlen) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(Q.SP.nw(ws), U32.to_nat(dlen))) == True{} : Bool}
+
+def DT.fuel(ws, td, dlen, h):
+  P.Nat.le_trans(Q.SP.nw(ws), S.S.len(Q.SP.wbs(ws)), V.U.N(dlen), DT.nw_le(ws), DT.fuel.b(ws, dlen, X.DX.at_le(Q.SP.delta(ws), td, 0, dlen, h)))
+
+# The delta is longer than its header's first four bytes.
+law DT.hl:
+  for +ws: List<&2, Q.AW>
+  for +td: A.Tr
+  for +dlen: U32
+  for +h: {Q.SP.at(Q.SP.delta(ws), td, 0, dlen) == True{} : Bool}
+  {Nat.cmp(4n, V.U.N(dlen)) == LT{} : Cmp}
+
+def DT.hl(ws, td, dlen, h):
+  K.WD.lt_of_succ_le(4n, V.U.N(dlen), P.Nat.le_trans(5n, Nat.add(S.S.len(Q.SP.delta(ws)), V.U.N(0)), V.U.N(dlen),
+    (%Equal.sym(Nat, Nat.add(5n+S.S.len(Q.SP.wbs(ws)), 0n), 5n+S.S.len(Q.SP.wbs(ws)), P.Nat.add_zero_r(5n+S.S.len(Q.SP.wbs(ws)))) : {Cmp.is_le(Nat.cmp(5n, _)) == True{} : Bool};
+      P.Nat.cmp_add_r(5n, S.S.len(Q.SP.wbs(ws)))), X.DX.at_le(Q.SP.delta(ws), td, 0, dlen, h)))
+
+law DT.cnew:
+  {D.cache.new() == A.A.from(A.T.new(10n, 0)) : Array<U32>}
+
+def DT.cnew():
+  A.A.new_from(10n, 0)
+
+# A delta of windows ws decodes to the target they rebuild.
+law DT.dec:
+  for +ws: List<&2, Q.AW>
+  for +ts: A.Tr
+  for +td: A.Tr
+  for +tt: A.Tr
+  for +slen: U32
+  for +dlen: U32
+  for +total: U32
+  for +h: {Q.SP.at(Q.SP.delta(ws), td, 0, dlen) == True{} : Bool}
+  for +hd: {Q.SP.wend(ws, 5) == dlen : U32}
+  for +hw: {Q.SP.wsok(ws, ts, tt, slen, 0, A.A.to(D.ct.table()), total, slen) == True{} : Bool}
+  for +ht: {Q.SP.wop(ws, 0) == total : U32}
+  for +hlen: {U32.is_lt(total, 134217728) == True{} : Bool}
+  {D.decode(B.Bytes{slen, A.A.from(ts)}, B.Bytes{dlen, A.A.from(td)}) == (B.Bytes{slen, A.A.from(ts)}, (B.Bytes{dlen, A.A.from(td)}, Done{B.Bytes{total, A.A.from(Q.SP.wto(ws, ts, tt, A.T.new(O.dep(total), 0), 0))}})) : B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>)}
+
+def DT.dec(ws, ts, td, tt, slen, dlen, total, h, hd, hw, ht, hlen):
+  @unfold D.decode D.decode.into
+  @simp -A.T.new
+  @rw DT.hdr(td, dlen, Q.SP.wbs(ws), X.DX.at_has(Q.SP.delta(ws), td, 0, dlen, h), DT.hl(ws, td, dlen, h))
+  @unfold D.dec.hdr
+  @simp -A.T.new
+  @rw P.Bool.and_true(U32.is_lt(5, dlen))
+  @rw DT.pre(U32.to_nat(dlen), ws, ts, td, A.A.to(D.ct.table()), slen, dlen, 5, 0, tt, total, slen, X.DX.at_next(214 <> 195 <> 196 <> 0 <> 0 <> [], Q.SP.wbs(ws), td, 0, dlen, 5, {==}, h), hd, DT.fuel(ws, td, dlen, h), hw)
+  @unfold D.dec.pre D.u32.pick
+  @simp -A.T.new
+  @rwx ht : {Q.SP.wop(ws, 0) == total : U32}
+  @rw O.buf(total)
+  @rw- A.A.from_to(D.ct.table())
+  @rw DT.cnew()
+  @rw P.Bool.and_true(U32.is_lt(5, dlen))
+  @rw DT.loop(U32.to_nat(dlen), ws, ts, td, A.T.new(O.dep(total), 0), A.A.to(D.ct.table()), A.T.new(10n, 0), slen, dlen, 5, 0, tt, O.dep(total), total, slen, X.DX.at_next(214 <> 195 <> 196 <> 0 <> 0 <> [], Q.SP.wbs(ws), td, 0, dlen, 5, {==}, h), hd, DT.fuel(ws, td, dlen, h), hw, A.T.pf_new(O.dep(total), 0), O.lt32(total), O.he(total, hlen), A.T.pf_new(10n, 0), {==})
+  @rwx ht : {Q.SP.wop(ws, 0) == total : U32}
+  @unfold D.dec.done D.dec.res
+  @simp -A.T.new
+  {==}
+
+# The bytes decoded are the target's.
+law DT.list:
+  for +ws: List<&2, Q.AW>
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +slen: U32
+  for +total: U32
+  for +hw: {Q.SP.wsok(ws, ts, tt, slen, 0, A.A.to(D.ct.table()), total, slen) == True{} : Bool}
+  for +ht: {Q.SP.wop(ws, 0) == total : U32}
+  for +hlen: {U32.is_lt(total, 134217728) == True{} : Bool}
+  {B.B.list(B.Bytes{total, A.A.from(Q.SP.wto(ws, ts, tt, A.T.new(O.dep(total), 0), 0))}) == S.S.sl(V.U.N(total), tt, 0) : List<&2, U32>}
+
+def DT.list(ws, ts, tt, slen, total, hw, ht, hlen):
+  @rw S.S.list(total, Q.SP.wto(ws, ts, tt, A.T.new(O.dep(total), 0), 0))
+  @rename U32.to_nat V.U.N
+  S.S.sl_has(V.U.N(total), Q.SP.wto(ws, ts, tt, A.T.new(O.dep(total), 0), 0), 0, tt, 0,
+    (%ht : {S.S.has(S.S.sl(V.U.N(_), tt, 0), Q.SP.wto(ws, ts, tt, A.T.new(O.dep(total), 0), 0), 0) == True{} : Bool};
+      DT.hto_all(ws, ts, tt, A.T.new(O.dep(total), 0), A.A.to(D.ct.table()), slen, 0, O.dep(total), total, slen, hw, A.T.pf_new(O.dep(total), 0), O.lt32(total), O.he(total, hlen), {==})))

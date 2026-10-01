@@ -12,6 +12,8 @@ of each def and writes those lines for it. In a def body:
   @rwx- E : {a == b : T}  b into a
   @goal G            restates the goal (to a form it is convertible with)
   @show              writes the goal as a comment
+  @absurd h          closes the goal from h : {False{} == True{}} (up to
+                     conversion)
   @rassoc F L        right-nests F everywhere, by L: F(F(x, y), z) == F(x, F(y, z))
   @ac                puts the U32 sums of the goal in a normal form (right
                      nested, terms sorted, literals first and added up), by
@@ -1279,6 +1281,12 @@ def directive(ctx, text, goal, ind, out):
             ps, body = def_body(ctx.cur, name)
             goal = unfold(goal, name, ps, body)
         return goal
+    if cmd == 'absurd':
+        if goal is None:
+            raise Err(f"{ctx.name}: no goal tracked here (use @goal)")
+        ft = law_ref(ctx.cur, 'nat.bend', 'Bool.false_true')
+        out.append(' ' * ind + f"{ft}({show(goal)}, {arg})")
+        return None
     if cmd == 'rassoc':
         if goal is None:
             raise Err(f"{ctx.name}: no goal tracked here (use @goal)")

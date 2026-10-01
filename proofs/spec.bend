@@ -567,3 +567,24 @@ def SP.wca(+ws: List<&2, AW>, +ts: A.Tr, +tt: A.Tr, +ca: A.Tr, +opos: U32) -> A.
       ca
     case w <> r:
       SP.wca(r, ts, tt, SP.sc(SP.run(SP.halves(SP.wops(w)), SP.wx(ts, tt, w, opos), SP.s0(opos))), (opos + SP.wtl(w) : U32))
+
+# Where the windows end in the delta, from pos.
+def SP.wend(+ws: List<&2, AW>, +pos: U32) -> U32:
+  match ws:
+    case []:
+      pos
+    case w <> r:
+      SP.wend(r, SP.wnd(pos, w))
+
+# How many windows.
+def SP.nw(+ws: List<&2, AW>) -> Nat:
+  match ws:
+    case []:
+      0n
+    case w <> r:
+      1n+SP.nw(r)
+
+# A delta: its header (no secondary compression, no code table, no
+# application data), then its windows.
+def SP.delta(+ws: List<&2, AW>) -> List<&2, U32>:
+  214 <> 195 <> 196 <> 0 <> 0 <> SP.wbs(ws)
