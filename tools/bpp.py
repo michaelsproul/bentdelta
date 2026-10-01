@@ -12,6 +12,9 @@ of each def and writes those lines for it. In a def body:
   @rwx- E : {a == b : T}  b into a
   @goal G            restates the goal (to a form it is convertible with)
   @show              writes the goal as a comment
+  @ac                puts the U32 sums of the goal in a normal form (right
+                     nested, terms sorted, literals first and added up), by
+                     associativity and commutativity
 
 The goal of a def is its law's claim (the law of the same name), or the
 type after `->`. A `match` on parameters replaces them by each case's
@@ -1028,6 +1031,8 @@ def simp(cur, e, fuel=None, skip=frozenset()):
     if not isinstance(e, tuple) or not e:
         return e
     e = norm(tuple(simp(cur, x, fuel, skip) if isinstance(x, tuple) else x for x in e))
+    if e[0] == 'ann' and isinstance(e[1], tuple) and e[1][0] != 'eq':
+        return e[1]
     c = fold(e)
     if c is not None:
         return c
@@ -1124,6 +1129,97 @@ def rewrite(ctx, goal, old, new, eq_text, T, ind, out, only=None):
     return g
 
 
+# Sums
+# ====
+
+def law_ref(cur, fname, name):
+    """name, a law of proofs/fname, as the current module calls it."""
+    for a, p in cur.aliases.items():
+        if p.endswith('/proofs/' + fname):
+            return a + '.' + name
+    if cur.path.endswith('/proofs/' + fname.replace('.bend', '.bp')) or cur.path.endswith('/proofs/' + fname):
+        return name
+    raise Err(f"@ac needs an import of proofs/{fname}")
+
+
+def is_add(e):
+    return isinstance(e, tuple) and e and e[0] == 'call' and e[1] == 'U32.add' and len(e[2]) == 2
+
+
+def ac_key(e):
+    v = u32_lit(e) if isinstance(e, tuple) and e and e[0] == 'lit' else None
+    return (0, v, '') if v is not None else (1, 0, show(e))
+
+
+def ac_find(e, rule):
+    """The first subterm of e (outermost first) that rule rewrites."""
+    if not isinstance(e, tuple) or not e:
+        return None
+    r = rule(e) if is_add(e) else None
+    if r is not None:
+        return r
+    for x in e:
+        if isinstance(x, tuple):
+            r = ac_find(x, rule)
+            if r is not None:
+                return r
+    return None
+
+
+def add(a, b):
+    return ('call', 'U32.add', (a, b))
+
+
+def ac_step(cur, goal):
+    """One step to the normal form: (old, new, proof text of old == new or
+    of new == old, which), or None."""
+    assoc = law_ref(cur, 'u32.bend', 'U.add_assoc')
+    comm = law_ref(cur, 'u32.bend', 'U.add_comm')
+    lc = law_ref(cur, 'words.bend', 'WD.add_lc')
+
+    def r_assoc(t):
+        a, b = t[2]
+        if is_add(a):
+            x, y = a[2]
+            return t, add(x, add(y, b)), ('call', assoc, (x, y, b)), True
+        return None
+
+    def r_lits(t):
+        a, b = t[2]
+        if is_add(b) and ac_key(a)[0] == 0 and ac_key(b[2][0])[0] == 0:
+            y, r = b[2]
+            return t, add(add(a, y), r), ('call', assoc, (a, y, r)), False
+        return None
+
+    def r_swap(t):
+        a, b = t[2]
+        if is_add(b):
+            y, r = b[2]
+            if ac_key(a) > ac_key(y):
+                return t, add(y, add(a, r)), ('call', lc, (a, y, r)), True
+            return None
+        if ac_key(a) > ac_key(b):
+            return t, add(b, a), ('call', comm, (a, b)), True
+        return None
+
+    for rule in (r_assoc, r_lits, r_swap):
+        r = ac_find(goal, rule)
+        if r is not None:
+            return r
+    return None
+
+
+def ac(ctx, goal, ind, out):
+    for _ in range(5000):
+        st = ac_step(ctx.cur, goal)
+        if st is None:
+            return goal
+        old, new, pf, fwd = st
+        eq = f"Equal.sym(U32, {show(old)}, {show(new)}, {show(pf)})" if fwd else show(pf)
+        goal = fold_all(rewrite(ctx, goal, old, new, eq, None, ind, out))
+    raise Err(f"{ctx.name}: @ac did not finish")
+
+
 def directive(ctx, text, goal, ind, out):
     m = re.match(r'@(\w+-?)(?:\[([\d,]+)\])?\s*(.*)$', text, re.S)
     cmd, arg = m.group(1), m.group(3).strip()
@@ -1182,6 +1278,10 @@ def directive(ctx, text, goal, ind, out):
             ps, body = def_body(ctx.cur, name)
             goal = unfold(goal, name, ps, body)
         return goal
+    if cmd == 'ac':
+        if goal is None:
+            raise Err(f"{ctx.name}: no goal tracked here (use @goal)")
+        return ac(ctx, fold_all(goal), ind, out)
     if cmd == 'show':
         out.append(' ' * ind + '# goal: ' + (show(goal) if goal is not None else '?'))
         return goal

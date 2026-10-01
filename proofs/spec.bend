@@ -468,3 +468,17 @@ def SP.wb(+w: AW) -> List<&2, U32>:
     case AW{cpl, off, tlen, dl, il, al, ops, sum}:
       SP.ind(cpl) <> K.WD.app(SP.segb(cpl, off), K.WD.app(R.VI.var(SP.enc(tlen, dl, il, al)),
         K.WD.app(SP.hdr2(AW{cpl, off, tlen, dl, il, al, ops, sum}), SP.secs(AW{cpl, off, tlen, dl, il, al, ops, sum}))))
+
+# Where a window's copy segment starts (0 when it has none).
+def SP.wseg(+cpl: U32, +off: U32) -> U32:
+  B.u32.pick((0 < cpl : U32), off, 0)
+
+# A window's facts as the decoder sees them: from the target position opos.
+def SP.wx(+ts: A.Tr, +tt: A.Tr, +w: AW, +opos: U32) -> XC:
+  match w:
+    case AW{cpl, off, tlen, dl, il, al, ops, sum}:
+      XC{ts, tt, SP.wseg(cpl, off), cpl, opos, (opos + tlen : U32)}
+
+# The cache at the start of a window: every slot 0.
+def SP.c0() -> A.Tr:
+  A.T.new(10n, 0)

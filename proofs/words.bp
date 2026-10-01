@@ -965,3 +965,18 @@ def WD.sl_suf(k, m, t1, t2, i, x, ex, e):
     case 1n+p:
       @rw- WD.add_shift(i, x)
       WD.sl_suf(p, m, t1, t2, U32.add(i, 1), U32.sub(x, 1), WD.pred_N(x, p, ex), WD.cons_inj_t(Y.BP.byt(t1, i), S.S.sl(Nat.add(p, m), t1, U32.add(i, 1)), Y.BP.byt(t2, i), S.S.sl(Nat.add(p, m), t2, U32.add(i, 1)), e))
+
+# Sums in any order
+# =================
+
+law WD.add_lc:
+  for +x: U32
+  for +y: U32
+  for +z: U32
+  {U32.add(x, U32.add(y, z)) == U32.add(y, U32.add(x, z)) : U32}
+
+def WD.add_lc(x, y, z):
+  @rw- V.U.add_assoc(x, y, z)
+  @rw V.U.add_comm(x, y)
+  @rw V.U.add_assoc(y, x, z)
+  {==}
