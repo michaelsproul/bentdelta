@@ -105,6 +105,3 @@ bend tests/bytes_test.bend     # randomized tests of the byte primitives
   not speak of them.
 - No secondary compression (xdelta3's default is LZMA): compare against
   `xdelta3 -S none`.
-- A window with over 2^20 matches (8 MiB of matches under 8 bytes long)
-  overflows the encoder's match buffer; the check then falls back to the
-  plain encoding.

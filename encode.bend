@@ -647,33 +647,35 @@ def PMASK() -> U32:
 # Buffering a match
 # -----------------
 
-def sc.push.k(src: Array<U32>, lt: Array<U32>, stb: Array<U32>,
-  spv: Array<U32>, +p: U32, +mm: U32, +rc: U32, +rl: U32, +lck: U32,
-  +last: U32, +cont: U32, +pos: U32, +len: U32, +val: U32,
-  r: Array<U32> & (Array<U32> & Em)) -> Sc:
-  (io, te) = r
-  (tgt, em) = te
-  Sc{src, tgt, lt, stb, spv, io.put(io, 0, pos, len, val), em, p, mm, rc, rl,
-    lck, last, 1, cont}
-
 def sc.push.go(full: Bool, +K: SK, +pos: U32, +len: U32, +val: U32, st: Sc) ->
   Sc:
-  match full K st:
-    case False{} k Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last,
+  match full st:
+    case False{} Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last,
       +nio, cont}:
       Sc{src, tgt, lt, stb, spv, io.put(io, nio, pos, len, val), em, p, mm, rc,
         rl, lck, last, (nio + 1 : U32), cont}
-    case True{} SK{slen, +w0, w1, +cpl, lsh, lmask, ssh, smask, cap}
-      Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, +nio, cont}:
-      sc.push.k(src, lt, stb, spv, p, mm, rc, rl, lck, last, cont, pos, len,
-        val, io.flush(io, nio, cpl, w0, tgt, em))
+    case True{} Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last,
+      +nio, cont}:
+      Sc{src, tgt, lt, stb, spv,
+        io.put(B.B.grow(io, (nio * 12 : U32), ((nio + 1 : U32) * 12 : U32)), nio,
+          pos, len, val),
+        em, p, mm, rc, rl, lck, last, (nio + 1 : U32), cont}
+
+# Whether the buffer has no room for another match (it then doubles: a
+# window's matches are all settled together at its end).
+def sc.nio.k(src: Array<U32>, tgt: Array<U32>, lt: Array<U32>,
+  stb: Array<U32>, spv: Array<U32>, em: Em, +p: U32, +mm: U32, +rc: U32,
+  +rl: U32, +lck: U32, +last: U32, +nio: U32, +cont: U32,
+  r: Array<U32> & U32) -> Bool & Sc:
+  (io, +size) = r
+  ((((nio * 3 : U32) + 3 : U32) > size : U32),
+    Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, nio, cont})
 
 def sc.nio(+K: SK, st: Sc) -> Bool & Sc:
-  match K st:
-    case SK{slen, w0, w1, cpl, lsh, lmask, ssh, smask, +cap}
-      Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, +nio, cont}:
-      (U32.is_eq(nio, cap), Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl,
-        lck, last, nio, cont})
+  match st:
+    case Sc{src, tgt, lt, stb, spv, io, em, p, mm, rc, rl, lck, last, +nio, cont}:
+      sc.nio.k(src, tgt, lt, stb, spv, em, p, mm, rc, rl, lck, last, nio, cont,
+        Array.size(U32, io))
 
 def sc.push.k0(+K: SK, +pos: U32, +len: U32, +val: U32, r: Bool & Sc) -> Sc:
   (full, st) = r
@@ -1439,7 +1441,8 @@ def win.loop(k: Nat, +E: EK, +w0: U32, st: ES) -> ES:
 # xdelta3's defaults: 8 MiB target windows; a large table of one slot per 8
 # source bytes of the first 64 MiB (as rounded up), the source indexed in
 # blocks of all of it (if under 64 MiB) or of 2 MiB; a small table of one
-# slot per target byte of a window; a buffer of 2^20 matches.
+# slot per target byte of a window; a buffer of 2^15 matches, doubled as
+# needed.
 def EK.mk(+slen: U32, +tlen: U32) -> EK:
   +lb = U32.from_nat(B.B.depth(u32.max(slen, 16384)))
   +small = (slen <= 67108864 : U32)
@@ -1468,7 +1471,7 @@ def enc.done(+slen: U32, +tlen: U32, st: ES) -> (B.Bytes & B.Bytes) & B.Bytes:
 def es.fresh(+sbits: Nat, +wb: U32, +ocap: U32, src: Array<U32>,
   tgt: Array<U32>, lt: Array<U32>, +lidx: U32, +cont: U32) -> ES:
   ES{src, tgt, lt, Array.new(U32, sbits, 0), Array.new(U32, 18n, 0),
-    Array.new(U32, 22n, 0),
+    Array.new(U32, 17n, 0),
     Em{B.B.zeros(wb), B.B.zeros((wb * 4 : U32)), B.B.zeros((wb * 2 : U32)),
       Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
     B.B.zeros(ocap), 0, lidx, cont}
@@ -1586,7 +1589,7 @@ def enc.go(+E: EK, src: Array<U32>, tgt: Array<U32>, +lbits: Nat,
         enc.par.top(E, sbits, wb, u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32)),
           enc.pre(enc.depth(u32.max(1, (((tlen + wsz : U32) - 1 : U32) / wsz : U32))), E,
             U32.min(tlen, wsz), ES{src, tgt, Array.new(U32, lbits, 0), Array.new(U32, sbits, 0),
-            Array.new(U32, 18n, 0), Array.new(U32, 22n, 0),
+            Array.new(U32, 18n, 0), Array.new(U32, 17n, 0),
             Em{B.B.zeros(wb), B.B.zeros((wb * 4 : U32)), B.B.zeros((wb * 2 : U32)),
               Array.new(U32, 10n, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0},
             out, olen, 0, 0})))
