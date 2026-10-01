@@ -157,28 +157,37 @@ def ea.put(same: Bool, +d: U32, +m: U32, +r768: U32, adr: Array<U32>,
 # xd3_encode_address: SELF, then HERE, then each NEAR slot, each taken when
 # it gives a smaller value, stopping at the first value below 128; then
 # SAME when its slot holds the address. The cache is then updated.
+
+# The value and mode chosen so far.
+type EB is Data:
+  EB{b: U32, m: U32}
+
+# SELF, or HERE when smaller.
+def ea.self(+addr: U32, +here: U32) -> EB:
+  +d1 = (here - addr : U32)
+  +t1 = (addr >= 128 : U32) && (d1 < addr : U32)
+  EB{u32.pick(t1, d1, addr), u32.pick(t1, 1, 0)}
+
+# NEAR slot holding n, as mode k, when it gives a smaller value.
+def ea.near(+addr: U32, +n: U32, +k: U32, +e: EB) -> EB:
+  match e:
+    case EB{+b, +m}:
+      +t = (b >= 128 : U32) && (addr >= n : U32) && ((addr - n : U32) < b : U32)
+      EB{u32.pick(t, (addr - n : U32), b), u32.pick(t, k, m)}
+
+def ea.fin(+addr: U32, +sm: U32, adr: Array<U32>, +al: U32, +slot: U32,
+  ca: Array<U32>, +e: EB) -> AE:
+  match e:
+    case EB{+b5, +m5}:
+      +same = (b5 >= 128 : U32) && U32.is_eq(sm, addr)
+      +r768 = (addr % 768 : U32)
+      ea.put(same, b5, m5, r768, adr, al, V.cache.put(ca, slot, addr))
+
 def ea.k(+addr: U32, +here: U32, adr: Array<U32>, +al: U32, +slot: U32,
   +n0: U32, +n1: U32, +n2: U32, +n3: U32, r: Array<U32> & U32) -> AE:
   (ca, +sm) = r
-  +d1 = (here - addr : U32)
-  +t1 = (addr >= 128 : U32) && (d1 < addr : U32)
-  +b1 = u32.pick(t1, d1, addr)
-  +m1 = u32.pick(t1, 1, 0)
-  +t2 = (b1 >= 128 : U32) && (addr >= n0 : U32) && ((addr - n0 : U32) < b1 : U32)
-  +b2 = u32.pick(t2, (addr - n0 : U32), b1)
-  +m2 = u32.pick(t2, 2, m1)
-  +t3 = (b2 >= 128 : U32) && (addr >= n1 : U32) && ((addr - n1 : U32) < b2 : U32)
-  +b3 = u32.pick(t3, (addr - n1 : U32), b2)
-  +m3 = u32.pick(t3, 3, m2)
-  +t4 = (b3 >= 128 : U32) && (addr >= n2 : U32) && ((addr - n2 : U32) < b3 : U32)
-  +b4 = u32.pick(t4, (addr - n2 : U32), b3)
-  +m4 = u32.pick(t4, 4, m3)
-  +t5 = (b4 >= 128 : U32) && (addr >= n3 : U32) && ((addr - n3 : U32) < b4 : U32)
-  +b5 = u32.pick(t5, (addr - n3 : U32), b4)
-  +m5 = u32.pick(t5, 5, m4)
-  +same = (b5 >= 128 : U32) && U32.is_eq(sm, addr)
-  +r768 = (addr % 768 : U32)
-  ea.put(same, b5, m5, r768, adr, al, V.cache.put(ca, slot, addr))
+  ea.fin(addr, sm, adr, al, slot, ca, ea.near(addr, n3, 5, ea.near(addr, n2, 4,
+    ea.near(addr, n1, 3, ea.near(addr, n0, 2, ea.self(addr, here))))))
 
 # Instructions
 # ============
