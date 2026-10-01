@@ -282,3 +282,27 @@ id BB.runl0 w
 id BB.runf0 w
   lhs U32.and(U32.and(w, 2147483647), 2147483648)
   rhs 0
+
+id BB.join0 lo hi
+  # Joining at offset 0 is the low word.
+  lhs B.B.join(lo, hi, 0n)
+  rhs lo
+
+id BB.al4 x
+  # A word's byte offset is aligned.
+  lhs U32.and(3, U32.shln(x, 2n))
+  rhs 0
+
+id BB.shr2 x
+  # Back from a byte offset to the word, below 2^30.
+  lhs U32.shrn(U32.shln(x, 2n), 2n)
+  rhs U32.and(x, 1073741823)
+
+id BB.runl w
+  # A RUN's length, read back.
+  lhs U32.and(U32.or(w, 2147483648), 2147483647)
+  rhs U32.and(w, 2147483647)
+
+id BB.runf w
+  lhs U32.and(U32.or(w, 2147483648), 2147483648)
+  rhs 2147483648
