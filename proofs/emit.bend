@@ -3324,3 +3324,295 @@ def EM.dbl0(ps, pm, t, size, mode):
   %Equal.sym(Bool, Bool.and(Bool.and(Bool.and(U32.is_eq(t, 3), U32.is_le(4, size)), U32.is_le(size, 18)), False{}), False{}, P.Bool.and_false(Bool.and(Bool.and(U32.is_eq(t, 3), U32.is_le(4, size)), U32.is_le(size, 18)))) :
     {Bool.pick(U32, Bool.and(False{}, U32.is_eq(ps, 4)), U32.add(247, pm), Bool.pick(U32, Bool.and(Bool.and(Bool.and(Bool.and(_, U32.is_le(1, ps)), U32.is_le(ps, 4)), U32.is_le(size, 6)), U32.is_le(mode, 5)), U32.add(U32.add(U32.add(163, U32.mul(mode, 12)), U32.mul(U32.sub(ps, 1), 3)), U32.sub(size, 4)), Bool.pick(U32, Bool.and(Bool.and(Bool.and(Bool.and(_, U32.is_le(1, ps)), U32.is_le(ps, 4)), U32.is_eq(size, 4)), U32.is_ge(mode, 6)), U32.add(U32.add(235, U32.mul(U32.sub(mode, 6), 4)), U32.sub(ps, 1)), 0))) == 0 : U32}
   {==}
+
+law EM.pend_ne:
+  for +ph: Q.HF
+  for +pt: U32
+  for +hpt: {pt == Q.SP.kind(ph) : U32}
+  for +hne: {U32.is_ne(pt, 0) == True{} : Bool}
+  {EM.pend(ph) == ph <> [] : List<&2, Q.HF>}
+
+def EM.pend_ne(ph, pt, hpt, hne):
+  match ph:
+    case Q.HN{}:
+      P.Bool.false_true({EM.pend(Q.HN{}) == Q.HN{} <> [] : List<&2, Q.HF>}, (%hpt : {U32.is_ne(_, 0) == True{} : Bool}; hne))
+    case Q.HA{n, xs}:
+      {==}
+    case Q.HR{n, b}:
+      {==}
+    case Q.HC{n, m, v}:
+      {==}
+
+# Writing the pending half alone, holding h back.
+law EM.q_sg:
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +pc: U32
+  for +ops: List<&2, Q.OP>
+  for +ph: Q.HF
+  for +h: Q.HF
+  for +dd: Nat
+  for +di: Nat
+  for +da: Nat
+  for +x: Q.XC
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hS1: {EM.S1(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hS2: {EM.S2(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops) == True{} : Bool}
+  for +hS3: {EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hV: {EM.V(EM.happ(EM.hs(ops, ph), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hP: {EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EG{ops, ph, dd, di, da}) == True{} : Bool}
+  for +hP12: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), EM.cap(di))) == True{} : Bool}
+  for +hR: {EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hR8: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 8n), Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM.w0(EW{x, E, Es, A.A.to(D.ct.table()), BIG})))))))) == True{} : Bool}
+  for +hD: {EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph) == True{} : Bool}
+  for +hB: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), V.U.N(BIG))) == True{} : Bool}
+  for +hm: {Cmp.is_le(Nat.cmp(V.U.N(Q.SP.mode(h)), 8n)) == True{} : Bool}
+  for +hk: {U32.is_ne(Q.SP.kind(h), 0) == True{} : Bool}
+  for +hne: {U32.is_ne(pt, 0) == True{} : Bool}
+  {EM.inv(EM.qg(False{}, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pc, N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), EM.gqs(U32.is_ne(pt, 0), ops, ph, h, pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+
+def EM.q_sg(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk, hne):
+  %Equal.sym(Bool, U32.is_ne(pt, 0), True{}, hne) :
+    {EM.inv(EM.qk(td, ta, tc, dl, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), EM.sgo(_, ps, pc, ti, il)), EM.gqs(_, ops, ph, h, pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  EM.q_sg.k(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, EM.sgi(N.op.sized(pc), ps, Y.BP.put(ti, il, pc), U32.add(il, 1)), EM.pend_ne(ph, pt, V.U.is_eq(pt, Q.SP.kind(ph), EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), hne), EM.pend_ne(h, Q.SP.kind(h), {==}, hk), hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk,
+    EM.cok_sg(pc, ph, pt, ps, pm, V.U.is_eq(pt, Q.SP.kind(ph), EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(ps, Q.SP.size(ph), EM.D.s(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(pm, Q.SP.mode(ph), EM.D.m(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(pc, N.op.single(pt, ps, pm), (%EM.notT(U32.is_eq(pt, 0), hne) : {Bool.or(_, U32.is_eq(pc, N.op.single(pt, ps, pm))) == True{} : Bool}; EM.D.c(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD))), EM.cs_ph(ph, pt, ps, pm, V.U.is_eq(pt, Q.SP.kind(ph), EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(ps, Q.SP.size(ph), EM.D.s(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(pm, Q.SP.mode(ph), EM.D.m(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), EM.D.m8(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD), hne)),
+    EM.sgi.sec(N.op.sized(pc), ps, pc, ti, il, di, BIG, Q.SP.insl(ops), ph, {==}, EM.CS.z1(pc, pt, ps, pm, (%Equal.sym(U32, pc, N.op.single(pt, ps, pm), V.U.is_eq(pc, N.op.single(pt, ps, pm), (%EM.notT(U32.is_eq(pt, 0), hne) : {Bool.or(_, U32.is_eq(pc, N.op.single(pt, ps, pm))) == True{} : Bool}; EM.D.c(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)))) : {T.CT.S(_, pt, ps, pm) == True{} : Bool}; EM.cs_ph(ph, pt, ps, pm, V.U.is_eq(pt, Q.SP.kind(ph), EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(ps, Q.SP.size(ph), EM.D.s(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(pm, Q.SP.mode(ph), EM.D.m(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), EM.D.m8(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD), hne))), EM.CS.z2(pc, pt, ps, pm, (%Equal.sym(U32, pc, N.op.single(pt, ps, pm), V.U.is_eq(pc, N.op.single(pt, ps, pm), (%EM.notT(U32.is_eq(pt, 0), hne) : {Bool.or(_, U32.is_eq(pc, N.op.single(pt, ps, pm))) == True{} : Bool}; EM.D.c(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)))) : {T.CT.S(_, pt, ps, pm) == True{} : Bool}; EM.cs_ph(ph, pt, ps, pm, V.U.is_eq(pt, Q.SP.kind(ph), EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(ps, Q.SP.size(ph), EM.D.s(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), V.U.is_eq(pm, Q.SP.mode(ph), EM.D.m(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), EM.D.m8(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD), hne))), V.U.is_eq(ps, Q.SP.size(ph), EM.D.s(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), EM.P.pi(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, hP), EM.lt32(di, EM.P.di(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, hP)), EM.S2.h(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, hS2), EM.S2.l(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, hS2), hP12, hB),
+    EM.sgi.pf(N.op.sized(pc), ps, pc, ti, il, di, EM.P.pi(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, dd, di, da, hP)),
+    EM.sgi.le(N.op.sized(pc), ps, pc, ti, il, BIG, hB))
+
+# Nothing pending: h becomes the pending half.
+law EM.q_none:
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +pc: U32
+  for +ops: List<&2, Q.OP>
+  for +ph: Q.HF
+  for +h: Q.HF
+  for +dd: Nat
+  for +di: Nat
+  for +da: Nat
+  for +x: Q.XC
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hS1: {EM.S1(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hS2: {EM.S2(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops) == True{} : Bool}
+  for +hS3: {EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hV: {EM.V(EM.happ(EM.hs(ops, ph), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hP: {EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EG{ops, ph, dd, di, da}) == True{} : Bool}
+  for +hP12: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), EM.cap(di))) == True{} : Bool}
+  for +hR: {EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hR8: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 8n), Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM.w0(EW{x, E, Es, A.A.to(D.ct.table()), BIG})))))))) == True{} : Bool}
+  for +hD: {EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph) == True{} : Bool}
+  for +hB: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), V.U.N(BIG))) == True{} : Bool}
+  for +hm: {Cmp.is_le(Nat.cmp(V.U.N(Q.SP.mode(h)), 8n)) == True{} : Bool}
+  for +hk: {U32.is_ne(Q.SP.kind(h), 0) == True{} : Bool}
+  for +hz: {U32.is_ne(pt, 0) == False{} : Bool}
+  {EM.inv(EM.qg(False{}, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pc, N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), EM.gqs(U32.is_ne(pt, 0), ops, ph, h, pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+
+def EM.q_none(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk, hz):
+  match ph:
+    case Q.HN{}:
+      %Equal.sym(Bool, U32.is_ne(pt, 0), False{}, hz) :
+        {EM.inv(EM.qk(td, ta, tc, dl, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), EM.sgo(_, ps, pc, ti, il)), EM.gqs(_, ops, Q.HN{}, h, pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+      %Equal.sym(List<&2, Q.HF>, EM.hs(ops, h), EM.happ(EM.hs(ops, Q.HN{}), h <> []), EM.hs_none(ops, h, EM.pend_ne(h, Q.SP.kind(h), {==}, hk))) :
+        {Bool.and(EM.S1(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, _), Bool.and(EM.S2(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, ops), Bool.and(EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, _), Bool.and(EM.V(_, ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}), Bool.and(EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EG{ops, h, dd, di, da}), Bool.and(EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, _, EW{x, E, Es, A.A.to(D.ct.table()), BIG}), EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, h))))))) == True{} : Bool}
+      EM.and2(EM.S1(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> [])), Bool.and(EM.S2(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, ops), Bool.and(EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> [])), Bool.and(EM.V(EM.happ(EM.hs(ops, Q.HN{}), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}), Bool.and(EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EG{ops, h, dd, di, da}), Bool.and(EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}), EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, h)))))), hS1, EM.and2(EM.S2(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, ops), Bool.and(EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> [])), Bool.and(EM.V(EM.happ(EM.hs(ops, Q.HN{}), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}), Bool.and(EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EG{ops, h, dd, di, da}), Bool.and(EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}), EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, h))))), hS2, EM.and2(EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> [])), Bool.and(EM.V(EM.happ(EM.hs(ops, Q.HN{}), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}), Bool.and(EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EG{ops, h, dd, di, da}), Bool.and(EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}), EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, h)))), hS3, EM.and2(EM.V(EM.happ(EM.hs(ops, Q.HN{}), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}), Bool.and(EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EG{ops, h, dd, di, da}), Bool.and(EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}), EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, h))), hV, EM.and2(EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EG{ops, h, dd, di, da}), Bool.and(EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}), EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, h)), hP, EM.and2(EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, EM.happ(EM.hs(ops, Q.HN{}), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}), EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), N.op.single(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h))}, h), hR, EM.q_sg.d(ti, il, td, ta, tc, dl, al, slot, uoff, h, hm)))))))
+    case Q.HA{n, xs}:
+      P.Bool.true_false({EM.inv(EM.qg(False{}, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pc, N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), EM.gqs(U32.is_ne(pt, 0), ops, ph, h, pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}, (%V.U.is_eq(pt, 1, EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, Q.HA{n, xs}, hD)) : {U32.is_ne(_, 0) == False{} : Bool}; hz))
+    case Q.HR{n, b}:
+      P.Bool.true_false({EM.inv(EM.qg(False{}, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pc, N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), EM.gqs(U32.is_ne(pt, 0), ops, ph, h, pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}, (%V.U.is_eq(pt, 2, EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, Q.HR{n, b}, hD)) : {U32.is_ne(_, 0) == False{} : Bool}; hz))
+    case Q.HC{n, m, v}:
+      P.Bool.true_false({EM.inv(EM.qg(False{}, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pc, N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), EM.gqs(U32.is_ne(pt, 0), ops, ph, h, pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}, (%V.U.is_eq(pt, 3, EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, Q.HC{n, m, v}, hD)) : {U32.is_ne(_, 0) == False{} : Bool}; hz))
+
+law EM.ne_dbl:
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +t: U32
+  for +size: U32
+  for +mode: U32
+  for +hd: {U32.is_ne(N.op.double(pt, ps, pm, t, size, mode), 0) == True{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_ne(pt, 0) == c : Bool}
+  {U32.is_ne(pt, 0) == True{} : Bool}
+
+law EM.notF:
+  for +b: Bool
+  for +h: {Bool.not(b) == False{} : Bool}
+  {b == True{} : Bool}
+
+def EM.notF(b, h):
+  match b:
+    case True{}:
+      {==}
+    case False{}:
+      P.Bool.true_false({False{} == True{} : Bool}, h)
+
+def EM.ne_dbl(pt, ps, pm, t, size, mode, hd, c, ec):
+  match c:
+    case True{}:
+      ec
+    case False{}:
+      P.Bool.false_true({U32.is_ne(pt, 0) == True{} : Bool},
+        (%EM.dbl0(ps, pm, t, size, mode) : {U32.is_ne(_, 0) == True{} : Bool};
+          (%V.U.is_eq(pt, 0, EM.notF(U32.is_eq(pt, 0), ec)) : {U32.is_ne(N.op.double(_, ps, pm, t, size, mode), 0) == True{} : Bool}; hd)))
+
+law EM.q_ok.s:
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +pc: U32
+  for +ops: List<&2, Q.OP>
+  for +ph: Q.HF
+  for +h: Q.HF
+  for +dd: Nat
+  for +di: Nat
+  for +da: Nat
+  for +x: Q.XC
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hS1: {EM.S1(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hS2: {EM.S2(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops) == True{} : Bool}
+  for +hS3: {EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hV: {EM.V(EM.happ(EM.hs(ops, ph), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hP: {EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EG{ops, ph, dd, di, da}) == True{} : Bool}
+  for +hP12: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), EM.cap(di))) == True{} : Bool}
+  for +hR: {EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hR8: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 8n), Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM.w0(EW{x, E, Es, A.A.to(D.ct.table()), BIG})))))))) == True{} : Bool}
+  for +hD: {EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph) == True{} : Bool}
+  for +hB: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), V.U.N(BIG))) == True{} : Bool}
+  for +hm: {Cmp.is_le(Nat.cmp(V.U.N(Q.SP.mode(h)), 8n)) == True{} : Bool}
+  for +hk: {U32.is_ne(Q.SP.kind(h), 0) == True{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_ne(pt, 0) == c : Bool}
+  {EM.inv(EM.qg(False{}, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pc, N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), EM.gqs(U32.is_ne(pt, 0), ops, ph, h, pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+
+def EM.q_ok.s(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk, c, ec):
+  match c:
+    case True{}:
+      EM.q_sg(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk, ec)
+    case False{}:
+      EM.q_none(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk, ec)
+
+law EM.q_ok.c:
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +pc: U32
+  for +ops: List<&2, Q.OP>
+  for +ph: Q.HF
+  for +h: Q.HF
+  for +dd: Nat
+  for +di: Nat
+  for +da: Nat
+  for +x: Q.XC
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hS1: {EM.S1(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hS2: {EM.S2(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops) == True{} : Bool}
+  for +hS3: {EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hV: {EM.V(EM.happ(EM.hs(ops, ph), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hP: {EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EG{ops, ph, dd, di, da}) == True{} : Bool}
+  for +hP12: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), EM.cap(di))) == True{} : Bool}
+  for +hR: {EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hR8: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 8n), Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM.w0(EW{x, E, Es, A.A.to(D.ct.table()), BIG})))))))) == True{} : Bool}
+  for +hD: {EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph) == True{} : Bool}
+  for +hB: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), V.U.N(BIG))) == True{} : Bool}
+  for +hm: {Cmp.is_le(Nat.cmp(V.U.N(Q.SP.mode(h)), 8n)) == True{} : Bool}
+  for +hk: {U32.is_ne(Q.SP.kind(h), 0) == True{} : Bool}
+  for +c: Bool
+  for +ec: {U32.is_ne(N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), 0) == c : Bool}
+  {EM.inv(EM.qg(c, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pc, N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), EM.gqd(c, U32.is_ne(pt, 0), ops, ph, h, N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), pc, dd, di, da), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+
+def EM.q_ok.c(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk, c, ec):
+  match c:
+    case True{}:
+      EM.q_dbl(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, EM.pend_ne(ph, pt, V.U.is_eq(pt, Q.SP.kind(ph), EM.D.t(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ph, hD)), EM.ne_dbl(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), ec, U32.is_ne(pt, 0), {==})), hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, ec)
+    case False{}:
+      EM.q_ok.s(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk, U32.is_ne(pt, 0), {==})
+
+# Queueing a half h, once its data and address are written, keeps the
+# emitter's invariant.
+law EM.q_ok:
+  for +td: A.Tr
+  for +ti: A.Tr
+  for +ta: A.Tr
+  for +tc: A.Tr
+  for +dl: U32
+  for +il: U32
+  for +al: U32
+  for +slot: U32
+  for +uoff: U32
+  for +pt: U32
+  for +ps: U32
+  for +pm: U32
+  for +pc: U32
+  for +ops: List<&2, Q.OP>
+  for +ph: Q.HF
+  for +h: Q.HF
+  for +dd: Nat
+  for +di: Nat
+  for +da: Nat
+  for +x: Q.XC
+  for +E: U32
+  for +Es: U32
+  for +BIG: U32
+  for +hS1: {EM.S1(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hS2: {EM.S2(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ops) == True{} : Bool}
+  for +hS3: {EM.S3(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> [])) == True{} : Bool}
+  for +hV: {EM.V(EM.happ(EM.hs(ops, ph), h <> []), ops, EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hP: {EM.P(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EG{ops, ph, dd, di, da}) == True{} : Bool}
+  for +hP12: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), EM.cap(di))) == True{} : Bool}
+  for +hR: {EM.R(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EM.happ(EM.hs(ops, ph), h <> []), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+  for +hR8: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 8n), Nat.double(Nat.double(Nat.double(V.U.N(U32.sub(uoff, EM.w0(EW{x, E, Es, A.A.to(D.ct.table()), BIG})))))))) == True{} : Bool}
+  for +hD: {EM.D(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, ph) == True{} : Bool}
+  for +hB: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(il), 12n), V.U.N(BIG))) == True{} : Bool}
+  for +hm: {Cmp.is_le(Nat.cmp(V.U.N(Q.SP.mode(h)), 8n)) == True{} : Bool}
+  for +hk: {U32.is_ne(Q.SP.kind(h), 0) == True{} : Bool}
+  {EM.inv(EM.q(Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h), ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}), EM.gq(ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}, EG{ops, ph, dd, di, da}, h), EW{x, E, Es, A.A.to(D.ct.table()), BIG}) == True{} : Bool}
+
+def EM.q_ok(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk):
+  EM.q_ok.c(td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, ops, ph, h, dd, di, da, x, E, Es, BIG, hS1, hS2, hS3, hV, hP, hP12, hR, hR8, hD, hB, hm, hk, U32.is_ne(N.op.double(pt, ps, pm, Q.SP.kind(h), Q.SP.size(h), Q.SP.mode(h)), 0), {==})
