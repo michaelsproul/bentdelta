@@ -884,6 +884,398 @@ def WP.ook_next(to, olen, tt, w0, tlen, cpl, off, e, h):
     case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}:
       WP.ook_puts(to, olen, tt, w0, tlen, cpl, off, td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc, SC_.SC.dep(to), P.Bool.and_l(A.T.pf(SC_.SC.dep(to), to), Cmp.is_lt(Nat.cmp(SC_.SC.dep(to), 32n)), h), SC_.SC.ltc(Nat.cmp(SC_.SC.dep(to), 32n), P.Bool.and_r(A.T.pf(SC_.SC.dep(to), to), Cmp.is_lt(Nat.cmp(SC_.SC.dep(to), 32n)), h)))
 
+# The window written as an ADD
+# ----------------------------
+#
+# When the window's sections take more than an ADD of its bytes would, a
+# fresh emitter writes that ADD (WS.pe): the gap to w1 and the flush, with
+# no copy segment.
+
+# Its ghost.
+def WP.gR(+w0: U32, +w1: U32, +tt: A.Tr, +e: EM_.ET) -> EM_.EG:
+  EI_.EI.gfl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)), EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e)))
+
+# A fresh emitter's cache is the decoder's, for no instructions.
+law WP.hcR:
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  {EM_.EM.tc(EM_.EM.reset(w0, e)) == Q.SP.sc(Q.SP.run(EM_.EM.ghs(WS_.WS.g0(e)), EM_.EM.x(EM_.EW{Q.XC{ts, tt, Q.SP.wseg(0, 0), 0, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}), EM_.EM.s0(EM_.EW{Q.XC{ts, tt, Q.SP.wseg(0, 0), 0, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}))) : A.Tr}
+
+def WP.hcR(w0, w1, ts, tt, e, Et, Es, BIGe):
+  match e:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}:
+      {==}
+
+# The emitter's facts after the gap.
+law WP.JR:
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  EI_.EI.J(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)), EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e)), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(0, 0), 0, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe})
+
+def WP.JR(w0, w1, ts, tt, e, Et, Es, BIGe, he, hwok):
+  EI_.EI.gap(EM_.EM.reset(w0, e), WS_.WS.g0(e), ts, tt, Q.SP.wseg(0, 0), 0, w0, w1, Et, Es, BIGe, w1, (WS_.WS.einv0(e, ts, tt, Q.SP.wseg(0, 0), 0, w0, w1, Et, Es, BIGe, he, WS_.WS.w01(w0, w1, Et, BIGe, hwok)), WP.hcR(w0, w1, ts, tt, e, Et, Es, BIGe)), hwok, C.CP.le_refl(V.U.N(w1)))
+
+law WP.FR:
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  {EI_.EI.F(EM_.EM.fl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e))), WP.gR(w0, w1, tt, e), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(0, 0), 0, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}) == True{} : Bool}
+
+def WP.FR(w0, w1, ts, tt, e, Et, Es, BIGe, he, hwok):
+  EI_.EI.fl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)), EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e)), ts, tt, Q.SP.wseg(0, 0), 0, w0, w1, Et, Es, BIGe, WP.JR(w0, w1, ts, tt, e, Et, Es, BIGe, he, hwok), hwok)
+
+law WP.uoR:
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  {EM_.EM.uo(EM_.EM.fl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)))) == w1 : U32}
+
+def WP.uoR(w0, w1, ts, tt, e, Et, Es, BIGe, he, hwok):
+  %Equal.sym(U32, EM_.EM.uo(EM_.EM.fl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)))), EM_.EM.uo(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e))), WF_.WF.uo_fl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)))) :
+    {_ == w1 : U32}
+  EI_.EI.uo_gap(tt, w1, EM_.EM.reset(w0, e), WF_.WF.uo_le(EM_.EM.reset(w0, e), WS_.WS.g0(e), ts, tt, Q.SP.wseg(0, 0), 0, w0, w1, Et, Es, BIGe, WS_.WS.einv0(e, ts, tt, Q.SP.wseg(0, 0), 0, w0, w1, Et, Es, BIGe, he, WS_.WS.w01(w0, w1, Et, BIGe, hwok))))
+
+law WP.cap6R:
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(WP.gdi(WP.gR(w0, w1, tt, e))))) == True{} : Bool}
+
+def WP.cap6R(w0, w1, ts, tt, e, Et, Es, BIGe, he, hwok):
+  (%Equal.sym(Nat, WP.gdi(EI_.EI.gfl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)), EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e)))), WP.gdi(EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e))), WP.gfl_di(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)), EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e)))) : {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(_))) == True{} : Bool};
+    WP.cap6(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)), EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e)), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(0, 0), 0, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}, WF_.WF.inv_of(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)), EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e)), ts, tt, Q.SP.wseg(0, 0), 0, w0, w1, Et, Es, BIGe, WP.JR(w0, w1, ts, tt, e, Et, Es, BIGe, he, hwok))))
+
+law WP.tcR:
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  {A.T.pf(10n, EM_.EM.tc(EM_.EM.fl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e))))) == True{} : Bool}
+
+def WP.tcR(w0, w1, ts, tt, e, Et, Es, BIGe, he, hwok):
+  (%Equal.sym(A.Tr, EM_.EM.tc(EM_.EM.fl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)))), EM_.EM.tc(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e))), WP.tc_fl(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)))) : {A.T.pf(10n, _) == True{} : Bool};
+    WP.tcJ(EM_.EM.gap(tt, w1, EM_.EM.reset(w0, e)), EI_.EI.ggap(tt, w1, EM_.EM.reset(w0, e), WS_.WS.g0(e)), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(0, 0), 0, w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}, WP.JR(w0, w1, ts, tt, e, Et, Es, BIGe, he, hwok)))
+
+# The window's own emitter has its shapes too.
+law WP.eok_ez:
+  for +e: EM_.ET
+  {WS_.WS.eok(WS_.WS.ez(e)) == WS_.WS.eok(e) : Bool}
+
+def WP.eok_ez(e):
+  match e:
+    case EM_.ET{td, ti, ta, tc, dl, il, al, slot, uoff, pt, ps, pm, pc}:
+      {==}
+
+# The window's end, as written
+# -----------------------------
+
+# The emitter's ghost: the ADD's, or the window's.
+def WP.pg(+z: Bool, +w0: U32, +w1: U32, +tt: A.Tr, +e: EM_.ET, +g: EM_.EG) -> EM_.EG:
+  match z:
+    case True{}:
+      WP.gR(w0, w1, tt, e)
+    case False{}:
+      g
+
+def WP.g4(+E: N.EK, +w0: U32, +w1: U32, +tt: A.Tr, +e: EM_.ET, +st: SC_.ST) -> EM_.EG:
+  WP.pg(WS_.WS.big(w0, w1, WS_.WS.e3(E, w0, w1, tt, e, st)), w0, w1, tt, WS_.WS.e3(E, w0, w1, tt, e, st), WP.g3(E, w0, w1, tt, e, st))
+
+law WP.eok3:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {WS_.WS.eok(WS_.WS.e3(E, w0, w1, tt, e, st)) == True{} : Bool}
+
+def WP.eok3(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  %WP.eok_ez(WS_.WS.e3(E, w0, w1, tt, e, st)) : {_ == True{} : Bool}
+  WP.eok_next(WS_.WS.e3(E, w0, w1, tt, e, st), WP.g3(E, w0, w1, tt, e, st), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(WS_.WS.cc(E, st), WS_.WS.co(E, st)), WS_.WS.cc(E, st), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}, WP.Fwin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), WP.cap6win(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), WP.tcwin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs))
+
+law WP.Fwin4.go:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +z: Bool
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {EI_.EI.F(WS_.WS.pe(z, w0, w1, tt, WS_.WS.e3(E, w0, w1, tt, e, st)), WP.pg(z, w0, w1, tt, WS_.WS.e3(E, w0, w1, tt, e, st), WP.g3(E, w0, w1, tt, e, st)), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(WS_.WS.pz(z, WS_.WS.cc(E, st)), WS_.WS.pz(z, WS_.WS.co(E, st))), WS_.WS.pz(z, WS_.WS.cc(E, st)), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}) == True{} : Bool}
+
+def WP.Fwin4.go(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, z, he, hI, hwok, hH, hEs):
+  match z:
+    case True{}:
+      WP.FR(w0, w1, ts, tt, WS_.WS.e3(E, w0, w1, tt, e, st), Et, Es, BIGe, WP.eok3(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), hwok)
+    case False{}:
+      WP.Fwin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs)
+
+law WP.Fwin4:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {EI_.EI.F(WS_.WS.e4(E, w0, w1, tt, e, st), WP.g4(E, w0, w1, tt, e, st), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(WS_.WS.c4(E, w0, w1, tt, e, st), WS_.WS.o4(E, w0, w1, tt, e, st)), WS_.WS.c4(E, w0, w1, tt, e, st), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}) == True{} : Bool}
+
+def WP.Fwin4(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  WP.Fwin4.go(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, WS_.WS.big(w0, w1, WS_.WS.e3(E, w0, w1, tt, e, st)), he, hI, hwok, hH, hEs)
+
+law WP.uowin4.go:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +z: Bool
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {EM_.EM.uo(WS_.WS.pe(z, w0, w1, tt, WS_.WS.e3(E, w0, w1, tt, e, st))) == w1 : U32}
+
+def WP.uowin4.go(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, z, he, hI, hwok, hH, hEs):
+  match z:
+    case True{}:
+      WP.uoR(w0, w1, ts, tt, WS_.WS.e3(E, w0, w1, tt, e, st), Et, Es, BIGe, WP.eok3(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), hwok)
+    case False{}:
+      WP.uowin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs)
+
+law WP.uowin4:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {EM_.EM.uo(WS_.WS.e4(E, w0, w1, tt, e, st)) == w1 : U32}
+
+def WP.uowin4(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  WP.uowin4.go(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, WS_.WS.big(w0, w1, WS_.WS.e3(E, w0, w1, tt, e, st)), he, hI, hwok, hH, hEs)
+
+law WP.cap6win4.go:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +z: Bool
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(WP.gdi(WP.pg(z, w0, w1, tt, WS_.WS.e3(E, w0, w1, tt, e, st), WP.g3(E, w0, w1, tt, e, st)))))) == True{} : Bool}
+
+def WP.cap6win4.go(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, z, he, hI, hwok, hH, hEs):
+  match z:
+    case True{}:
+      WP.cap6R(w0, w1, ts, tt, WS_.WS.e3(E, w0, w1, tt, e, st), Et, Es, BIGe, WP.eok3(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), hwok)
+    case False{}:
+      WP.cap6win(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs)
+
+law WP.cap6win4:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {Cmp.is_le(Nat.cmp(6n, EM_.EM.cap(WP.gdi(WP.g4(E, w0, w1, tt, e, st))))) == True{} : Bool}
+
+def WP.cap6win4(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  WP.cap6win4.go(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, WS_.WS.big(w0, w1, WS_.WS.e3(E, w0, w1, tt, e, st)), he, hI, hwok, hH, hEs)
+
+law WP.tcwin4.go:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +z: Bool
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {A.T.pf(10n, EM_.EM.tc(WS_.WS.pe(z, w0, w1, tt, WS_.WS.e3(E, w0, w1, tt, e, st)))) == True{} : Bool}
+
+def WP.tcwin4.go(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, z, he, hI, hwok, hH, hEs):
+  match z:
+    case True{}:
+      WP.tcR(w0, w1, ts, tt, WS_.WS.e3(E, w0, w1, tt, e, st), Et, Es, BIGe, WP.eok3(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), hwok)
+    case False{}:
+      WP.tcwin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs)
+
+law WP.tcwin4:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +Et: U32
+  for +Es: U32
+  for +BIGe: U32
+  for +HB: U32
+  for +he: {WS_.WS.eok(e) == True{} : Bool}
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hwok: {WS_.WS.wokv(w0, w1, Et, BIGe) == True{} : Bool}
+  for +hH: {Cmp.is_le(Nat.cmp(Nat.add(V.U.N(WS_.WS.slen(E)), V.U.N(U32.sub(w1, w0))), V.U.N(HB))) == True{} : Bool}
+  for +hEs: {Cmp.is_le(Nat.cmp(V.U.N(WS_.WS.slen(E)), V.U.N(Es))) == True{} : Bool}
+  {A.T.pf(10n, EM_.EM.tc(WS_.WS.e4(E, w0, w1, tt, e, st))) == True{} : Bool}
+
+def WP.tcwin4(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs):
+  WP.tcwin4.go(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, WS_.WS.big(w0, w1, WS_.WS.e3(E, w0, w1, tt, e, st)), he, hI, hwok, hH, hEs)
+
+law WP.awwin4.go:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +st: SC_.ST
+  for +S: U32
+  for +z: Bool
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hS: {U32.is_le(WS_.WS.slen(E), S) == True{} : Bool}
+  {Bool.or(Bool.not(U32.is_lt(0, WS_.WS.pz(z, WS_.WS.cc(E, st)))), Bool.and(U32.is_le(WS_.WS.pz(z, WS_.WS.cc(E, st)), S), U32.is_le(WS_.WS.pz(z, WS_.WS.co(E, st)), U32.sub(S, WS_.WS.pz(z, WS_.WS.cc(E, st)))))) == True{} : Bool}
+
+def WP.awwin4.go(E, w0, w1, ts, tt, st, S, z, hI, hS):
+  match z:
+    case True{}:
+      {==}
+    case False{}:
+      WP.awwin(E, w0, w1, ts, tt, st, S, hI, hS)
+
+law WP.awwin4:
+  for +E: N.EK
+  for +w0: U32
+  for +w1: U32
+  for +ts: A.Tr
+  for +tt: A.Tr
+  for +e: EM_.ET
+  for +st: SC_.ST
+  for +S: U32
+  for +hI: {SC_.SC.Is(WS_.WS.sk(E, w0, w1), ts, tt, 0n, st) == True{} : Bool}
+  for +hS: {U32.is_le(WS_.WS.slen(E), S) == True{} : Bool}
+  {Bool.or(Bool.not(U32.is_lt(0, WS_.WS.c4(E, w0, w1, tt, e, st))), Bool.and(U32.is_le(WS_.WS.c4(E, w0, w1, tt, e, st), S), U32.is_le(WS_.WS.o4(E, w0, w1, tt, e, st), U32.sub(S, WS_.WS.c4(E, w0, w1, tt, e, st))))) == True{} : Bool}
+
+def WP.awwin4(E, w0, w1, ts, tt, e, st, S, hI, hS):
+  WP.awwin4.go(E, w0, w1, ts, tt, st, S, WS_.WS.big(w0, w1, WS_.WS.e3(E, w0, w1, tt, e, st)), hI, hS)
+
 # Between windows
 # ---------------
 
@@ -920,8 +1312,8 @@ law WP.esok_fin:
 def WP.esok_fin(E, w0, w1, ts, tt, e, st, Et, Es, BIGe, HB, to, olen, lidx, he, hI, hwok, hH, hEs, hook):
   match E st:
     case N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap} SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}:
-      SC_.SC.and_tt(WS_.WS.eok(WS_.WS.ez(WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}))), Bool.and(WP.bok(SG_.SG.cT(True{}, slen, nio, tio)), WP.ook(WS_.WS.wto(to, olen, tt, w0, U32.sub(w1, w0), SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio), WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont})))),
-        WP.eok_next(WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WP.g3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio)), SG_.SG.cC(True{}, slen, nio, tio), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}, WP.Fwin(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), WP.cap6win(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), WP.tcwin(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs)),
-        SC_.SC.and_tt(WP.bok(SG_.SG.cT(True{}, slen, nio, tio)), WP.ook(WS_.WS.wto(to, olen, tt, w0, U32.sub(w1, w0), SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio), WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}))),
+      SC_.SC.and_tt(WS_.WS.eok(WS_.WS.ez(WS_.WS.e4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}))), Bool.and(WP.bok(SG_.SG.cT(True{}, slen, nio, tio)), WP.ook(WS_.WS.wto(to, olen, tt, w0, U32.sub(w1, w0), WS_.WS.c4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WS_.WS.o4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WS_.WS.e4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont})))),
+        WP.eok_next(WS_.WS.e4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WP.g4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), EM_.EW{Q.XC{ts, tt, Q.SP.wseg(WS_.WS.c4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WS_.WS.o4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont})), WS_.WS.c4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), w0, w1}, Et, Es, A.A.to(D.ct.table()), BIGe}, WP.Fwin4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), WP.cap6win4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs), WP.tcwin4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, ts, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}, Et, Es, BIGe, HB, he, hI, hwok, hH, hEs)),
+        SC_.SC.and_tt(WP.bok(SG_.SG.cT(True{}, slen, nio, tio)), WP.ook(WS_.WS.wto(to, olen, tt, w0, U32.sub(w1, w0), WS_.WS.c4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WS_.WS.o4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WS_.WS.e4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}))),
           WP.bok_cT(slen, nio, tio, SC_.SC.and_tt(A.T.pf(SC_.SC.dep(tio), tio), Bool.and(Cmp.is_lt(Nat.cmp(SC_.SC.dep(tio), 32n)), Cmp.is_le(Nat.cmp(3n, P.Nat.pow2(SC_.SC.dep(tio))))), SC_.SC.Iv.pf(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), SC_.SC.and_tt(Cmp.is_lt(Nat.cmp(SC_.SC.dep(tio), 32n)), Cmp.is_le(Nat.cmp(3n, P.Nat.pow2(SC_.SC.dep(tio)))), SC_.SC.Iv.lt(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI), SC_.SC.Iv.c3(ts, tt, slen, w0, w1, 0n, tio, p, mm, nio, hI)))),
-          WP.ook_next(to, olen, tt, w0, U32.sub(w1, w0), SG_.SG.cC(True{}, slen, nio, tio), SG_.SG.cO(True{}, slen, nio, tio), WS_.WS.e3(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), hook)))
+          WP.ook_next(to, olen, tt, w0, U32.sub(w1, w0), WS_.WS.c4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WS_.WS.o4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), WS_.WS.e4(N.EK{slen, tlen, wsz, blk, lsh, lmask, ssh, smask, cap}, w0, w1, tt, e, SC_.ST{tl, tb, tv, tio, p, mm, rc, rl, lck, last, nio, cont}), hook)))

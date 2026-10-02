@@ -147,7 +147,7 @@ def O.lt32(len):
 # The words of len bytes, as a value.
 law O.Nw:
   for +len: U32
-  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +hlen: {U32.is_lt(len, 2147483648) == True{} : Bool}
   {V.U.N(B.B.words(len)) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
 
 def O.Nw(len, hlen):
@@ -157,13 +157,13 @@ def O.Nw(len, hlen):
   %Equal.sym(Nat, V.U.N(U32.shr((len + 3 : U32))), P.Nat.half(V.U.N((len + 3 : U32))), V.U.N_shr((len + 3 : U32))) :
     {P.Nat.half(_) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
   %Equal.sym(Nat, V.U.N((len + 3 : U32)), Nat.add(V.U.N(len), V.U.N(3)),
-    V.U.add_top(len, 3, V.U.bit_lt_pow(len, 27n, 31n, hlen, {==}, {==}), {==})) :
+    V.U.add_top(len, 3, V.U.bit_lt_pow(len, 31n, 31n, hlen, {==}, {==}), {==})) :
     {P.Nat.half(P.Nat.half(_)) == P.Nat.half(P.Nat.half(Nat.add(V.U.N(len), 3n))) : Nat}
   {==}
 
 law O.he.go:
   for +len: U32
-  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +hlen: {U32.is_lt(len, 2147483648) == True{} : Bool}
   for +z: Bool
   for +ez: {U32.is_le(B.B.words(len), 1) == z : Bool}
   {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.dep(len)))))) == True{} : Bool}
@@ -204,7 +204,7 @@ def O.he.go(len, hlen, z, ez):
 # The target fits its buffer.
 law O.he:
   for +len: U32
-  for +hlen: {U32.is_lt(len, 134217728) == True{} : Bool}
+  for +hlen: {U32.is_lt(len, 2147483648) == True{} : Bool}
   {Cmp.is_le(Nat.cmp(V.U.N(len), Nat.double(Nat.double(P.Nat.pow2(O.dep(len)))))) == True{} : Bool}
 
 def O.he(len, hlen):
@@ -430,7 +430,7 @@ law DT.dec:
   for +hd: {Q.SP.wend(ws, 5) == dlen : U32}
   for +hw: {Q.SP.wsok(ws, ts, tt, slen, 0, A.A.to(D.ct.table()), total, slen) == True{} : Bool}
   for +ht: {Q.SP.wop(ws, 0) == total : U32}
-  for +hlen: {U32.is_lt(total, 134217728) == True{} : Bool}
+  for +hlen: {U32.is_lt(total, 2147483648) == True{} : Bool}
   {D.decode(B.Bytes{slen, A.A.from(ts)}, B.Bytes{dlen, A.A.from(td)}) == (B.Bytes{slen, A.A.from(ts)}, (B.Bytes{dlen, A.A.from(td)}, Done{B.Bytes{total, A.A.from(Q.SP.wto(ws, ts, tt, A.T.new(O.dep(total), 0), 0))}})) : B.Bytes & (B.Bytes & Result<&1, &1, U32, B.Bytes>)}
 
 def DT.dec(ws, ts, td, tt, slen, dlen, total, h, hd, hw, ht, hlen):
@@ -463,7 +463,7 @@ law DT.list:
   for +total: U32
   for +hw: {Q.SP.wsok(ws, ts, tt, slen, 0, A.A.to(D.ct.table()), total, slen) == True{} : Bool}
   for +ht: {Q.SP.wop(ws, 0) == total : U32}
-  for +hlen: {U32.is_lt(total, 134217728) == True{} : Bool}
+  for +hlen: {U32.is_lt(total, 2147483648) == True{} : Bool}
   {B.B.list(B.Bytes{total, A.A.from(Q.SP.wto(ws, ts, tt, A.T.new(O.dep(total), 0), 0))}) == S.S.sl(V.U.N(total), tt, 0) : List<&2, U32>}
 
 def DT.list(ws, ts, tt, slen, total, hw, ht, hlen):

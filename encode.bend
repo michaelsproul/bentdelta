@@ -1330,6 +1330,37 @@ def seg.choose(idle: Bool, +slen: U32, +nio: U32, io: Array<U32>) ->
     case False{}:
       (io, (slen, 0))
 
+# The most an ADD of a window's n bytes takes in its sections: the bytes,
+# the opcode and the size.
+def raw.secs(+n: U32) -> U32:
+  ((n + 1 : U32) + B.B.var.len(n) : U32)
+
+def win.raw(out: Array<U32>, +olen: U32, +w0: U32, +w1: U32,
+  r: Array<U32> & Em) -> (Array<U32> & U32) & (Array<U32> & Em):
+  (tgt, em) = r
+  win.write(out, olen, tgt, w0, (w1 - w0 : U32), 0, 0, em.flush(em))
+
+def win.out.if(big: Bool, out: Array<U32>, +olen: U32, tgt: Array<U32>,
+  +w0: U32, +w1: U32, +cpl: U32, +off: U32, em: Em) ->
+  (Array<U32> & U32) & (Array<U32> & Em):
+  match big:
+    case True{}:
+      win.raw(out, olen, w0, w1, em.gap(tgt, w1, em.reset(w0, em)))
+    case False{}:
+      win.write(out, olen, tgt, w0, (w1 - w0 : U32), cpl, off, em)
+
+# Appends the window for tgt[w0, w1) to out: its instructions, or, if their
+# sections take more than an ADD of its bytes would, that ADD (written by a
+# fresh emitter, with no source segment). So no window takes more than 47
+# bytes besides its own.
+def win.out(out: Array<U32>, +olen: U32, tgt: Array<U32>, +w0: U32, +w1: U32,
+  +cpl: U32, +off: U32, em: Em) -> (Array<U32> & U32) & (Array<U32> & Em):
+  match em:
+    case Em{dat, ins, adr, ca, +dl, +il, +al, slot, uoff, pt, ps, pm, pc}:
+      win.out.if((raw.secs((w1 - w0 : U32)) < ((dl + il : U32) + al : U32) : U32),
+        out, olen, tgt, w0, w1, cpl, off,
+        Em{dat, ins, adr, ca, dl, il, al, slot, uoff, pt, ps, pm, pc})
+
 def win.fin.k3(src: Array<U32>, lt: Array<U32>, stb: Array<U32>,
   spv: Array<U32>, io: Array<U32>, +lidx: U32, +cont: U32,
   r: (Array<U32> & U32) & (Array<U32> & Em)) -> ES:
@@ -1344,7 +1375,7 @@ def win.fin.k2(+E: EK, +w0: U32, +w1: U32, +cpl: U32, +off: U32,
   r: Array<U32> & Em) -> ES:
   (tgt, em) = r
   win.fin.k3(src, lt, stb, spv, io, lidx, cont,
-    win.write(out, olen, tgt, w0, (w1 - w0 : U32), cpl, off, em.flush(em)))
+    win.out(out, olen, tgt, w0, w1, cpl, off, em.flush(em)))
 
 def win.fin.k1(+E: EK, +w0: U32, +w1: U32, +cpl: U32, +off: U32,
   src: Array<U32>, lt: Array<U32>, stb: Array<U32>, spv: Array<U32>,
