@@ -62,10 +62,9 @@ def cmd.go(args: List<&2, String>, +mode: U32, +want_src: Bool,
     case Con{+a, rest}:
       +is_e = String.eq(a, "-e")
       +is_d = String.eq(a, "-d")
-      +is_p = String.eq(a, "--plain")
       +is_s = String.eq(a, "-s")
-      +plain = Bool.not(is_e || is_d || is_s || is_p)
-      +mode2 = u32.pick(is_e, 1, u32.pick(is_d, 2, u32.pick(is_p, 3, mode)))
+      +plain = Bool.not(is_e || is_d || is_s)
+      +mode2 = u32.pick(is_e, 1, u32.pick(is_d, 2, mode))
       +src2 = Bool.pick(Maybe<&2, String>, want_src, Some{a}, src)
       +files2 = Bool.pick(List<&2, String>, plain && Bool.not(want_src), a <> files,
         files)
@@ -115,23 +114,11 @@ def run.decode(src: Maybe<&2, String>, delta: String, out: String) -> IO(Unit):
     d : B.Bytes <- load(delta)
     run.decode.k(s, out, V.decode.size(d))
 
-def run.plain(out: String, r: B.Bytes & B.Bytes) -> IO(Unit):
-  (t, d) = r
-  save(out, d)
-
-def run.encode.go(plain: Bool, s: B.Bytes, t: B.Bytes, out: String) -> IO(Unit):
-  match plain:
-    case False{}:
-      save(out, C.encode(s, t))
-    case True{}:
-      run.plain(out, C.fallback(t))
-
-def run.encode(+mode: U32, src: Maybe<&2, String>, tgt: String, out: String) ->
-  IO(Unit):
+def run.encode(src: Maybe<&2, String>, tgt: String, out: String) -> IO(Unit):
   do IO<Unit>:
     s : B.Bytes <- src.load(src)
     t : B.Bytes <- load(tgt)
-    run.encode.go(U32.is_eq(mode, 3), s, t, out)
+    save(out, C.encode(s, t))
 
 def run.mode(dec: Bool, +mode: U32, src: Maybe<&2, String>, a: String,
   b: String) -> IO(Unit):
@@ -139,7 +126,7 @@ def run.mode(dec: Bool, +mode: U32, src: Maybe<&2, String>, a: String,
     case True{}:
       run.decode(src, a, b)
     case False{}:
-      run.encode(mode, src, a, b)
+      run.encode(src, a, b)
 
 def run.files(+mode: U32, src: Maybe<&2, String>, files: List<&2, String>) ->
   IO(Unit):

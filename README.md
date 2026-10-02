@@ -85,6 +85,10 @@ Linux machine:
 | 12 MB, identical | 0.04 / 0.06 s | 0.05 / 0.04 s | 80 / 58 |
 | 158 MB shared object, new version | 6.51 / 4.04 s | 0.73 / 0.76 s | 12.86 / 12.35 MB |
 
+The encode times above were measured when the encoder also decoded its
+delta to check it; without that check (now that it is proven) encoding takes
+about the decode time less.
+
 Targets of 8 windows (56 MiB) or more are encoded in parallel, eight tasks
 with their own copies of the inputs; smaller ones gain nothing from it.
 
