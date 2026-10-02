@@ -1,6 +1,6 @@
 import Base
 import ./bytes.bend as B
-import ./check.bend as C
+import ./codec.bend as C
 
 # The laws bentdelta keeps. PROOF.bend proves each one.
 

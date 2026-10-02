@@ -16,7 +16,7 @@ Deltas from `bentdelta -e` decode with `xdelta3 -d`, and deltas from
 
 ## The law
 
-`LAWS.bend` states, and `bend PROOF.bend` checks (about two minutes), that
+`LAWS.bend` states, and `bend PROOF.bend` checks (about 22 minutes), that
 for any source and any target under 128 MiB, decoding the delta that the
 encoder makes, against the same source, gives back exactly the target's
 bytes:
@@ -30,43 +30,49 @@ law roundtrip:
     : Result<&1, &1, U32, List<&2, U32>>}
 ```
 
-`C.restore` is the decoder the CLI runs (`vcdiff.bend`), and `B.B.list`
+`C.encode` is the encoder the CLI runs (`encode.bend`, through
+`codec.bend`), `C.restore` the decoder (`vcdiff.bend`), and `B.B.list`
 reads a byte string a byte at a time.
 
-The proof is by translation validation. The encoder (`encode.bend`, after
-xdelta3's default matcher) is not trusted: `check.bend` decodes its delta
-and compares the result with the target (`B.eq`). If they differ, or the
-delta does not decode, it substitutes a plain encoding that holds each
-target byte in a window of its own. The proof shows that `B.eq` is sound
-and that the decoder turns the plain encoding of any target back into that
-target. Since decoding is a function, a delta that passed the check decodes
-again to the same bytes. The plain encoding is nine times the target's size
-and is never used in practice; it is the safety net that makes the law hold
-for every input.
+The proof is about the encoder itself: nothing checks its output at run
+time. Each step of the encoder (`encode.bend`, after xdelta3's default
+matcher) is mirrored by a function on trees, Data copies of the arrays it
+works on, and each mirror is shown to compute what the code does. Facts
+about the mirrors then give the delta's shape: a header, then windows,
+each of which says (`proofs/spec`) how to rebuild its part of the target
+from the source and the target before it. The matcher only buffers matches
+whose bytes agree, the emitter writes the three sections of a window as
+the spec reads them, and the parallel tasks' outputs join in order. On the
+other side, the decoder turns any delta of such windows back into the
+target. The bound on the target keeps every position and the delta's
+length below 2^31.
 
-The proofs, in `proofs/`, build up from:
+The proofs, in `proofs/` (the `.bp` files are the sources; `tools/bpp.py`
+expands their rewriting directives into the `.bend` files), build up from:
 
 | file | what it proves |
 |---|---|
-| `nat.bend`, `word.bend`, `u32.bend` | Nat order and arithmetic; word arithmetic for every width (carries, no-wrap sums, bits); U32 versions |
-| `array.bend` | a Data model of `Array<U32>`: reads and writes, read-after-write, writes in a perfect tree leave other slots |
-| `bytes.bend` | packed bytes (four per word): `B.get`/`B.put` on the model, read-after-write, frames, depths |
-| `seq.bend` | byte strings as lists: writing a list, holding a list, reading it back |
-| `fallback.bend` | the plain encoding is the header and its windows, written into a new tree that holds them |
-| `decode.bend` | the decoder on the plain encoding: header, each window, the prescan and decoding loops, the target buffer |
-| `eq.bend` | `B.eq` is sound |
-| `top.bend` | the round trip, from views of byte strings as trees and the cases of the check |
+| `nat`, `word`, `u32` | Nat order and arithmetic; word arithmetic for every width (carries, no-wrap sums, bits); U32 versions |
+| `array`, `bytes`, `seq`, `words`, `bits`, `copy` | Data models of `Array<U32>` and packed bytes: reads, writes, words and their bytes, copies, fills and moves |
+| `varint`, `adler`, `umod` | varints written and read back; Adler-32 reads only its range; `U32.mod` |
+| `spec` | what a window of a delta says, and when it rebuilds a target's bytes |
+| `sem`, `dec`, `dwin`, `dtop` | the decoder: its writes, a window's instructions, a window, a whole delta |
+| `ctab` | the encoder's opcodes fit the code table |
+| `match` | the matcher's byte comparisons count bytes that agree |
+| `emit`, `einst` | the emitter writes a window's three sections as the spec reads them |
+| `settle`, `segm` | buffered matches settle into instructions; the source segment |
+| `scan` | the string matcher: every match it buffers holds |
+| `wstart`, `wwrite`, `wfin`, `wspec` | a window: its start, its bytes, its end, and what it leaves for the next |
+| `wloop`, `wpar` | runs of windows, and the parallel tasks that encode them |
+| `etop` | the encoder: the header, the index, the window count, the bounds, and its delta decoding to the target |
+| `top` | the round trip |
 
-`bend <file> --verdict` rechecks with the BendTT kernel (which has a proof
-in Lean). The libraries up to `fallback.bend`, and `eq.bend`, pass it. The
-kernel reports a "mismatch between the TypeScript implementation and the
-formalized BendTT kernel" on the last steps of `decode.bend` (evaluating the
-decoder with a symbolic source length), which Bend says it will address in
-a future update. Those steps check with `bend`, as does the whole law.
+`bend <file> --verdict` rechecks a file with the BendTT kernel (which has a
+proof in Lean); the proofs here are checked with `bend`.
 
 What is trusted: the Bend checker, the statement in `LAWS.bend` (with
-`B.B.list` and `C.restore`), and the CLI around it (`main.bend` and the file
-I/O in `io/bytes.c`).
+`B.B.list`, `C.encode` and `C.restore`), and the CLI around it
+(`main.bend` and the file I/O in `io/bytes.c`).
 
 ## Performance
 
@@ -79,7 +85,6 @@ Linux machine:
 | 12 MB, identical | 0.04 / 0.06 s | 0.05 / 0.04 s | 80 / 58 |
 | 158 MB shared object, new version | 6.51 / 4.04 s | 0.73 / 0.76 s | 12.86 / 12.35 MB |
 
-Encoding includes the check (decoding the delta again and comparing).
 Targets of 8 windows (56 MiB) or more are encoded in parallel, eight tasks
 with their own copies of the inputs; smaller ones gain nothing from it.
 
@@ -100,8 +105,8 @@ bend tests/bytes_test.bend     # randomized tests of the byte primitives
 
 ## Limits
 
-- The law covers targets under 128 MiB (the plain encoding must fit a
-  U32). Larger targets work, and are checked the same way, but the law does
-  not speak of them.
+- The law covers targets under 128 MiB (the proof bounds the delta's
+  length by 14 bytes per target byte, which must stay below 2^31). Larger
+  targets work, but the law does not speak of them.
 - No secondary compression (xdelta3's default is LZMA): compare against
   `xdelta3 -S none`.

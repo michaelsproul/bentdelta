@@ -1,7 +1,7 @@
 import Base
 import ./bytes.bend as B
 import ./vcdiff.bend as V
-import ./check.bend as C
+import ./codec.bend as C
 
 # bentdelta: a VCDIFF (RFC 3284) delta encoder and decoder, compatible with
 # xdelta3.

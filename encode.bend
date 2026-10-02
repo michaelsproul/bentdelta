@@ -7,8 +7,8 @@ import ./vcdiff.bend as V
 # 8 bytes, a 4-byte hash over the target with short chains, runs, lazy
 # matching, and xdelta3's instruction optimizer and code-table choices.
 #
-# The encoder is not trusted: check.bend decodes what it produces and falls
-# back to a plain encoding if that does not give back the target.
+# PROOF.bend proves that decoding its delta (vcdiff.bend) gives back the
+# target, for targets under 128 MiB (proofs/etop.bp).
 
 # Helpers
 # =======
