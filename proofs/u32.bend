@@ -861,34 +861,6 @@ def U.gt1_false(s, ne):
   %Equal.sym(Cmp, U32.cmp(1, s), Nat.cmp(U.N(1), U.N(s)), U.cmp_nat(1, s)) : {Cmp.is_gt(_) == False{} : Bool}
   U.gt1.go(s, U.N(s), {==}, ne)
 
-law U.big.go:
-  for +x: U32
-  for +h: {U32.is_lt(x, 134217728) == True{} : Bool}
-  for +z: Bool
-  for +ez: {U32.is_eq(U32.sub(2147483648, x), 0) == z : Bool}
-  {U32.is_eq(U32.sub(2147483648, x), 0) == False{} : Bool}
-
-def U.big.go(x, h, z, ez):
-  match z:
-    case False{}:
-      ez
-    case True{}:
-      P.Bool.false_true({U32.is_eq(U32.sub(2147483648, x), 0) == False{} : Bool},
-        (%{(%U.add_zero_r(x) : {_ == 2147483648 : U32}
-              (%U.add_comm(0, x) : {_ == 2147483648 : U32}
-                (%U.is_eq(U32.sub(2147483648, x), 0, ez) : {U32.add(_, x) == 2147483648 : U32}
-                  U.add_sub(2147483648, x)))) : {x == 2147483648 : U32}} : {U32.is_lt(_, 134217728) == True{} : Bool}
-          h))
-
-# The decoder's limit check passes for a position below 2^27.
-law U.big:
-  for +x: U32
-  for +h: {U32.is_lt(x, 134217728) == True{} : Bool}
-  {U32.is_gt(1, U32.sub(2147483648, x)) == False{} : Bool}
-
-def U.big(x, h):
-  U.gt1_false(U32.sub(2147483648, x), U.big.go(x, h, U32.is_eq(U32.sub(2147483648, x), 0), {==}))
-
 # Order as values, both ways, for <=.
 law U.le_N:
   for +x: U32

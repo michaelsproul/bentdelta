@@ -8,7 +8,7 @@ import ./vcdiff.bend as V
 # matching, and xdelta3's instruction optimizer and code-table choices.
 #
 # PROOF.bend proves that decoding its delta (vcdiff.bend) gives back the
-# target, for targets under 128 MiB (proofs/etop.bp).
+# target, for targets under 2 GiB less 1 MiB (proofs/etop.bp).
 
 # Helpers
 # =======

@@ -16,16 +16,16 @@ Deltas from `bentdelta -e` decode with `xdelta3 -d`, and deltas from
 
 ## The law
 
-`LAWS.bend` states, and `bend PROOF.bend` checks (about 22 minutes), that
-for any source and any target under 128 MiB, decoding the delta that the
-encoder makes, against the same source, gives back exactly the target's
-bytes:
+`LAWS.bend` states, and `bend PROOF.bend` checks (about 20 minutes), that
+for any source and any target under 2 GiB less 1 MiB (2^31 - 2^20
+bytes), decoding the delta that the encoder makes, against the same source,
+gives back exactly the target's bytes:
 
 ```
 law roundtrip:
   for src: B.Bytes
   for tgt: B.Bytes
-  for small: {U32.is_lt(B.B.len(tgt), 134217728) == True{} : Bool}
+  for small: {U32.is_lt(B.B.len(tgt), 2146435072) == True{} : Bool}
   {C.restore(src, C.encode(src, tgt)) == Done{B.B.list(tgt)}
     : Result<&1, &1, U32, List<&2, U32>>}
 ```
@@ -44,8 +44,10 @@ from the source and the target before it. The matcher only buffers matches
 whose bytes agree, the emitter writes the three sections of a window as
 the spec reads them, and the parallel tasks' outputs join in order. On the
 other side, the decoder turns any delta of such windows back into the
-target. The bound on the target keeps every position and the delta's
-length below 2^31.
+target. No window takes more than 47 bytes besides its own (one whose
+instructions would take more is written as a single ADD), so the delta is
+at most the target's length and 16 KiB, and the bound on the target keeps
+every position and the delta's length below 2^31.
 
 The proofs, in `proofs/` (the `.bp` files are the sources; `tools/bpp.py`
 expands their rewriting directives into the `.bend` files), build up from:
@@ -62,7 +64,7 @@ expands their rewriting directives into the `.bend` files), build up from:
 | `emit`, `einst` | the emitter writes a window's three sections as the spec reads them |
 | `settle`, `segm` | buffered matches settle into instructions; the source segment |
 | `scan` | the string matcher: every match it buffers holds |
-| `wstart`, `wwrite`, `wfin`, `wspec` | a window: its start, its bytes, its end, and what it leaves for the next |
+| `wstart`, `wwrite`, `wfin`, `wspec` | a window: its start, its bytes, its end (or the ADD written in its place), and what it leaves for the next |
 | `wloop`, `wpar` | runs of windows, and the parallel tasks that encode them |
 | `etop` | the encoder: the header, the index, the window count, the bounds, and its delta decoding to the target |
 | `top` | the round trip |
@@ -94,7 +96,8 @@ xdelta3's: 8 MiB windows, a rolling 9-byte checksum over the source, 4-byte
 target matches with short chains, runs, lazy matching, its instruction
 optimizer and code-table choices, and source segments that slide with the
 target (so xdelta3's decoder, holding 64 MiB of source, reads ours as fast
-as its own).
+as its own). Unlike xdelta3's, a window whose instructions would take more
+bytes than an ADD of it is written as that ADD.
 
 ## Tests
 
@@ -105,8 +108,10 @@ bend tests/bytes_test.bend     # randomized tests of the byte primitives
 
 ## Limits
 
-- The law covers targets under 128 MiB (the proof bounds the delta's
-  length by 14 bytes per target byte, which must stay below 2^31). Larger
-  targets work, but the law does not speak of them.
+- The law covers targets under 2 GiB less 1 MiB (the delta, at most 16 KiB
+  longer than the target, must stay below 2^31 bytes). Larger targets
+  work, but the law does not speak of them.
+- Each of the eight parallel tasks holds its own copy of the inputs:
+  encoding a 600 MB target against a 600 MB source takes 17.5 GB of memory.
 - No secondary compression (xdelta3's default is LZMA): compare against
   `xdelta3 -S none`.

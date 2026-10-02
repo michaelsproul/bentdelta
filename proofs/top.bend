@@ -87,7 +87,7 @@ law T.enc:
   for +st: A.Tr
   for +tl: U32
   for +tt: A.Tr
-  for +hl: {U32.is_lt(tl, 134217728) == True{} : Bool}
+  for +hl: {U32.is_lt(tl, 2146435072) == True{} : Bool}
   {C.restore(B.Bytes{sl, A.A.from(st)}, C.encode(B.Bytes{sl, A.A.from(st)}, B.Bytes{tl, A.A.from(tt)})) == Done{B.B.list(B.Bytes{tl, A.A.from(tt)})} : Result<&1, &1, U32, List<&2, U32>>}
 
 def T.enc(sl, st, tl, tt, hl):
@@ -107,24 +107,24 @@ law T.main.v:
   for -tgt: B.Bytes
   for vs: &v:BV -> {src == T.bytes(v) : B.Bytes}
   for vt: &v:BV -> {tgt == T.bytes(v) : B.Bytes}
-  {U32.is_lt(B.B.len(tgt), 134217728) == True{} : Bool}
+  {U32.is_lt(B.B.len(tgt), 2146435072) == True{} : Bool}
     -> {C.restore(src, C.encode(src, tgt)) == Done{B.B.list(tgt)} : Result<&1, &1, U32, List<&2, U32>>}
 
 def T.main.v(src, tgt, vs, vt):
   match vs vt:
     case Tuple{BV{+sl, +st}, es} Tuple{BV{+tl, +tt}, et}:
       %Equal.sym(B.Bytes, src, B.Bytes{sl, A.A.from(st)}, es) :
-        {U32.is_lt(B.B.len(tgt), 134217728) == True{} : Bool}
+        {U32.is_lt(B.B.len(tgt), 2146435072) == True{} : Bool}
           -> {C.restore(_, C.encode(_, tgt)) == Done{B.B.list(tgt)} : Result<&1, &1, U32, List<&2, U32>>}
       %Equal.sym(B.Bytes, tgt, B.Bytes{tl, A.A.from(tt)}, et) :
-        {U32.is_lt(B.B.len(_), 134217728) == True{} : Bool}
+        {U32.is_lt(B.B.len(_), 2146435072) == True{} : Bool}
           -> {C.restore(B.Bytes{sl, A.A.from(st)}, C.encode(B.Bytes{sl, A.A.from(st)}, _)) == Done{B.B.list(_)} : Result<&1, &1, U32, List<&2, U32>>}
       small => T.enc(sl, st, tl, tt, small)
 
 law T.main:
   for src: B.Bytes
   for tgt: B.Bytes
-  for small: {U32.is_lt(B.B.len(tgt), 134217728) == True{} : Bool}
+  for small: {U32.is_lt(B.B.len(tgt), 2146435072) == True{} : Bool}
   {C.restore(src, C.encode(src, tgt)) == Done{B.B.list(tgt)} : Result<&1, &1, U32, List<&2, U32>>}
 
 def T.main(src, tgt, small):
