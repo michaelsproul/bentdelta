@@ -76,18 +76,14 @@ What is trusted: the Bend checker, the statement in `LAWS.bend` (with
 
 ## Performance
 
-Medians against xdelta3 3.0.11 (`-S none`; level 3, its default), on a 32-core
-Linux machine:
+Medians of five runs against xdelta3 3.0.11 (`-S none`; level 3, its
+default), on a 32-core Linux machine:
 
 | case | encode (xdelta3 / bentdelta) | decode | delta size |
 |---|---|---|---|
-| 30 MB tar, edited | 0.25 / 0.28 s | 0.12 / 0.10 s | 160366 / 161969 |
-| 12 MB, identical | 0.04 / 0.06 s | 0.05 / 0.04 s | 80 / 58 |
-| 158 MB shared object, new version | 6.51 / 4.04 s | 0.73 / 0.76 s | 12.86 / 12.35 MB |
-
-The encode times above were measured when the encoder also decoded its
-delta to check it; without that check (now that it is proven) encoding takes
-about the decode time less.
+| 30 MB tar, edited | 0.18 / 0.16 s | 0.056 / 0.039 s | 160366 / 161969 |
+| 12 MB, identical | 0.036 / 0.020 s | 0.025 / 0.018 s | 80 / 58 |
+| 158 MB shared object, new version | 5.62 / 2.99 s | 0.46 / 0.56 s | 12.86 / 12.35 MB |
 
 Targets of 8 windows (56 MiB) or more are encoded in parallel, eight tasks
 with their own copies of the inputs; smaller ones gain nothing from it.
